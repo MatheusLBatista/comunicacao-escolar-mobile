@@ -114,16 +114,32 @@ fun DailyLogCard(log: DailyLog, isSelected: Boolean = false) {
 
 @Composable
 fun DailyLogsScreen() {
-    Box(
+    var logs = mapOf(
+        "24/03/2026" to listOf(
+            DailyLog(1, "João", "08:00", "Chegou na escola e brincou no parquinho.", "24/03/2026"),
+            DailyLog(2, "Maria", "09:30", "Participou da aula de artes e pintou um desenho.", "24/03/2026"),
+            DailyLog(3, "Pedro", "10:15", "Fez um lanche saudável com frutas.", "24/03/2026")
+        ),
+        "23/03/2026" to listOf(
+            DailyLog(4, "Ana", "08:30", "Chegou na escola e brincou com blocos de construção.", "23/03/2026"),
+            DailyLog(5, "Lucas", "09:45", "Participou da aula de música e cantou uma canção.", "23/03/2026"),
+            DailyLog(6, "Sofia", "11:00", "Fez um lanche saudável com iogurte e granola.", "23/03/2026")
+        )
+    )
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(LocalComunicacaoEscolarColors.current.background)
-            .padding(16.dp)
     ) {
         Text(
-            text = "Daily Logs Screen",
+            text = "Activity Logs",
             style = MaterialTheme.typography.headlineMedium,
-            color = MaterialTheme.colorScheme.onBackground
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }
 }
