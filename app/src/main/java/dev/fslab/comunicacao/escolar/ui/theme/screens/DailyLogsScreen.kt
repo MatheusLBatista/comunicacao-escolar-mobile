@@ -74,7 +74,7 @@ fun DailyLogCard(log: DailyLog, isSelected: Boolean = false) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
-            verticalAlignment = Alignment.Center
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Icon (
                 imageVector = Icons.Default.Person,
