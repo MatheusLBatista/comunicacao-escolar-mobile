@@ -141,5 +141,57 @@ fun DailyLogsScreen() {
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+        ) {
+            logs.forEach { (date, logsForDate) ->
+                // Header da data
+                Text(
+                    text = date,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+
+                // Cards do dia
+                logsForDate.forEachIndexed { index, log ->
+                    DailyLogCard(
+                        log = log,
+                        isSelected = index == 0 && date == "24/03/2026" // primeiro item destacado
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+
+        @Composable
+        fun BottomNavigationBar() {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Email, contentDescription = "Mensagens",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Default.Email, contentDescription = "Logs",
+                    tint = MaterialTheme.colorScheme.primary) // ativo
+                Icon(Icons.Default.Lock, contentDescription = "Favoritos",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Default.Person, contentDescription = "Calendário",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Default.Person, contentDescription = "Perfil",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+        
+
     }
 }
