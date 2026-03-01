@@ -70,36 +70,37 @@ fun DailyLogCard(log: DailyLog, isSelected: Boolean = false) {
         ),
         shape = RoundedCornerShape(12.dp),
     ) {
-        Row (
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon (
+            Icon(
                 imageVector = Icons.Default.Person,
                 contentDescription = "Child Icon",
-                tint = MaterialTheme.colorScheme.onPrimary,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
-        }
-        Spacer(modifier = Modifier.size(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = log.childName,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = log.time,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Spacer(modifier = Modifier.size(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = log.childName,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = log.time,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = log.description,
@@ -114,7 +115,7 @@ fun DailyLogCard(log: DailyLog, isSelected: Boolean = false) {
 
 @Composable
 fun DailyLogsScreen() {
-    var logs = mapOf(
+    val logs = mapOf(
         "24/03/2026" to listOf(
             DailyLog(1, "João", "08:00", "Chegou na escola e brincou no parquinho.", "24/03/2026"),
             DailyLog(2, "Maria", "09:30", "Participou da aula de artes e pintou um desenho.", "24/03/2026"),
@@ -169,29 +170,37 @@ fun DailyLogsScreen() {
             }
         }
 
-        @Composable
-        fun BottomNavigationBar() {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Email, contentDescription = "Mensagens",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Icon(Icons.Default.Email, contentDescription = "Logs",
-                    tint = MaterialTheme.colorScheme.primary) // ativo
-                Icon(Icons.Default.Lock, contentDescription = "Favoritos",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Icon(Icons.Default.Person, contentDescription = "Calendário",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Icon(Icons.Default.Person, contentDescription = "Perfil",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        
+        BottomNavigationBar()
+    }
+}
 
+@Composable
+fun BottomNavigationBar() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(Icons.Default.Email, contentDescription = "Mensagens",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.Default.Email, contentDescription = "Logs",
+            tint = MaterialTheme.colorScheme.primary)
+        Icon(Icons.Default.Lock, contentDescription = "Favoritos",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.Default.Person, contentDescription = "Calendário",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.Default.Person, contentDescription = "Perfil",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DailyLogsScreenPreview() {
+    ComunicacaoEscolarTheme {
+        DailyLogsScreen()
     }
 }
