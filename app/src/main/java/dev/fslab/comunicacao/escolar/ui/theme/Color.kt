@@ -85,6 +85,17 @@ val StatusOperational = Color(0xFF22C55E)  // Status operacional verde
 
 
 
+// Cores da LoginScreen
+
+val DarkBlue = Color(0xFF283543)           // Azul escuro - títulos e botão principal
+val LoginBackground = Color(0xFFFFFFFF)    // Fundo branco da tela de login
+val LoginBorder = Color(0xFFDDDDDD)        // Bordas dos campos de input
+val LoginGrayText = Color(0xFF7F8C8D)      // Texto cinza - subtítulos e placeholders
+val FooterGray = Color(0xFFBDC3C7)         // Texto do rodapé
+val GoogleRed = Color(0xFFDB4437)          // Cor do ícone Google
+
+
+
 // Cores de Compatibilidade com Material Design 3
 
 val Purple80 = Color(0xFFD0BCFF)           // Para tema escuro

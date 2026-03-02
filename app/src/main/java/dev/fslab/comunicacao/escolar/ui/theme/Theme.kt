@@ -51,6 +51,13 @@ data class ComunicacaoEscolarColors(
     val featureCyan: Color,
     val featurePink: Color,
     val featureRed: Color,
+    // Cores da LoginScreen
+    val loginBackground: Color,
+    val loginDarkBlue: Color,
+    val loginGrayText: Color,
+    val loginBorder: Color,
+    val loginFooterGray: Color,
+    val loginGoogleRed: Color,
     val isDark: Boolean = false  // Flag para identificar o tema
 )
 
@@ -87,6 +94,13 @@ val LightComunicacaoEscolarColors = ComunicacaoEscolarColors(
     featureCyan = Color(0xFF06B6D4),
     featurePink = Color(0xFFEC4899),
     featureRed = Color(0xFFEF4444),
+    // Cores da LoginScreen
+    loginBackground = LoginBackground,
+    loginDarkBlue = DarkBlue,
+    loginGrayText = LoginGrayText,
+    loginBorder = LoginBorder,
+    loginFooterGray = FooterGray,
+    loginGoogleRed = GoogleRed,
     isDark = false
 )
 
@@ -123,6 +137,13 @@ val DarkComunicacaoEscolarColors = ComunicacaoEscolarColors(
     featureCyan = Color(0xFF22D3EE),
     featurePink = Color(0xFFF472B6),
     featureRed = Color(0xFFFF6B81),
+    // Cores da LoginScreen (adaptadas para dark)
+    loginBackground = Color(0xFF121212),
+    loginDarkBlue = Color(0xFF5BA4CF),
+    loginGrayText = Color(0xFFB0B0B0),
+    loginBorder = Color(0xFF3A3A3A),
+    loginFooterGray = Color(0xFF6B6B6B),
+    loginGoogleRed = Color(0xFFFF6B6B),
     isDark = true
 )
 
@@ -176,6 +197,7 @@ fun ComunicacaoEscolarTheme(
     content: @Composable () -> Unit
 ) {
 
+    // 1️⃣ Material Color Scheme
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
@@ -189,10 +211,12 @@ fun ComunicacaoEscolarTheme(
         else -> LightColorScheme
     }
 
+    // 2️⃣ Suas cores customizadas
     val filaColors =
         if (darkTheme) DarkComunicacaoEscolarColors
         else LightComunicacaoEscolarColors
 
+    // 3️⃣ Controle da System UI
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -200,16 +224,24 @@ fun ComunicacaoEscolarTheme(
 
             window.statusBarColor = filaColors.background.toArgb()
 
+            // Cor da Status Bar
+            window.statusBarColor = filaColors.background.toArgb()
+
+            // Cor da Navigation Bar
             window.navigationBarColor = filaColors.background.toArgb()
 
             val insetsController =
                 WindowCompat.getInsetsController(window, view)
 
+            // Define cor dos ícones:
+            // true = ícones escuros
+            // false = ícones claros
             insetsController.isAppearanceLightStatusBars = !darkTheme
             insetsController.isAppearanceLightNavigationBars = !darkTheme
         }
     }
 
+    // 4️⃣ Aplica tema
     CompositionLocalProvider(
         LocalComunicacaoEscolarColors provides filaColors
     ) {

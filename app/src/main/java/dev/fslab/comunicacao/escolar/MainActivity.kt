@@ -47,7 +47,8 @@ fun ComunicacaoEscolarApp() {
                         navController.navigate("esqueci_senha?email=$email")
                     },
                     onRegister = { navController.navigate("cadastro") },
-                    onLogin = { navController.navigate("dailyLogs") }
+                    onLogin = { navController.navigate("dailyLogs") },
+                    onLoginGoogle = { /* TODO: Implementar login com Google */ }
                 )
             }
 
