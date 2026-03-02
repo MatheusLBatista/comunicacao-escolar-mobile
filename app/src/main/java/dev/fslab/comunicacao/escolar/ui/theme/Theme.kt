@@ -58,6 +58,22 @@ data class ComunicacaoEscolarColors(
     val loginBorder: Color,
     val loginFooterGray: Color,
     val loginGoogleRed: Color,
+    // Cores da DailyLogsScreen
+    val dailyLogsBackground: Color,
+    val dailyLogsCardSelected: Color,
+    val dailyLogsCardDefault: Color,
+    val dailyLogsCardBorder: Color,
+    val dailyLogsTitleText: Color,
+    val dailyLogsDateText: Color,
+    val dailyLogsChildName: Color,
+    val dailyLogsTimeText: Color,
+    val dailyLogsDescription: Color,
+    val dailyLogsAvatarBg: Color,
+    val dailyLogsAvatarIcon: Color,
+    val dailyLogsNavBarBg: Color,
+    val dailyLogsNavIconActive: Color,
+    val dailyLogsNavIconInactive: Color,
+    val dailyLogsDivider: Color,
     val isDark: Boolean = false  // Flag para identificar o tema
 )
 
@@ -101,6 +117,22 @@ val LightComunicacaoEscolarColors = ComunicacaoEscolarColors(
     loginBorder = LoginBorder,
     loginFooterGray = FooterGray,
     loginGoogleRed = GoogleRed,
+    // Cores da DailyLogsScreen (Light — fundo branco, estilo clean do Figma)
+    dailyLogsBackground = DailyLogsBackground,
+    dailyLogsCardSelected = DailyLogsCardSelected,
+    dailyLogsCardDefault = DailyLogsCardDefault,
+    dailyLogsCardBorder = DailyLogsCardBorder,
+    dailyLogsTitleText = DailyLogsTitleText,
+    dailyLogsDateText = DailyLogsDateText,
+    dailyLogsChildName = DailyLogsChildName,
+    dailyLogsTimeText = DailyLogsTimeText,
+    dailyLogsDescription = DailyLogsDescription,
+    dailyLogsAvatarBg = DailyLogsAvatarBg,
+    dailyLogsAvatarIcon = DailyLogsAvatarIcon,
+    dailyLogsNavBarBg = DailyLogsNavBarBg,
+    dailyLogsNavIconActive = DailyLogsNavIconActive,
+    dailyLogsNavIconInactive = DailyLogsNavIconInactive,
+    dailyLogsDivider = DailyLogsDivider,
     isDark = false
 )
 
@@ -137,6 +169,7 @@ val DarkComunicacaoEscolarColors = ComunicacaoEscolarColors(
     featureCyan = Color(0xFF22D3EE),
     featurePink = Color(0xFFF472B6),
     featureRed = Color(0xFFFF6B81),
+
     // Cores da LoginScreen (adaptadas para dark)
     loginBackground = Color(0xFF121212),
     loginDarkBlue = Color(0xFF5BA4CF),
@@ -144,6 +177,23 @@ val DarkComunicacaoEscolarColors = ComunicacaoEscolarColors(
     loginBorder = Color(0xFF3A3A3A),
     loginFooterGray = Color(0xFF6B6B6B),
     loginGoogleRed = Color(0xFFFF6B6B),
+
+    // Cores da DailyLogsScreen
+    dailyLogsBackground = Color(0xFF0D0B1E),
+    dailyLogsCardSelected = Color(0xFF2E2A4A),
+    dailyLogsCardDefault = Color(0xFF1E1A38),
+    dailyLogsCardBorder = Color(0xFF2E2A4A),
+    dailyLogsTitleText = Color(0xFFEEEDF5),
+    dailyLogsDateText = Color(0xFFCCC8E8),
+    dailyLogsChildName = Color(0xFFEEEDF5),
+    dailyLogsTimeText = Color(0xFF7B779A),
+    dailyLogsDescription = Color(0xFF9B97B8),
+    dailyLogsAvatarBg = Color(0xFF2A2150),
+    dailyLogsAvatarIcon = Color(0xFF7C6AF6),
+    dailyLogsNavBarBg = Color(0xFF1E1A38),
+    dailyLogsNavIconActive = Color(0xFF7C6AF6),
+    dailyLogsNavIconInactive = Color(0xFF7B779A),
+    dailyLogsDivider = Color(0xFF2E2A4A),
     isDark = true
 )
 
