@@ -85,6 +85,26 @@ val StatusOperational = Color(0xFF22C55E)  // Status operacional verde
 
 
 
+// Cores da DailyLogsScreen (baseadas no Figma)
+
+val DailyLogsBackground = Color(0xFFFFFFFF)         // Fundo branco da tela
+val DailyLogsCardSelected = Color(0xFFF0F0F0)       // Card selecionado cinza claro
+val DailyLogsCardDefault = Color(0xFFFFFFFF)        // Card padrão branco
+val DailyLogsCardBorder = Color(0xFFE8E8E8)         // Borda/divisor dos cards
+val DailyLogsTitleText = Color(0xFF111827)          // Título "Activity Logs" preto
+val DailyLogsDateText = Color(0xFF374151)           // Texto de data (seção)
+val DailyLogsChildName = Color(0xFF111827)          // Nome da criança
+val DailyLogsTimeText = Color(0xFF9CA3AF)           // Horário cinza
+val DailyLogsDescription = Color(0xFF6B7280)        // Descrição cinza médio
+val DailyLogsAvatarBg = Color(0xFF6B7280)           // Fundo do avatar roxo suave
+val DailyLogsAvatarIcon = Color(0xFF374151)         // Ícone do avatar roxo
+val DailyLogsNavBarBg = Color(0xFFFFFFFF)           // Fundo da bottom nav bar
+val DailyLogsNavIconActive = Color(0xFF111827)      // Ícone ativo preto
+val DailyLogsNavIconInactive = Color(0xFF111827)    // Ícone inativo preto (igual ao Figma)
+val DailyLogsDivider = Color(0xFFE5E7EB)            // Linha divisória entre cards
+
+
+
 // Cores da LoginScreen
 
 val DarkBlue = Color(0xFF283543)           // Azul escuro - títulos e botão principal

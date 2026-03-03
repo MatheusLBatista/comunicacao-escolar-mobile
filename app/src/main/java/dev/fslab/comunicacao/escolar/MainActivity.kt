@@ -14,6 +14,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
+import dev.fslab.comunicacao.escolar.ui.theme.screens.DailyLogsScreen
 import dev.fslab.comunicacao.escolar.ui.theme.screens.LoginScreen
 
 class MainActivity : ComponentActivity() {
@@ -46,9 +47,13 @@ fun ComunicacaoEscolarApp() {
                         navController.navigate("esqueci_senha?email=$email")
                     },
                     onRegister = { navController.navigate("cadastro") },
-                    onLogin = { navController.navigate("home") },
+                    onLogin = { navController.navigate("dailyLogs") },
                     onLoginGoogle = { /* TODO: Implementar login com Google */ }
                 )
+            }
+
+            composable("dailyLogs") {
+                DailyLogsScreen()
             }
 //            composable(
 //                route = "esqueci_senha?email={email}",
