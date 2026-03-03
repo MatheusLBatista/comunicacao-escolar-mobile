@@ -189,20 +189,18 @@ fun DailyLogsScreen() {
             }
         }
 
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(colors.dailyLogsNavBarBg)
-                .size(40.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(vertical = 32.dp),
+            contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.MoreHoriz,
                 contentDescription = "Mais opções",
                 tint = colors.dailyLogsNavIconInactive,
-                modifier = Modifier
-                    .size(32.dp)
+                modifier = Modifier.size(32.dp)
             )
         }
 
