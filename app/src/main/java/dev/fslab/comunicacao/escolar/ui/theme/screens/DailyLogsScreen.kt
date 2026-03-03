@@ -1,5 +1,6 @@
 package dev.fslab.comunicacao.escolar.ui.theme.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -53,10 +56,13 @@ fun DailyLogCard(log: DailyLog, isSelected: Boolean = false) {
                 color = if (isSelected) colors.dailyLogsCardSelected else colors.dailyLogsCardDefault,
                 shape = RoundedCornerShape(12.dp)
             )
-            .padding(horizontal = 12.dp, vertical = 16.dp)
+            .padding(horizontal = 12.dp)
+//            .padding(horizontal = 12.dp, vertical = 16.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Avatar circular
@@ -67,12 +73,23 @@ fun DailyLogCard(log: DailyLog, isSelected: Boolean = false) {
                     .background(colors.dailyLogsAvatarBg),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Avatar de ${log.childName}",
-                    tint = colors.dailyLogsAvatarIcon,
-                    modifier = Modifier.size(24.dp)
-                )
+                if (log.avatarRes != null) {
+                    Image(
+                        painter = painterResource(id = log.avatarRes),
+                        contentDescription = "Avatar de ${log.childName}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Avatar de ${log.childName}",
+                        tint = colors.dailyLogsAvatarIcon,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.size(8.dp))
@@ -116,12 +133,12 @@ fun DailyLogsScreen() {
 
     val logs = mapOf(
         "24/03/2026" to listOf(
-            DailyLog(1, "Leo", "2:30 PM", "Check-in realizado com sucesso. Comeu bem no almoço...", "24/03/2026"),
-            DailyLog(2, "Neo", "10:15 AM", "Café da manhã: maça, salgadinho...", "24/03/2026")
+            DailyLog(1, "Leo", "2:30 PM", "Check-in realizado com sucesso. Comeu bem no almoço...", "24/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_leo),
+            DailyLog(2, "Neo", "10:15 AM", "Café da manhã: maça, salgadinho...", "24/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_neo)
         ),
         "23/03/2026" to listOf(
-            DailyLog(3, "Neo", "4:00 PM", "O tempo da soneca foi mais curto do que o habitual, mas ele brincou...", "23/03/2026"),
-            DailyLog(4, "Leo", "2:30 PM", "Estava bastante agitado hoje, então comeu e dormiu muito bem...", "23/03/2026")
+            DailyLog(3, "Neo", "4:00 PM", "O tempo da soneca foi mais curto do que o habitual, mas ele brincou...", "23/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_neo),
+            DailyLog(4, "Leo", "2:30 PM", "Estava bastante agitado hoje, então comeu e dormiu muito bem...", "23/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_leo)
         )
     )
 
@@ -176,17 +193,17 @@ fun DailyLogsScreen() {
             modifier = Modifier
                 .fillMaxWidth()
                 .background(colors.dailyLogsNavBarBg)
-                .padding(vertical = 48.dp),
+                .size(40.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-            imageVector = Icons.Default.MoreHoriz,
-            contentDescription = "Mais opções",
-            tint = colors.dailyLogsNavIconInactive,
-            modifier = Modifier
-                .size(24.dp)
-        )
+                imageVector = Icons.Default.MoreHoriz,
+                contentDescription = "Mais opções",
+                tint = colors.dailyLogsNavIconInactive,
+                modifier = Modifier
+                    .size(32.dp)
+            )
         }
 
         BottomNavigationBar()
@@ -227,11 +244,16 @@ fun NavBarItem(
 fun BottomNavigationBar(activeIndex: Int = 0) {
     val colors = LocalComunicacaoEscolarColors.current
 
+    HorizontalDivider(
+        thickness = 1.dp,
+        color = colors.dailyLogsDivider
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(colors.dailyLogsNavBarBg)
-            .padding(vertical = 48.dp),
+            .padding(vertical = 40.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
