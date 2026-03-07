@@ -26,6 +26,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -51,6 +52,7 @@ import dev.fslab.comunicacao.escolar.R
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,8 +68,11 @@ fun LoginScreen(
     onToggleTheme: () -> Unit = {},
     onEsqueciSenha: (String) -> Unit = {},
     onRegister: () -> Unit = {},
-    onLogin: () -> Unit = {},
-    onLoginGoogle: () -> Unit = {}
+    onLogin: (email: String, senha: String) -> Unit = { _, _ -> },
+    onLoginGoogle: () -> Unit = {},
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
+    onErrorDismiss: () -> Unit = {}
 ) {
     // LoginScreen sempre usa cores light, independente do tema do sistema
     val colors = LightComunicacaoEscolarColors
@@ -216,23 +221,46 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // Mensagem de erro
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    fontSize = 13.sp,
+                    color = Color(0xFFDC2626),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onErrorDismiss() }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
             // Botão Entrar
             Button(
-                onClick = { onLogin() },
+                onClick = { onLogin(email, senha) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(26.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.loginDarkBlue
-                )
+                ),
+                enabled = !isLoading && email.isNotBlank() && senha.isNotBlank()
             ) {
-                Text(
-                    text = "Entrar",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = colors.textOnPrimary
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = colors.textOnPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(
+                        text = "Entrar",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = colors.textOnPrimary
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
