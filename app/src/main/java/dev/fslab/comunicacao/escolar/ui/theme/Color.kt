@@ -103,7 +103,7 @@ val DailyLogsNavIconActive = Color(0xFF111827)      // Ícone ativo preto
 val DailyLogsNavIconInactive = Color(0xFF111827)    // Ícone inativo preto (igual ao Figma)
 val DailyLogsDivider = Color(0xFFE5E7EB)            // Linha divisória entre cards
 
-
+val AtividadeBackground = Color(0xFFFFFFFF)
 
 // Cores da LoginScreen
 
