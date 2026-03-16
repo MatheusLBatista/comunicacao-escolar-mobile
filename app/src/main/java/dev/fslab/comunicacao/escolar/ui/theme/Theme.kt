@@ -74,6 +74,7 @@ data class ComunicacaoEscolarColors(
     val dailyLogsNavIconActive: Color,
     val dailyLogsNavIconInactive: Color,
     val dailyLogsDivider: Color,
+    val atividadeBackground: Color,
     val isDark: Boolean = false  // Flag para identificar o tema
 )
 
@@ -133,6 +134,7 @@ val LightComunicacaoEscolarColors = ComunicacaoEscolarColors(
     dailyLogsNavIconActive = DailyLogsNavIconActive,
     dailyLogsNavIconInactive = DailyLogsNavIconInactive,
     dailyLogsDivider = DailyLogsDivider,
+    atividadeBackground = AtividadeBackground,
     isDark = false
 )
 
@@ -194,6 +196,7 @@ val DarkComunicacaoEscolarColors = ComunicacaoEscolarColors(
     dailyLogsNavIconActive = Color(0xFF7C6AF6),
     dailyLogsNavIconInactive = Color(0xFF7B779A),
     dailyLogsDivider = Color(0xFF2E2A4A),
+    atividadeBackground = Color(0xFF0D0B1E),
     isDark = true
 )
 

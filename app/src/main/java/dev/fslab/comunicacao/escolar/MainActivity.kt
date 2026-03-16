@@ -16,6 +16,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
+import dev.fslab.comunicacao.escolar.ui.theme.screens.AtividadeScreen
 import dev.fslab.comunicacao.escolar.ui.theme.screens.DailyLogsScreen
 import dev.fslab.comunicacao.escolar.ui.theme.screens.LoginScreen
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthState
@@ -81,6 +82,10 @@ fun ComunicacaoEscolarApp(authViewModel: AuthViewModel = viewModel()) {
 
             composable("dailyLogs") {
                 DailyLogsScreen()
+            }
+
+            composable("atividade") {
+                AtividadeScreen()
             }
         }
     }
