@@ -13,12 +13,6 @@ import okhttp3.Response
 import okhttp3.Route
 import java.util.concurrent.TimeUnit
 
-/**
- * TokenAuthenticator - Renovação automática de tokens em respostas 401
- *
- * Quando o servidor retorna 401 (Unauthorized), tenta renovar o access token
- * usando o refresh token. Se falhar, dispara onSessionExpired.
- */
 class TokenAuthenticator : Authenticator {
 
     companion object {
@@ -49,7 +43,6 @@ class TokenAuthenticator : Authenticator {
         }
 
         synchronized(this) {
-            // Verifica se outra thread já fez o refresh
             val currentToken = TokenManager.getAccessToken()
             val requestToken = response.request.header("Authorization")
                 ?.removePrefix("Bearer ")
@@ -66,7 +59,7 @@ class TokenAuthenticator : Authenticator {
                 val mediaType = "application/json; charset=utf-8".toMediaType()
 
                 val refreshRequest = Request.Builder()
-                    .url(RetrofitClient.BASE_URL + "auth/refresh")
+                    .url(RetrofitClient.BASE_URL + "refresh")
                     .post(refreshBody.toRequestBody(mediaType))
                     .build()
 
@@ -77,12 +70,12 @@ class TokenAuthenticator : Authenticator {
                     val parsed = gson.fromJson(body, RefreshResponse::class.java)
 
                     if (parsed?.isSuccess() == true && parsed.data != null) {
-                        TokenManager.saveTokens(parsed.data.token, parsed.data.refresh)
-                        TokenManager.onTokensRefreshed?.invoke(parsed.data.token)
+                        TokenManager.saveTokens(parsed.data.accessToken, parsed.data.refreshToken)
+                        TokenManager.onTokensRefreshed?.invoke(parsed.data.accessToken)
 
                         Log.d(TAG, "Refresh bem-sucedido!")
                         response.request.newBuilder()
-                            .header("Authorization", "Bearer ${parsed.data.token}")
+                            .header("Authorization", "Bearer ${parsed.data.accessToken}")
                             .build()
                     } else {
                         Log.w(TAG, "Refresh falhou: resposta inválida")
@@ -102,7 +95,6 @@ class TokenAuthenticator : Authenticator {
         }
     }
 
-    // Conta o número de respostas anteriores para evitar loops infinitos
     private fun responseCount(response: Response): Int {
         var count = 1
         var prior = response.priorResponse

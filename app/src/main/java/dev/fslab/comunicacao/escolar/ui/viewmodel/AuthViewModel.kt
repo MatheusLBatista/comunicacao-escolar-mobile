@@ -14,24 +14,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
-/**
- * Estados possíveis da autenticação
- */
 sealed class AuthState {
     object Idle : AuthState()
     object Loading : AuthState()
     data class Success(val user: User) : AuthState()
+    data class Registered(val message: String = "Conta criada! Faça login para continuar.") : AuthState()
     data class Error(val message: String) : AuthState()
 }
 
-/**
- * AuthViewModel - Gerencia o estado de autenticação da aplicação
- *
- * Responsável por:
- * - Login via API (POST /auth/login)
- * - Gerenciar tokens JWT e estado do usuário
- * - Logout e limpeza de sessão
- */
 class AuthViewModel : ViewModel() {
 
     companion object {
@@ -66,38 +56,34 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    // ═══════════════════════════════════════════
-    // LOGIN
-    // ═══════════════════════════════════════════
-
     fun loginUser(email: String, password: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
 
             try {
-                val request = LoginRequest(email = email, senha = password)
+                val request = LoginRequest(email = email, password = password)
                 val response = RetrofitClient.authApi.login(request)
 
                 if (response.isSuccess()) {
-                    val loginData = response.getLoginData()
-                    if (loginData != null) {
-                        TokenManager.saveTokens(loginData.token, loginData.refresh)
-                        _accessToken.value = loginData.token
+                    val apiUser = response.getLoginData()?.user
+                    if (apiUser != null) {
+                        TokenManager.saveTokens(apiUser.accessToken, apiUser.refreshToken)
+                        _accessToken.value = apiUser.accessToken
 
-                        val usuario = loginData.usuario
-                        if (usuario != null && usuario.papeis.isNotEmpty()) {
-                            val user = usuario.toUser()
-                            _currentUser.value = user
-                            _authState.value = AuthState.Success(user)
+                        val user = if (apiUser.memberships.isNotEmpty()) {
+                            apiUser.toUser()
                         } else {
-                            val user = extractUserFromJwt(loginData.token, email)
-                            if (user != null) {
-                                _currentUser.value = user
-                                _authState.value = AuthState.Success(user)
-                            } else {
-                                createBasicUser(email)
-                            }
+                            extractUserFromJwt(apiUser.accessToken, apiUser.email)
+                                ?: User(
+                                    id = apiUser.id,
+                                    nome = apiUser.fullName.ifEmpty { email.substringBefore("@") },
+                                    email = apiUser.email.ifEmpty { email },
+                                    role = UserRole.RESPONSAVEL,
+                                    schoolId = null
+                                )
                         }
+                        _currentUser.value = user
+                        _authState.value = AuthState.Success(user)
                     } else {
                         _authState.value = AuthState.Error("Erro ao processar resposta do login")
                     }
@@ -107,8 +93,9 @@ class AuthViewModel : ViewModel() {
                 }
             } catch (e: retrofit2.HttpException) {
                 val errorMessage = when (e.code()) {
-                    401 -> "Email ou senha incorretos"
-                    403 -> "Usuário inativo ou bloqueado"
+                    400 -> "E-mail ou senha inválidos"
+                    401 -> "E-mail ou senha incorretos"
+                    403 -> "Usuário inativo ou sem acesso ao aplicativo"
                     404 -> "Usuário não encontrado"
                     500 -> "Erro no servidor. Tente novamente mais tarde."
                     else -> "Erro de conexão: ${e.message()}"
@@ -124,9 +111,37 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    // ═══════════════════════════════════════════
-    // LOGOUT
-    // ═══════════════════════════════════════════
+    fun registerUser(fullName: String, email: String, password: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+
+            try {
+                val request = RegisterRequest(fullName = fullName, email = email, password = password)
+                val response = RetrofitClient.authApi.register(request)
+
+                if (response.isSuccess()) {
+                    _authState.value = AuthState.Registered()
+                } else {
+                    val errorMessage = response.getErrorMessage().ifEmpty { "Erro ao criar conta" }
+                    _authState.value = AuthState.Error(errorMessage)
+                }
+            } catch (e: retrofit2.HttpException) {
+                val errorMessage = when (e.code()) {
+                    409 -> "Este e-mail já está cadastrado"
+                    400 -> "Dados inválidos. Verifique os campos."
+                    500 -> "Erro no servidor. Tente novamente mais tarde."
+                    else -> "Erro de conexão: ${e.message()}"
+                }
+                _authState.value = AuthState.Error(errorMessage)
+            } catch (e: java.net.UnknownHostException) {
+                _authState.value = AuthState.Error("Sem conexão com a internet")
+            } catch (e: java.net.SocketTimeoutException) {
+                _authState.value = AuthState.Error("Tempo de conexão esgotado")
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error("Erro ao conectar: ${e.localizedMessage ?: "Tente novamente"}")
+            }
+        }
+    }
 
     fun logout() {
         val currentToken = TokenManager.getAccessToken()
@@ -142,14 +157,9 @@ class AuthViewModel : ViewModel() {
                     RetrofitClient.authApi.logout("Bearer $token")
                 }
             } catch (_: Exception) {
-                // Ignora — sessão local já foi encerrada
             }
         }
     }
-
-    // ═══════════════════════════════════════════
-    // UTILITÁRIOS
-    // ═══════════════════════════════════════════
 
     fun clearError() {
         if (_authState.value is AuthState.Error) {
@@ -157,9 +167,66 @@ class AuthViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Extrai dados do usuário a partir do payload JWT
-     */
+    fun setError(message: String) {
+        _authState.value = AuthState.Error(message)
+    }
+
+    fun updateCurrentUser(user: User) {
+        _currentUser.value = user
+    }
+
+    fun loginWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+
+            try {
+                val request = GoogleLoginRequest(idToken = idToken)
+                val response = RetrofitClient.authApi.loginWithGoogle(request)
+
+                if (response.isSuccess()) {
+                    val apiUser = response.getLoginData()?.user
+                    if (apiUser != null) {
+                        TokenManager.saveTokens(apiUser.accessToken, apiUser.refreshToken)
+                        _accessToken.value = apiUser.accessToken
+
+                        val user = if (apiUser.memberships.isNotEmpty()) {
+                            apiUser.toUser()
+                        } else {
+                            extractUserFromJwt(apiUser.accessToken, apiUser.email)
+                                ?: User(
+                                    id = apiUser.id,
+                                    nome = apiUser.fullName.ifEmpty { apiUser.email.substringBefore("@") },
+                                    email = apiUser.email,
+                                    role = UserRole.RESPONSAVEL,
+                                    schoolId = null
+                                )
+                        }
+                        _currentUser.value = user
+                        _authState.value = AuthState.Success(user)
+                    } else {
+                        _authState.value = AuthState.Error("Erro ao processar login com Google.")
+                    }
+                } else {
+                    _authState.value = AuthState.Error("Falha no login com Google.")
+                }
+            } catch (e: retrofit2.HttpException) {
+                val errorMessage = when (e.code()) {
+                    401 -> "Token do Google inválido ou expirado. Tente novamente."
+                    500 -> "Google Sign-In não configurado no servidor."
+                    else -> "Erro ao fazer login com Google (${e.code()})."
+                }
+                _authState.value = AuthState.Error(errorMessage)
+            } catch (e: java.net.UnknownHostException) {
+                _authState.value = AuthState.Error("Sem conexão com a internet")
+            } catch (e: java.net.SocketTimeoutException) {
+                _authState.value = AuthState.Error("Tempo de conexão esgotado")
+            } catch (e: Exception) {
+                Log.e(TAG, "Erro no Google login", e)
+                _authState.value = AuthState.Error("Erro ao conectar: ${e.localizedMessage ?: "Tente novamente"}")
+            }
+        }
+    }
+
     private fun extractUserFromJwt(token: String, email: String): User? {
         return try {
             val parts = token.split(".")
