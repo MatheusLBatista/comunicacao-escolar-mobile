@@ -1,0 +1,88 @@
+package dev.fslab.comunicacao.escolar.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import dev.fslab.comunicacao.escolar.ui.screens.auth.CadastroScreen
+import dev.fslab.comunicacao.escolar.ui.screens.auth.LoginScreen
+import dev.fslab.comunicacao.escolar.ui.screens.common.HomeScreen
+import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
+import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
+
+/**
+ * Todas as rotas da aplicação definidas com type-safety.
+ * Uso: navController.navigateSafely(Screen.Login.route)
+ */
+sealed class Screen(val route: String) {
+    // Auth (público)
+    object Login : Screen("login")
+    object Cadastro : Screen("cadastro")
+    object Home : Screen("home")
+
+    // Responsável
+    object Atividades : Screen("atividades")
+    object Conversas : Screen("conversas")
+    object Mural : Screen("mural")
+    object Agenda : Screen("agenda")
+    object Perfil : Screen("perfil")
+
+    // Professor (fase 2)
+    // object ProfessorHome : Screen("professor_home")
+    // object ProfessorMural : Screen("professor_mural")
+    // object ProfessorDiario : Screen("professor_diario")
+    // object ProfessorConversas : Screen("professor_conversas")
+
+    // Admin (já implementado separadamente)
+    // object AdminDashboard : Screen("admin_dashboard")
+}
+
+/**
+ * NavGraph — Define todas as telas e transições de navegação da aplicação.
+ */
+@Composable
+fun NavGraph(
+    navController: NavHostController,
+    themeViewModel: ThemeViewModel,
+    authViewModel: AuthViewModel = viewModel()
+) {
+    NavHost(
+        navController = navController,
+        startDestination = Screen.Login.route
+    ) {
+
+        composable(Screen.Login.route) {
+            LoginScreen(
+                authViewModel = authViewModel,
+                onNavigateToCadastro = {
+                    navController.navigateSafely(Screen.Cadastro.route)
+                },
+                onLoginSuccess = {
+                    navController.navigateSafely(Screen.Home.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.Cadastro.route) {
+            CadastroScreen(
+                authViewModel = authViewModel,
+                onNavigateBack = {
+                    navController.popBackStackSafely()
+                },
+                onCadastroSuccess = {
+                    navController.popBackStackSafely()
+                }
+            )
+        }
+
+        composable(Screen.Home.route) {
+            HomeScreen(
+                navController = navController,
+                authViewModel = authViewModel
+            )
+        }
+    }
+}
