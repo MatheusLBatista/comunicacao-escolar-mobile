@@ -1,0 +1,145 @@
+package dev.fslab.comunicacao.escolar.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+data class BottomNavItem(
+    val icon: ImageVector,
+    val route: String,
+    val contentDescription: String,
+    val badgeCount: Int = 0
+)
+
+@Composable
+fun BottomNavBar(
+    items: List<BottomNavItem>,
+    currentRoute: String,
+    onItemClick: (BottomNavItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color.White)
+    ) {
+        // Linha superior — border-t border-gray-100 do protótipo
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(0.5.dp)
+                .background(Color(0xFFF3F4F6))
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceAround,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items.forEach { item ->
+                BottomNavItemView(
+                    item = item,
+                    isActive = currentRoute == item.route,
+                    onClick = { onItemClick(item) }
+                )
+            }
+        }
+
+        // Padding da navigation bar do sistema (edge-to-edge)
+        Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
+    }
+}
+
+@Composable
+private fun BottomNavItemView(
+    item: BottomNavItem,
+    isActive: Boolean,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+    ) {
+        // Ícone com badge
+        Box {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.contentDescription,
+                tint = if (isActive) Color(0xFF111827) else Color(0xFF9CA3AF),
+                modifier = Modifier.size(22.dp)
+            )
+
+            if (item.badgeCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF1E272C)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (item.badgeCount > 9) "9+" else item.badgeCount.toString(),
+                        color = Color.White,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // Indicador de aba ativa — linha embaixo do ícone
+        if (isActive) {
+            Box(
+                modifier = Modifier
+                    .width(20.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(Color(0xFF111827))
+            )
+        } else {
+            // Reserva o espaço pra não deslocar o layout
+            Spacer(modifier = Modifier.height(3.dp))
+        }
+    }
+}

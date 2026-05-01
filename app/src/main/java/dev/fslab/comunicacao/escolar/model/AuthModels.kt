@@ -2,19 +2,15 @@ package dev.fslab.comunicacao.escolar.model
 
 import com.google.gson.annotations.SerializedName
 
-// ══════════════════════════════════════════════
-// REQUEST models
-// ══════════════════════════════════════════════
-
 data class LoginRequest(
     @SerializedName("email") val email: String,
-    @SerializedName("senha") val senha: String
+    @SerializedName("password") val password: String
 )
 
 data class RegisterRequest(
-    @SerializedName("nome") val nome: String,
+    @SerializedName("full_name") val fullName: String,
     @SerializedName("email") val email: String,
-    @SerializedName("senha") val senha: String
+    @SerializedName("password") val password: String
 )
 
 data class RecoverPasswordRequest(
@@ -30,82 +26,82 @@ data class RefreshRequest(
     @SerializedName("token") val token: String
 )
 
-// ══════════════════════════════════════════════
-// RESPONSE models
-// ══════════════════════════════════════════════
+data class GoogleLoginRequest(
+    @SerializedName("id_token") val idToken: String
+)
 
 data class LoginResponse(
     @SerializedName("message") val message: String = "",
     @SerializedName("data") val data: LoginData? = null,
     @SerializedName("errors") val errors: List<String> = emptyList()
 ) {
-    fun isSuccess(): Boolean = data != null && data.token.isNotEmpty()
+    fun isSuccess(): Boolean = data?.user?.accessToken?.isNotEmpty() == true
     fun getLoginData(): LoginData? = data
     fun getErrorMessage(): String = errors.firstOrNull() ?: message
 }
 
 data class LoginData(
-    @SerializedName("token") val token: String = "",
-    @SerializedName("refresh") val refresh: String = "",
-    @SerializedName("expiraEm") val expiraEm: String = "",
-    @SerializedName("usuario") val usuario: LoginUsuario? = null
+    @SerializedName("user") val user: ApiLoginUser? = null
 )
 
-data class LoginUsuario(
-    @SerializedName("id") val id: String = "",
-    @SerializedName("_id") val mongoId: String = "",
-    @SerializedName("nome") val nome: String = "",
+data class ApiLoginUser(
+    @SerializedName("access_token") val accessToken: String = "",
+    @SerializedName("refresh_token") val refreshToken: String = "",
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("full_name") val fullName: String = "",
     @SerializedName("email") val email: String = "",
-    @SerializedName("papeis") val papeis: List<String> = emptyList(),
-    @SerializedName("avatar") val avatar: String? = null,
-    @SerializedName("fusoHorario") val fusoHorario: String = "America/Manaus"
-) {
-    fun obtemId(): String = if (id.isNotEmpty()) id else mongoId
-}
+    @SerializedName("active") val active: Boolean = true,
+    @SerializedName("memberships") val memberships: List<ApiMembership> = emptyList()
+)
 
-/**
- * Converte LoginUsuario em User
- */
-fun LoginUsuario.toUser(): User {
-    val userRole = when {
-        papeis.any { it.uppercase().contains("ADMIN") } -> UserRole.ADMIN
-        papeis.any { it.uppercase().contains("PROFESSOR") } -> UserRole.PROFESSOR
-        else -> UserRole.RESPONSAVEL
+data class ApiMembership(
+    @SerializedName("school_id") val schoolId: String = "",
+    @SerializedName("role") val role: String = ""
+)
+
+fun ApiLoginUser.toUser(): User {
+    val activeMembership = memberships.firstOrNull()
+    val userRole = when (activeMembership?.role) {
+        "admin"   -> UserRole.ADMIN
+        "teacher" -> UserRole.PROFESSOR
+        "parent"  -> UserRole.RESPONSAVEL
+        else      -> UserRole.RESPONSAVEL
     }
-
     return User(
-        id = obtemId(),
-        nome = nome,
+        id = id,
+        nome = fullName,
         email = email,
         role = userRole,
-        avatar = avatar,
-        fusoHorario = fusoHorario
+        schoolId = activeMembership?.schoolId?.ifEmpty { null }
     )
 }
 
 data class RegisterResponse(
-    @SerializedName("token") val token: String = "",
-    @SerializedName("refresh") val refresh: String = "",
-    @SerializedName("expiraEm") val expiraEm: String = "",
     @SerializedName("message") val message: String = "",
+    @SerializedName("data") val data: RegisteredUser? = null,
     @SerializedName("errors") val errors: List<String> = emptyList()
 ) {
-    fun isSuccess(): Boolean = token.isNotEmpty()
+    fun isSuccess(): Boolean = data != null
     fun getErrorMessage(): String = errors.firstOrNull() ?: message
 }
+
+data class RegisteredUser(
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("full_name") val fullName: String = "",
+    @SerializedName("email") val email: String = ""
+)
 
 data class RefreshResponse(
     @SerializedName("message") val message: String = "",
     @SerializedName("data") val data: RefreshData? = null,
     @SerializedName("errors") val errors: List<String> = emptyList()
 ) {
-    fun isSuccess(): Boolean = data != null && data.token.isNotEmpty()
+    fun isSuccess(): Boolean = data?.accessToken?.isNotEmpty() == true
 }
 
 data class RefreshData(
-    @SerializedName("token") val token: String = "",
-    @SerializedName("refresh") val refresh: String = "",
-    @SerializedName("expiraEm") val expiraEm: String = ""
+    @SerializedName("access_token") val accessToken: String = "",
+    @SerializedName("refresh_token") val refreshToken: String = ""
 )
 
 data class ApiErrorResponse(

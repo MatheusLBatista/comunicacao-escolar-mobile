@@ -3,35 +3,28 @@ package dev.fslab.comunicacao.escolar.network
 import dev.fslab.comunicacao.escolar.model.*
 import retrofit2.http.Body
 import retrofit2.http.Header
-import retrofit2.http.PATCH
 import retrofit2.http.POST
 
-/**
- * AuthApi - Endpoints de autenticação da API Comunicação Escolar
- */
 interface AuthApi {
 
-    /** POST /auth/login - Autenticar usuário */
-    @POST("auth/login")
+    @POST("login")
     suspend fun login(@Body request: LoginRequest): LoginResponse
 
-    /** POST /auth/register - Cadastrar novo usuário */
-    @POST("auth/register")
+    @POST("google")
+    suspend fun loginWithGoogle(@Body request: GoogleLoginRequest): LoginResponse
+
+    @POST("register")
     suspend fun register(@Body request: RegisterRequest): RegisterResponse
 
-    /** POST /auth/refresh - Renovar tokens */
-    @POST("auth/refresh")
+    @POST("refresh")
     suspend fun refresh(@Body request: RefreshRequest): RefreshResponse
 
-    /** POST /auth/logout - Encerrar sessão */
-    @POST("auth/logout")
+    @POST("logout")
     suspend fun logout(@Header("Authorization") token: String)
 
-    /** POST /auth/recover - Solicitar recuperação de senha */
-    @POST("auth/recover")
+    @POST("recover")
     suspend fun recoverPassword(@Body request: RecoverPasswordRequest)
 
-    /** PATCH /auth/password/reset/code - Redefinir senha via código */
-    @PATCH("auth/password/reset/code")
+    @POST("redefinir-senha")
     suspend fun resetPasswordByCode(@Body request: ResetPasswordByCodeRequest)
 }

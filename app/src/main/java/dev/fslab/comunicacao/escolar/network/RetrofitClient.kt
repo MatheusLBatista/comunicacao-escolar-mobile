@@ -7,17 +7,9 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
-/**
- * RetrofitClient - Singleton que configura e fornece o cliente HTTP
- *
- * Inclui:
- * - AuthInterceptor para injeção automática de Bearer token
- * - TokenAuthenticator para renovação automática em 401
- * - Logging interceptor para debug
- */
 object RetrofitClient {
 
-    const val BASE_URL = "https://api.filas.fslab.dev/"
+    const val BASE_URL = "http://localhost:3011/"
 
     private val gson = GsonBuilder()
         .setLenient()
@@ -44,5 +36,9 @@ object RetrofitClient {
 
     val authApi: AuthApi by lazy {
         retrofit.create(AuthApi::class.java)
+    }
+
+    val userApi: UserApi by lazy {
+        retrofit.create(UserApi::class.java)
     }
 }
