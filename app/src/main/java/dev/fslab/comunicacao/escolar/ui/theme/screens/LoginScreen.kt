@@ -74,16 +74,14 @@ fun LoginScreen(
     errorMessage: String? = null,
     onErrorDismiss: () -> Unit = {}
 ) {
-    // LoginScreen sempre usa cores light, independente do tema do sistema
     val colors = LightComunicacaoEscolarColors
 
-    // Força status bar e navigation bar brancas com ícones escuros
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colors.loginBackground.toArgb()
-            window.navigationBarColor = colors.loginBackground.toArgb()
+            window.statusBarColor = colors.background.toArgb()
+            window.navigationBarColor = colors.background.toArgb()
             val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = true
             insetsController.isAppearanceLightNavigationBars = true
@@ -98,7 +96,7 @@ fun LoginScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(colors.loginBackground)
+            .background(colors.background)
     ) {
         Column(
             modifier = Modifier
@@ -109,44 +107,40 @@ fun LoginScreen(
             horizontalAlignment = Alignment.Start,
             verticalArrangement = Arrangement.Center
         ) {
-
-            // Título
             Text(
                 text = "Bem-vindo!",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = colors.loginDarkBlue
+                color = colors.primaryDark
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Subtítulo
             Text(
                 text = "Sistema de comunicação escolar.",
                 fontSize = 15.sp,
-                color = colors.loginGrayText,
+                color = colors.textSecondary,
                 lineHeight = 22.sp
             )
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Campo E-mail
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
                 placeholder = {
-                    Text("E-mail", color = colors.loginGrayText)
+                    Text("E-mail", color = colors.textSecondary)
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = colors.loginBorder,
-                    focusedBorderColor = colors.loginDarkBlue,
-                    cursorColor = colors.loginDarkBlue,
-                    focusedTextColor = colors.loginDarkBlue,
-                    unfocusedTextColor = colors.loginDarkBlue,
+                    unfocusedBorderColor = colors.inputBorder,
+                    focusedBorderColor = colors.primaryDark,
+                    cursorColor = colors.primaryDark,
+                    focusedTextColor = colors.primaryDark,
+                    unfocusedTextColor = colors.primaryDark,
                     unfocusedContainerColor = colors.surface,
                     focusedContainerColor = colors.surface
                 )
@@ -154,19 +148,18 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo Senha
             OutlinedTextField(
                 value = senha,
                 onValueChange = { senha = it },
                 placeholder = {
-                    Text("Senha", color = colors.loginGrayText)
+                    Text("Senha", color = colors.textSecondary)
                 },
                 trailingIcon = {
                     IconButton(onClick = { senhaVisivel = !senhaVisivel }) {
                         Icon(
                             imageVector = if (senhaVisivel) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                             contentDescription = if (senhaVisivel) "Ocultar senha" else "Mostrar senha",
-                            tint = colors.loginGrayText
+                            tint = colors.textSecondary
                         )
                     }
                 },
@@ -176,11 +169,11 @@ fun LoginScreen(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
                 colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedBorderColor = colors.loginBorder,
-                    focusedBorderColor = colors.loginDarkBlue,
-                    cursorColor = colors.loginDarkBlue,
-                    focusedTextColor = colors.loginDarkBlue,
-                    unfocusedTextColor = colors.loginDarkBlue,
+                    unfocusedBorderColor = colors.inputBorder,
+                    focusedBorderColor = colors.primaryDark,
+                    cursorColor = colors.primaryDark,
+                    focusedTextColor = colors.primaryDark,
+                    unfocusedTextColor = colors.primaryDark,
                     unfocusedContainerColor = colors.surface,
                     focusedContainerColor = colors.surface
                 )
@@ -188,7 +181,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Lembrar-me e Esqueceu a senha?
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -199,20 +191,20 @@ fun LoginScreen(
                         checked = lembrarMe,
                         onCheckedChange = { lembrarMe = it },
                         colors = CheckboxDefaults.colors(
-                            checkedColor = colors.loginDarkBlue,
-                            uncheckedColor = colors.loginBorder
+                            checkedColor = colors.primaryDark,
+                            uncheckedColor = colors.inputBorder
                         )
                     )
                     Text(
                         text = "Ativar biometria",
                         fontSize = 13.sp,
-                        color = colors.loginGrayText
+                        color = colors.textSecondary
                     )
                 }
                 Text(
                     text = "Esqueceu a senha?",
                     fontSize = 13.sp,
-                    color = colors.loginDarkBlue,
+                    color = colors.primaryDark,
                     fontWeight = FontWeight.SemiBold,
                     textDecoration = TextDecoration.Underline,
                     modifier = Modifier.clickable { onEsqueciSenha(email) }
@@ -221,7 +213,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Mensagem de erro
             if (errorMessage != null) {
                 Text(
                     text = errorMessage,
@@ -235,7 +226,6 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Botão Entrar
             Button(
                 onClick = { onLogin(email, senha) },
                 modifier = Modifier
@@ -243,7 +233,7 @@ fun LoginScreen(
                     .height(52.dp),
                 shape = RoundedCornerShape(26.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.loginDarkBlue
+                    containerColor = colors.primaryDark
                 ),
                 enabled = !isLoading && email.isNotBlank() && senha.isNotBlank()
             ) {
@@ -265,14 +255,13 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Botão Entrar com Google
             OutlinedButton(
                 onClick = { onLoginGoogle() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
                 shape = RoundedCornerShape(26.dp),
-                border = BorderStroke(1.dp, colors.loginBorder),
+                border = BorderStroke(1.dp, colors.inputBorder),
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = colors.surface
                 )
@@ -289,7 +278,7 @@ fun LoginScreen(
                 Text(
                     text = "Entrar com Google",
                     fontSize = 14.sp,
-                    color = colors.loginDarkBlue,
+                    color = colors.primaryDark,
                     fontWeight = FontWeight.Medium,
 
                 )
@@ -297,7 +286,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Não tem uma conta? Cadastre-se
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
@@ -305,14 +293,14 @@ fun LoginScreen(
                 Text(
                     text = "Não tem uma conta? ",
                     fontSize = 13.sp,
-                    color = colors.loginGrayText
+                    color = colors.textSecondary
                 )
                 Text(
                     text = "Cadastre-se",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     textDecoration = TextDecoration.Underline,
-                    color = colors.loginDarkBlue,
+                    color = colors.primaryDark,
                     modifier = Modifier.clickable { onRegister() }
                 )
             }
