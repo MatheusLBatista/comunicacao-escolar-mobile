@@ -18,9 +18,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-/**
- * Cores customizadas para a aplicação que mudam conforme o tema
- */
 data class ComunicacaoEscolarColors(
     val background: Color,
     val backgroundGradientStart: Color,
@@ -44,48 +41,20 @@ data class ComunicacaoEscolarColors(
     val successText: Color,
     val success: Color,
     val lightGray: Color,
-    // Cores para cards de features (variam entre light/dark)
     val featureBlue: Color,
     val featureGreen: Color,
     val featureOrange: Color,
     val featureCyan: Color,
     val featurePink: Color,
     val featureRed: Color,
-    // Cores da LoginScreen
-    val loginBackground: Color,
-    val loginDarkBlue: Color,
-    val loginGrayText: Color,
-    val loginBorder: Color,
-    val loginFooterGray: Color,
-    val loginGoogleRed: Color,
-    // Cores da DailyLogsScreen
-    val dailyLogsBackground: Color,
-    val dailyLogsCardSelected: Color,
-    val dailyLogsCardDefault: Color,
-    val dailyLogsCardBorder: Color,
-    val dailyLogsTitleText: Color,
-    val dailyLogsDateText: Color,
-    val dailyLogsChildName: Color,
-    val dailyLogsTimeText: Color,
-    val dailyLogsDescription: Color,
-    val dailyLogsAvatarBg: Color,
-    val dailyLogsAvatarIcon: Color,
-    val dailyLogsNavBarBg: Color,
-    val dailyLogsNavIconActive: Color,
-    val dailyLogsNavIconInactive: Color,
-    val dailyLogsDivider: Color,
-    val atividadeBackground: Color,
-    val isDark: Boolean = false  // Flag para identificar o tema
+    val isDark: Boolean = false
 )
 
-/**
- * Cores para tema claro — Paleta Purple/Violet premium
- */
 val LightComunicacaoEscolarColors = ComunicacaoEscolarColors(
-    background = PrimaryLightBlue,
+    background = SurfaceWhite,
     backgroundGradientStart = PrimaryLightBlue,
     backgroundGradientEnd = SurfaceLight,
-    surface = SurfaceWhite,
+    surface = LightGray,
     textPrimary = TextPrimary,
     textSecondary = TextSecondary,
     textTertiary = TextTertiary,
@@ -104,43 +73,15 @@ val LightComunicacaoEscolarColors = ComunicacaoEscolarColors(
     successText = SuccessText,
     success = Color(0xFF10B981),
     lightGray = LightGray,
-    // Cores para cards de features (Light — roxo como destaque)
     featureBlue = Color(0xFF7C6AF6),
     featureGreen = Color(0xFF10B981),
     featureOrange = Color(0xFFF59E0B),
     featureCyan = Color(0xFF06B6D4),
     featurePink = Color(0xFFEC4899),
     featureRed = Color(0xFFEF4444),
-    // Cores da LoginScreen
-    loginBackground = LoginBackground,
-    loginDarkBlue = DarkBlue,
-    loginGrayText = LoginGrayText,
-    loginBorder = LoginBorder,
-    loginFooterGray = FooterGray,
-    loginGoogleRed = GoogleRed,
-    // Cores da DailyLogsScreen (Light — fundo branco, estilo clean do Figma)
-    dailyLogsBackground = DailyLogsBackground,
-    dailyLogsCardSelected = DailyLogsCardSelected,
-    dailyLogsCardDefault = DailyLogsCardDefault,
-    dailyLogsCardBorder = DailyLogsCardBorder,
-    dailyLogsTitleText = DailyLogsTitleText,
-    dailyLogsDateText = DailyLogsDateText,
-    dailyLogsChildName = DailyLogsChildName,
-    dailyLogsTimeText = DailyLogsTimeText,
-    dailyLogsDescription = DailyLogsDescription,
-    dailyLogsAvatarBg = DailyLogsAvatarBg,
-    dailyLogsAvatarIcon = DailyLogsAvatarIcon,
-    dailyLogsNavBarBg = DailyLogsNavBarBg,
-    dailyLogsNavIconActive = DailyLogsNavIconActive,
-    dailyLogsNavIconInactive = DailyLogsNavIconInactive,
-    dailyLogsDivider = DailyLogsDivider,
-    atividadeBackground = AtividadeBackground,
     isDark = false
 )
 
-/**
- * Cores para tema escuro — Paleta Purple/Navy premium
- */
 val DarkComunicacaoEscolarColors = ComunicacaoEscolarColors(
     background = Color(0xFF0D0B1E),
     backgroundGradientStart = Color(0xFF1A1533),
@@ -151,8 +92,8 @@ val DarkComunicacaoEscolarColors = ComunicacaoEscolarColors(
     textTertiary = Color(0xFF7B779A),
     textOnPrimary = Color.White,
     textInput = Color(0xFFEEEDF5),
-    primary = Color(0xFF7C6AF6),
-    primaryDark = Color(0xFF5B4CCF),
+    primary = Color(0xFF455A64),
+    primaryDark = Color(0xFF263238),
     iconGray = Color(0xFF9B97B8),
     inputBorder = Color(0xFF2E2A4A),
     mediumGray = Color(0xFF5C587A),
@@ -164,59 +105,23 @@ val DarkComunicacaoEscolarColors = ComunicacaoEscolarColors(
     successText = Color(0xFF6EEDB0),
     success = Color(0xFF4ADE80),
     lightGray = Color(0xFF252142),
-    // Cores para cards de features (Dark — mais vibrantes sobre fundo escuro)
     featureBlue = Color(0xFF6B8AFF),
     featureGreen = Color(0xFF4ADE80),
     featureOrange = Color(0xFFFFBB5C),
     featureCyan = Color(0xFF22D3EE),
     featurePink = Color(0xFFF472B6),
     featureRed = Color(0xFFFF6B81),
-
-    // Cores da LoginScreen (adaptadas para dark)
-    loginBackground = Color(0xFF121212),
-    loginDarkBlue = Color(0xFF5BA4CF),
-    loginGrayText = Color(0xFFB0B0B0),
-    loginBorder = Color(0xFF3A3A3A),
-    loginFooterGray = Color(0xFF6B6B6B),
-    loginGoogleRed = Color(0xFFFF6B6B),
-
-    // Cores da DailyLogsScreen
-    dailyLogsBackground = Color(0xFF0D0B1E),
-    dailyLogsCardSelected = Color(0xFF2E2A4A),
-    dailyLogsCardDefault = Color(0xFF1E1A38),
-    dailyLogsCardBorder = Color(0xFF2E2A4A),
-    dailyLogsTitleText = Color(0xFFEEEDF5),
-    dailyLogsDateText = Color(0xFFCCC8E8),
-    dailyLogsChildName = Color(0xFFEEEDF5),
-    dailyLogsTimeText = Color(0xFF7B779A),
-    dailyLogsDescription = Color(0xFF9B97B8),
-    dailyLogsAvatarBg = Color(0xFF2A2150),
-    dailyLogsAvatarIcon = Color(0xFF7C6AF6),
-    dailyLogsNavBarBg = Color(0xFF1E1A38),
-    dailyLogsNavIconActive = Color(0xFF7C6AF6),
-    dailyLogsNavIconInactive = Color(0xFF7B779A),
-    dailyLogsDivider = Color(0xFF2E2A4A),
-    atividadeBackground = Color(0xFF0D0B1E),
     isDark = true
 )
 
-/**
- * CompositionLocal para acessar as cores customizadas
- * compositionLocalOf permite mudanças dinâmicas e propaga recomposição
- * ao invés de usar um objeto singleton, usamos CompositionLocal
- * para que as cores possam ser reativas e mudem conforme o tema sem precisar reiniciar a aplicação
- */
 val LocalComunicacaoEscolarColors = compositionLocalOf { LightComunicacaoEscolarColors }
 
-/**
- * DarkColorScheme - Paleta Material 3 para tema escuro (Purple/Navy)
- */
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF7C6AF6),
+    primary = Color(0xFF455A64),
     secondary = Color(0xFF9B97B8),
-    tertiary = Color(0xFF5B4CCF),
-    background = Color(0xFF0D0B1E),
-    surface = Color(0xFF1E1A38),
+    tertiary = Color(0xFF263238),
+    background = Color(0xFF0D0D0D),
+    surface = Color(0xFF1A1A1A),
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
@@ -224,15 +129,12 @@ private val DarkColorScheme = darkColorScheme(
     onSurface = Color(0xFFEEEDF5)
 )
 
-/**
- * LightColorScheme - Paleta Material 3 para tema claro (Purple/Violet)
- */
 private val LightColorScheme = lightColorScheme(
     primary = PrimaryBlue,
     secondary = SecondaryGray,
     tertiary = PrimaryBlueDark,
-    background = PrimaryLightBlue,
-    surface = SurfaceWhite,
+    background = SurfaceWhite,
+    surface = LightGray,
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
@@ -240,17 +142,12 @@ private val LightColorScheme = lightColorScheme(
     onSurface = TextPrimary
 )
 
-/**
- * ComunicacaoEscolarTheme - Função composable que aplica o tema à aplicação
- */
 @Composable
 fun ComunicacaoEscolarTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-
-    // 1️⃣ Material Color Scheme
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
@@ -264,37 +161,26 @@ fun ComunicacaoEscolarTheme(
         else -> LightColorScheme
     }
 
-    // 2️⃣ Suas cores customizadas
     val filaColors =
         if (darkTheme) DarkComunicacaoEscolarColors
         else LightComunicacaoEscolarColors
 
-    // 3️⃣ Controle da System UI
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
 
             window.statusBarColor = filaColors.background.toArgb()
-
-            // Cor da Status Bar
-            window.statusBarColor = filaColors.background.toArgb()
-
-            // Cor da Navigation Bar
             window.navigationBarColor = filaColors.background.toArgb()
 
             val insetsController =
                 WindowCompat.getInsetsController(window, view)
 
-            // Define cor dos ícones:
-            // true = ícones escuros
-            // false = ícones claros
             insetsController.isAppearanceLightStatusBars = !darkTheme
             insetsController.isAppearanceLightNavigationBars = !darkTheme
         }
     }
 
-    // 4️⃣ Aplica tema
     CompositionLocalProvider(
         LocalComunicacaoEscolarColors provides filaColors
     ) {

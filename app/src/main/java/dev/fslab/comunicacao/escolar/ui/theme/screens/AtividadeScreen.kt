@@ -87,8 +87,8 @@ fun AtividadeScreen(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colors.loginBackground.toArgb()
-            window.navigationBarColor = colors.loginBackground.toArgb()
+            window.statusBarColor = colors.background.toArgb()
+            window.navigationBarColor = colors.background.toArgb()
             val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = true
             insetsController.isAppearanceLightNavigationBars = true
@@ -96,7 +96,7 @@ fun AtividadeScreen(
     }
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = colors.atividadeBackground,
+        containerColor = colors.background,
         topBar = {
             Box(
                 modifier = Modifier
@@ -378,16 +378,6 @@ fun AtividadeScreen(
 
         }
     }
-//    Column(
-//        modifier = modifier
-//            .fillMaxSize()
-//            .verticalScroll(rememberScrollState())
-//            .imePadding(),
-//        horizontalAlignment = Alignment.CenterHorizontally
-//    ) {
-//        Box()
-//    }
-//    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

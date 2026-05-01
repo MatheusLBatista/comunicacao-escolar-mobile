@@ -53,11 +53,10 @@ fun DailyLogCard(log: DailyLog, isSelected: Boolean = false) {
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                color = if (isSelected) colors.dailyLogsCardSelected else colors.dailyLogsCardDefault,
+                color = if (isSelected) colors.lightGray else colors.background,
                 shape = RoundedCornerShape(12.dp)
             )
             .padding(horizontal = 12.dp)
-//            .padding(horizontal = 12.dp, vertical = 16.dp)
     ) {
         Row(
             modifier = Modifier
@@ -65,12 +64,11 @@ fun DailyLogCard(log: DailyLog, isSelected: Boolean = false) {
                 .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar circular
             Box(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
-                    .background(colors.dailyLogsAvatarBg),
+                    .background(colors.lightGray),
                 contentAlignment = Alignment.Center
             ) {
                 if (log.avatarRes != null) {
@@ -86,7 +84,7 @@ fun DailyLogCard(log: DailyLog, isSelected: Boolean = false) {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = "Avatar de ${log.childName}",
-                        tint = colors.dailyLogsAvatarIcon,
+                        tint = colors.iconGray,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -104,26 +102,26 @@ fun DailyLogCard(log: DailyLog, isSelected: Boolean = false) {
                         text = log.childName,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = colors.dailyLogsChildName
+                        color = colors.textPrimary
                     )
                     Text(
                         text = log.time,
                         fontSize = 12.sp,
-                        color = colors.dailyLogsTimeText
+                        color = colors.textSecondary
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = log.description,
                     fontSize = 14.sp,
-                    color = colors.dailyLogsDescription,
+                    color = colors.textSecondary,
                     maxLines = 2
                 )
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider(color = colors.dailyLogsDivider, thickness = 0.5.dp)
+        HorizontalDivider(color = colors.inputBorder, thickness = 0.5.dp)
     }
 }
 
@@ -145,21 +143,19 @@ fun DailyLogsScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.dailyLogsBackground)
+            .background(colors.background)
     ) {
-        // Título da tela
         Text(
             text = "Activity Logs",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = colors.dailyLogsTitleText,
+            color = colors.textPrimary,
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 40.dp)
         )
 
-        // Lista com scroll
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -167,16 +163,14 @@ fun DailyLogsScreen() {
                 .padding(horizontal = 16.dp)
         ) {
             logs.forEach { (date, logsForDate) ->
-                // Header da data
                 Text(
                     text = date,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = colors.dailyLogsDateText,
+                    color = colors.textSecondary,
                     modifier = Modifier.padding(vertical = 24.dp)
                 )
 
-                // Cards do dia
                 logsForDate.forEachIndexed { index, log ->
                     DailyLogCard(
                         log = log,
@@ -192,14 +186,14 @@ fun DailyLogsScreen() {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(colors.dailyLogsNavBarBg)
+                .background(colors.surface)
                 .padding(vertical = 32.dp),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = Icons.Default.MoreHoriz,
                 contentDescription = "Mais opções",
-                tint = colors.dailyLogsNavIconInactive,
+                tint = colors.textSecondary,
                 modifier = Modifier.size(32.dp)
             )
         }
@@ -223,7 +217,7 @@ fun NavBarItem(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = if (isActive) colors.dailyLogsNavIconActive else colors.dailyLogsNavIconInactive,
+            tint = if (isActive) colors.primary else colors.textSecondary,
             modifier = Modifier.size(24.dp)
         )
         Box(
@@ -231,7 +225,7 @@ fun NavBarItem(
                 .width(24.dp)
                 .height(2.dp)
                 .background(
-                    color = if (isActive) colors.dailyLogsNavIconActive else androidx.compose.ui.graphics.Color.Transparent,
+                    color = if (isActive) colors.primary else androidx.compose.ui.graphics.Color.Transparent,
                     shape = RoundedCornerShape(1.dp)
                 )
         )
@@ -244,13 +238,13 @@ fun BottomNavigationBar(activeIndex: Int = 0) {
 
     HorizontalDivider(
         thickness = 1.dp,
-        color = colors.dailyLogsDivider
+        color = colors.inputBorder
     )
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(colors.dailyLogsNavBarBg)
+            .background(colors.surface)
             .padding(vertical = 40.dp),
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
