@@ -1,4 +1,4 @@
-package dev.fslab.comunicacao.escolar.ui.screens.responsavel
+package dev.fslab.comunicacao.escolar.ui.screens.admin
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -13,11 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
-import androidx.compose.material.icons.automirrored.outlined.Assignment
+import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -29,21 +29,22 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.fslab.comunicacao.escolar.model.User
 import dev.fslab.comunicacao.escolar.navigation.Screen
 import dev.fslab.comunicacao.escolar.ui.components.BottomNavBar
 import dev.fslab.comunicacao.escolar.ui.components.BottomNavItem
+import dev.fslab.comunicacao.escolar.ui.screens.responsavel.PerfilScreen
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
+import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
 
-private val responsavelNavItems = listOf(
+private val adminNavItems = listOf(
     BottomNavItem(
-        icon = Icons.AutoMirrored.Outlined.Assignment,
-        route = Screen.Atividades.route,
-        contentDescription = "Atividades"
+        icon = Icons.Outlined.SpaceDashboard,
+        route = Screen.AdminHome.route,
+        contentDescription = "Dashboard"
     ),
     BottomNavItem(
         icon = Icons.AutoMirrored.Outlined.Chat,
@@ -68,29 +69,28 @@ private val responsavelNavItems = listOf(
 )
 
 /**
- * Dashboard do Responsável — contém a BottomNavBar e gerencia qual tela está ativa.
+ * Dashboard do Admin — contém a BottomNavBar com ícone diferente na primeira aba.
  */
 @Composable
-fun ResponsavelDashboardScreen(
+fun AdminDashboardScreen(
     user: User,
     accessToken: String,
-    authViewModel: dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel,
+    authViewModel: AuthViewModel,
     themeViewModel: ThemeViewModel,
     onLogout: () -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
-    var currentRoute by rememberSaveable { mutableStateOf(Screen.Atividades.route) }
+    var currentRoute by rememberSaveable { mutableStateOf(Screen.AdminHome.route) }
 
-    // Impede o back sair do app ao estar na aba principal
-    BackHandler(enabled = currentRoute != Screen.Atividades.route) {
-        currentRoute = Screen.Atividades.route
+    BackHandler(enabled = currentRoute != Screen.AdminHome.route) {
+        currentRoute = Screen.AdminHome.route
     }
 
     Scaffold(
         containerColor = colors.background,
         bottomBar = {
             BottomNavBar(
-                items = responsavelNavItems,
+                items = adminNavItems,
                 currentRoute = currentRoute,
                 onItemClick = { currentRoute = it.route }
             )
@@ -103,10 +103,10 @@ fun ResponsavelDashboardScreen(
                 .background(colors.background)
         ) {
             when (currentRoute) {
-                Screen.Atividades.route -> AtividadesScreen(user = user, accessToken = accessToken)
-                Screen.Conversas.route  -> ConversasScreen(user = user, accessToken = accessToken)
-                Screen.Mural.route      -> MuralScreen(user = user, accessToken = accessToken)
-                Screen.Agenda.route     -> AgendaScreen(user = user, accessToken = accessToken)
+                Screen.AdminHome.route  -> AdminHomeScreen(user = user)
+                Screen.Conversas.route  -> AdminConversasScreen(user = user)
+                Screen.Mural.route      -> AdminMuralScreen(user = user)
+                Screen.Agenda.route     -> AdminAgendaScreen(user = user)
                 Screen.Perfil.route     -> PerfilScreen(
                     user = user,
                     authViewModel = authViewModel,
@@ -118,69 +118,52 @@ fun ResponsavelDashboardScreen(
     }
 }
 
-// ── Telas do Responsável ──────────────────────────────────────────────────────
+// ── Telas do Admin ────────────────────────────────────────────────────────────
 
 @Composable
-fun AtividadesScreen(user: User, accessToken: String) {
+private fun AdminHomeScreen(user: User) {
     val colors = LocalComunicacaoEscolarColors.current
-    if (user.schoolId == null) {
-        SemEscolaVinculada(
-            icon = Icons.AutoMirrored.Outlined.Assignment,
-            nomeTela = "Atividades"
-        )
-    } else {
-        PlaceholderTela(nome = "Atividades", colors = colors)
-    }
+    AdminPlaceholderTela(
+        icon = { Icon(imageVector = Icons.Outlined.AdminPanelSettings, contentDescription = null, tint = colors.textSecondary.copy(alpha = 0.35f), modifier = Modifier.size(72.dp)) },
+        nome = "Dashboard"
+    )
 }
 
 @Composable
-fun ConversasScreen(user: User, accessToken: String) {
+private fun AdminConversasScreen(user: User) {
     val colors = LocalComunicacaoEscolarColors.current
-    if (user.schoolId == null) {
-        SemEscolaVinculada(
-            icon = Icons.AutoMirrored.Outlined.Chat,
-            nomeTela = "Conversas"
-        )
-    } else {
-        PlaceholderTela(nome = "Conversas", colors = colors)
-    }
+    AdminPlaceholderTela(
+        icon = { Icon(imageVector = Icons.AutoMirrored.Outlined.Chat, contentDescription = null, tint = colors.textSecondary.copy(alpha = 0.35f), modifier = Modifier.size(72.dp)) },
+        nome = "Conversas"
+    )
 }
 
 @Composable
-fun MuralScreen(user: User, accessToken: String) {
+private fun AdminMuralScreen(user: User) {
     val colors = LocalComunicacaoEscolarColors.current
-    if (user.schoolId == null) {
-        SemEscolaVinculada(
-            icon = Icons.Outlined.FavoriteBorder,
-            nomeTela = "Mural"
-        )
-    } else {
-        PlaceholderTela(nome = "Mural", colors = colors)
-    }
+    AdminPlaceholderTela(
+        icon = { Icon(imageVector = Icons.Outlined.FavoriteBorder, contentDescription = null, tint = colors.textSecondary.copy(alpha = 0.35f), modifier = Modifier.size(72.dp)) },
+        nome = "Mural"
+    )
 }
 
 @Composable
-fun AgendaScreen(user: User, accessToken: String) {
+private fun AdminAgendaScreen(user: User) {
     val colors = LocalComunicacaoEscolarColors.current
-    if (user.schoolId == null) {
-        SemEscolaVinculada(
-            icon = Icons.Outlined.DateRange,
-            nomeTela = "Agenda"
-        )
-    } else {
-        PlaceholderTela(nome = "Agenda", colors = colors)
-    }
+    AdminPlaceholderTela(
+        icon = { Icon(imageVector = Icons.Outlined.DateRange, contentDescription = null, tint = colors.textSecondary.copy(alpha = 0.35f), modifier = Modifier.size(72.dp)) },
+        nome = "Agenda"
+    )
 }
 
-// ── Composables auxiliares ─────────────────────────────────────────────────────
+// ── Composable auxiliar ────────────────────────────────────────────────────────
 
-/**
- * Estado vazio exibido quando o usuário não tem escola vinculada.
- */
 @Composable
-private fun SemEscolaVinculada(icon: ImageVector, nomeTela: String) {
+private fun AdminPlaceholderTela(
+    icon: @Composable () -> Unit,
+    nome: String
+) {
     val colors = LocalComunicacaoEscolarColors.current
-
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -189,47 +172,24 @@ private fun SemEscolaVinculada(icon: ImageVector, nomeTela: String) {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = Icons.Outlined.School,
-            contentDescription = null,
-            tint = colors.textSecondary.copy(alpha = 0.35f),
-            modifier = Modifier.size(72.dp)
-        )
+        icon()
 
         Spacer(modifier = Modifier.height(24.dp))
 
         Text(
-            text = nomeTela,
+            text = nome,
             style = MaterialTheme.typography.titleMedium,
-            color = colors.textPrimary
+            color = colors.textPrimary,
+            textAlign = TextAlign.Center
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Você ainda não está vinculado a uma escola. Entre em contato com o administrador para ser adicionado.",
+            text = "Em breve",
             style = MaterialTheme.typography.bodyMedium,
             color = colors.textSecondary,
             textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
-private fun PlaceholderTela(
-    nome: String,
-    colors: dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarColors
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.background),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = nome,
-            style = MaterialTheme.typography.titleMedium,
-            color = colors.textPrimary
         )
     }
 }

@@ -27,11 +27,15 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.draw.blur
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -63,6 +67,9 @@ import dev.fslab.comunicacao.escolar.model.User
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.PerfilUiState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.PerfilViewModel
+import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeMode
+import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
+import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 
 
 @Composable
@@ -70,21 +77,37 @@ fun PerfilScreen(
     user: User,
     authViewModel: AuthViewModel,
     onLogout: () -> Unit,
+    themeViewModel: ThemeViewModel,
     perfilViewModel: PerfilViewModel = viewModel()
 ) {
     val uiState by perfilViewModel.uiState.collectAsState()
     val salvando by perfilViewModel.salvando.collectAsState()
+    val themeMode by themeViewModel.themeMode.collectAsState()
+    val colors = LocalComunicacaoEscolarColors.current
 
+    val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     var showEditDialog by remember { mutableStateOf(false) }
+    var showThemeDialog by remember { mutableStateOf(false) }
     var nomeTemp by remember { mutableStateOf(user.nome) }
+    var showAvatarLightbox by remember { mutableStateOf(false) }
+
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            perfilViewModel.uploadAvatar(context, uri) { updatedUser ->
+                authViewModel.updateCurrentUser(updatedUser)
+            }
+        }
+    }
 
     LaunchedEffect(user) { perfilViewModel.inicializar(user) }
 
     LaunchedEffect(uiState) {
         when (uiState) {
             is PerfilUiState.Success -> {
-                snackbarHostState.showSnackbar("Nome atualizado com sucesso!")
+                snackbarHostState.showSnackbar((uiState as PerfilUiState.Success).message)
                 perfilViewModel.clearState()
             }
             is PerfilUiState.Error -> {
@@ -95,11 +118,12 @@ fun PerfilScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.White)) {
+    Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .then(if (showAvatarLightbox) Modifier.blur(20.dp) else Modifier)
         ) {
             // ── Header ────────────────────────────────────────────────────────
             Box(
@@ -112,7 +136,7 @@ fun PerfilScreen(
                     text = "Perfil",
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFF111827)
+                    color = colors.textPrimary
                 )
             }
 
@@ -128,6 +152,7 @@ fun PerfilScreen(
                         modifier = Modifier
                             .size(96.dp)
                             .clip(CircleShape)
+                            .then(if (user.avatar != null) Modifier.clickable { showAvatarLightbox = true } else Modifier)
                     ) {
                         // Avatar: foto real se disponível, ícone Person cinza caso contrário
                         if (user.avatar != null) {
@@ -165,7 +190,7 @@ fun PerfilScreen(
                             .clip(CircleShape)
                             .background(Color(0xFF1E272C))
                             .border(2.dp, Color.White, CircleShape)
-                            .clickable { /* TODO: Upload de foto */ },
+                            .clickable { imagePicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -183,7 +208,7 @@ fun PerfilScreen(
                     text = user.nome,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF111827)
+                    color = colors.textPrimary
                 )
             }
 
@@ -214,8 +239,12 @@ fun PerfilScreen(
             InfoCard {
                 PrefsRow(
                     label = "Tema",
-                    value = "Sistema",
-                    onClick = { /* TODO: seletor de tema */ }
+                    value = when (themeMode) {
+                        ThemeMode.SYSTEM -> "Seguir o sistema"
+                        ThemeMode.LIGHT  -> "Claro"
+                        ThemeMode.DARK   -> "Escuro"
+                    },
+                    onClick = { showThemeDialog = true }
                 )
                 InfoDivider()
                 PrefsRow(
@@ -233,8 +262,8 @@ fun PerfilScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .border(1.dp, Color(0xFFFEE2E2), RoundedCornerShape(16.dp))
-                    .background(Color.White)
+                    .border(1.dp, colors.errorBackground, RoundedCornerShape(16.dp))
+                    .background(colors.background)
                     .clickable { onLogout() }
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
@@ -265,13 +294,49 @@ fun PerfilScreen(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+
+        // ── Lightbox de avatar ────────────────────────────────────────────────
+        if (showAvatarLightbox && user.avatar != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f))
+                    .clickable { showAvatarLightbox = false },
+                contentAlignment = Alignment.Center
+            ) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(user.avatar)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Avatar de ${user.nome}",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp)
+                )
+                IconButton(
+                    onClick = { showAvatarLightbox = false },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Fechar",
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+        }
     }
 
     // ── Dialog de edição de nome ──────────────────────────────────────────────
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
-            title = { Text("Editar nome", fontWeight = FontWeight.Bold) },
+            title = { Text("Editar nome", fontWeight = FontWeight.Bold, color = colors.textPrimary) },
             text = {
                 OutlinedTextField(
                     value = nomeTemp,
@@ -281,8 +346,8 @@ fun PerfilScreen(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF1E272C),
-                        focusedLabelColor = Color(0xFF1E272C)
+                        focusedBorderColor = colors.focusedIndicator,
+                        focusedLabelColor = colors.focusedIndicator
                     )
                 )
             },
@@ -303,16 +368,73 @@ fun PerfilScreen(
                     if (salvando) {
                         CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                     } else {
-                        Text("Salvar", fontWeight = FontWeight.Bold, color = Color(0xFF1E272C))
+                        Text("Salvar", fontWeight = FontWeight.Bold, color = colors.buttonContainer)
                     }
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showEditDialog = false; nomeTemp = user.nome }) {
-                    Text("Cancelar", color = Color(0xFF6B7280))
+                    Text("Cancelar", color = colors.textSecondary)
                 }
             },
-            containerColor = Color.White,
+            containerColor = colors.surface,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // ── Seletor de tema ──────────────────────────────────────────────────────
+    if (showThemeDialog) {
+        AlertDialog(
+            onDismissRequest = { showThemeDialog = false },
+            title = {
+                Text("Tema do aplicativo", fontWeight = FontWeight.Bold, color = colors.textPrimary)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    listOf(
+                        ThemeMode.SYSTEM to "Seguir o sistema",
+                        ThemeMode.LIGHT  to "Claro",
+                        ThemeMode.DARK   to "Escuro"
+                    ).forEach { (mode, label) ->
+                        val selected = themeMode == mode
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (selected) colors.lightGray else Color.Transparent)
+                                .clickable {
+                                    themeViewModel.setThemeMode(mode)
+                                    showThemeDialog = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = label,
+                                fontSize = 14.sp,
+                                color = if (selected) colors.textPrimary else colors.textSecondary,
+                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                            if (selected) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(colors.primaryDark)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showThemeDialog = false }) {
+                    Text("Cancelar", color = colors.textSecondary)
+                }
+            },
+            containerColor = colors.surface,
             shape = RoundedCornerShape(20.dp)
         )
     }
@@ -322,24 +444,26 @@ fun PerfilScreen(
 
 @Composable
 private fun SectionHeader(title: String) {
+    val colors = LocalComunicacaoEscolarColors.current
     Text(
         text = title,
         fontSize = 14.sp,
         fontWeight = FontWeight.Medium,
-        color = Color(0xFF6B7280),
+        color = colors.textSecondary,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 0.dp).padding(bottom = 8.dp)
     )
 }
 
 @Composable
 private fun InfoCard(content: @Composable () -> Unit) {
+    val colors = LocalComunicacaoEscolarColors.current
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
             .clip(RoundedCornerShape(16.dp))
-            .border(1.dp, Color(0xFFF3F4F6), RoundedCornerShape(16.dp))
-            .background(Color.White)
+            .border(1.dp, colors.lightGray, RoundedCornerShape(16.dp))
+            .background(colors.surface)
     ) {
         content()
     }
@@ -347,11 +471,13 @@ private fun InfoCard(content: @Composable () -> Unit) {
 
 @Composable
 private fun InfoDivider() {
-    HorizontalDivider(color = Color(0xFFF9FAFB), thickness = 1.dp)
+    val colors = LocalComunicacaoEscolarColors.current
+    HorizontalDivider(color = colors.lightGray, thickness = 1.dp)
 }
 
 @Composable
 private fun InfoRow(label: String, value: String, onEdit: (() -> Unit)? = null) {
+    val colors = LocalComunicacaoEscolarColors.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -360,15 +486,15 @@ private fun InfoRow(label: String, value: String, onEdit: (() -> Unit)? = null) 
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF6B7280))
+            Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textSecondary)
             Spacer(modifier = Modifier.height(2.dp))
-            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = Color(0xFF374151))
+            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = colors.textPrimary)
         }
         if (onEdit != null) {
             Icon(
                 imageVector = Icons.Outlined.Edit,
                 contentDescription = "Editar $label",
-                tint = Color(0xFF9CA3AF),
+                tint = colors.iconGray,
                 modifier = Modifier
                     .size(20.dp)
                     .clickable { onEdit() }
@@ -380,6 +506,7 @@ private fun InfoRow(label: String, value: String, onEdit: (() -> Unit)? = null) 
 
 @Composable
 private fun PrefsRow(label: String, value: String, onClick: () -> Unit) {
+    val colors = LocalComunicacaoEscolarColors.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -389,14 +516,14 @@ private fun PrefsRow(label: String, value: String, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column {
-            Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF6B7280))
+            Text(text = label, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.textSecondary)
             Spacer(modifier = Modifier.height(2.dp))
-            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = Color(0xFF374151))
+            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Normal, color = colors.textPrimary)
         }
         Icon(
             imageVector = Icons.Outlined.ChevronRight,
             contentDescription = null,
-            tint = Color(0xFF9CA3AF),
+            tint = colors.iconGray,
             modifier = Modifier.size(16.dp)
         )
     }

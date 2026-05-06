@@ -34,8 +34,8 @@ sealed class Screen(val route: String) {
     // object ProfessorDiario : Screen("professor_diario")
     // object ProfessorConversas : Screen("professor_conversas")
 
-    // Admin (já implementado separadamente)
-    // object AdminDashboard : Screen("admin_dashboard")
+    // Admin
+    object AdminHome : Screen("admin_home")
 }
 
 /**
@@ -55,6 +55,7 @@ fun NavGraph(
         composable(Screen.Login.route) {
             LoginScreen(
                 authViewModel = authViewModel,
+                themeViewModel = themeViewModel,
                 onNavigateToCadastro = {
                     navController.navigateSafely(Screen.Cadastro.route)
                 },
@@ -81,7 +82,8 @@ fun NavGraph(
         composable(Screen.Home.route) {
             HomeScreen(
                 navController = navController,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                themeViewModel = themeViewModel
             )
         }
     }

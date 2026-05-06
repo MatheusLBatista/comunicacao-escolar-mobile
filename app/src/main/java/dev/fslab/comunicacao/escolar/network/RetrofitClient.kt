@@ -34,11 +34,7 @@ object RetrofitClient {
         .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
 
-    val authApi: AuthApi by lazy {
-        retrofit.create(AuthApi::class.java)
-    }
+    val authApi: AuthApi = retrofit.create(AuthApi::class.java)
 
-    val userApi: UserApi by lazy {
-        retrofit.create(UserApi::class.java)
-    }
+    val userApi: UserApi = retrofit.create(UserApi::class.java)
 }
