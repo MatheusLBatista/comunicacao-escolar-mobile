@@ -239,7 +239,8 @@ fun LoginScreen(
                         checked = lembrarMe,
                         onCheckedChange = { lembrarMe = it },
                         colors = CheckboxDefaults.colors(
-                            checkedColor = colors.primaryDark,
+                            checkedColor = colors.textPrimary,
+                            checkmarkColor = colors.background,
                             uncheckedColor = colors.inputBorder
                         )
                     )

@@ -125,7 +125,7 @@ fun PerfilScreen(
                 .verticalScroll(rememberScrollState())
                 .then(if (showAvatarLightbox) Modifier.blur(20.dp) else Modifier)
         ) {
-            // ── Header ────────────────────────────────────────────────────────
+            // Header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -140,7 +140,7 @@ fun PerfilScreen(
                 )
             }
 
-            // ── Avatar + Nome ─────────────────────────────────────────────────
+            // Avatar + Nome
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -212,7 +212,7 @@ fun PerfilScreen(
                 )
             }
 
-            // ── Informações Pessoais ──────────────────────────────────────────
+            // Informações Pessoais
             SectionHeader("Informações Pessoais")
 
             InfoCard {
@@ -233,7 +233,7 @@ fun PerfilScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // ── Preferências ──────────────────────────────────────────────────
+            // Preferências
             SectionHeader("Preferências")
 
             InfoCard {
@@ -256,7 +256,7 @@ fun PerfilScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // ── Sair ──────────────────────────────────────────────────────────
+            // Sair
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -295,7 +295,7 @@ fun PerfilScreen(
             modifier = Modifier.align(Alignment.BottomCenter)
         )
 
-        // ── Lightbox de avatar ────────────────────────────────────────────────
+        // Lightbox de avatar
         if (showAvatarLightbox && user.avatar != null) {
             Box(
                 modifier = Modifier
@@ -332,7 +332,7 @@ fun PerfilScreen(
         }
     }
 
-    // ── Dialog de edição de nome ──────────────────────────────────────────────
+    // Dialog de edição de nome
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
@@ -382,7 +382,7 @@ fun PerfilScreen(
         )
     }
 
-    // ── Seletor de tema ──────────────────────────────────────────────────────
+    // Seletor de tema
     if (showThemeDialog) {
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
@@ -440,8 +440,7 @@ fun PerfilScreen(
     }
 }
 
-// ── Composables auxiliares ─────────────────────────────────────────────────────
-
+// Composables auxiliares
 @Composable
 private fun SectionHeader(title: String) {
     val colors = LocalComunicacaoEscolarColors.current
