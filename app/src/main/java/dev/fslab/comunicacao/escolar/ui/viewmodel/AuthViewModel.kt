@@ -54,6 +54,28 @@ class AuthViewModel : ViewModel() {
                 _accessToken.value = newAccessToken
             }
         }
+
+        val savedToken = TokenManager.getAccessToken()
+        val savedUser = TokenManager.getSavedUser()
+        if (!savedToken.isNullOrEmpty() && savedUser != null) {
+            val role = when (savedUser.role) {
+                "admin"   -> UserRole.ADMIN
+                "teacher" -> UserRole.PROFESSOR
+                "parent"  -> UserRole.RESPONSAVEL
+                else      -> UserRole.RESPONSAVEL
+            }
+            val user = User(
+                id = savedUser.id,
+                nome = savedUser.name,
+                email = savedUser.email,
+                role = role,
+                schoolId = savedUser.schoolId
+            )
+            _accessToken.value = savedToken
+            _currentUser.value = user
+            _authState.value = AuthState.Success(user)
+            Log.d(TAG, "Sessão restaurada para ${user.email} (${savedUser.role})")
+        }
     }
 
     fun loginUser(email: String, password: String) {
@@ -67,9 +89,6 @@ class AuthViewModel : ViewModel() {
                 if (response.isSuccess()) {
                     val apiUser = response.getLoginData()?.user
                     if (apiUser != null) {
-                        TokenManager.saveTokens(apiUser.accessToken, apiUser.refreshToken)
-                        _accessToken.value = apiUser.accessToken
-
                         val user = if (apiUser.memberships.isNotEmpty()) {
                             apiUser.toUser()
                         } else {
@@ -82,6 +101,11 @@ class AuthViewModel : ViewModel() {
                                     schoolId = null
                                 )
                         }
+                        TokenManager.saveTokens(
+                            apiUser.accessToken, apiUser.refreshToken,
+                            TokenManager.UserInfo(user.id, user.nome, user.email, roleToString(user.role), user.schoolId)
+                        )
+                        _accessToken.value = apiUser.accessToken
                         _currentUser.value = user
                         _authState.value = AuthState.Success(user)
                     } else {
@@ -186,9 +210,6 @@ class AuthViewModel : ViewModel() {
                 if (response.isSuccess()) {
                     val apiUser = response.getLoginData()?.user
                     if (apiUser != null) {
-                        TokenManager.saveTokens(apiUser.accessToken, apiUser.refreshToken)
-                        _accessToken.value = apiUser.accessToken
-
                         val user = if (apiUser.memberships.isNotEmpty()) {
                             apiUser.toUser()
                         } else {
@@ -201,6 +222,11 @@ class AuthViewModel : ViewModel() {
                                     schoolId = null
                                 )
                         }
+                        TokenManager.saveTokens(
+                            apiUser.accessToken, apiUser.refreshToken,
+                            TokenManager.UserInfo(user.id, user.nome, user.email, roleToString(user.role), user.schoolId)
+                        )
+                        _accessToken.value = apiUser.accessToken
                         _currentUser.value = user
                         _authState.value = AuthState.Success(user)
                     } else {
@@ -238,6 +264,8 @@ class AuthViewModel : ViewModel() {
 
             val json = JSONObject(decodedPayload)
             val id = json.optString("id", "")
+            val jwtEmail = json.optString("email", "").ifEmpty { json.optString("sub", "") }
+            val resolvedEmail = jwtEmail.ifEmpty { email }
             val papeisArray = json.optJSONArray("papeis")
             val papeis = mutableListOf<String>()
             if (papeisArray != null) {
@@ -254,14 +282,20 @@ class AuthViewModel : ViewModel() {
 
             User(
                 id = id,
-                nome = email.substringBefore("@").replaceFirstChar { it.uppercase() },
-                email = email,
+                nome = resolvedEmail.substringBefore("@").replaceFirstChar { it.uppercase() },
+                email = resolvedEmail,
                 role = userRole
             )
         } catch (e: Exception) {
             Log.e(TAG, "Erro ao extrair user do JWT: ${e.message}")
             null
         }
+    }
+
+    private fun roleToString(role: UserRole): String = when (role) {
+        UserRole.ADMIN       -> "admin"
+        UserRole.PROFESSOR   -> "teacher"
+        UserRole.RESPONSAVEL -> "parent"
     }
 
     private fun createBasicUser(email: String) {

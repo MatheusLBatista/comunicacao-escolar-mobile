@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 
 data class BottomNavItem(
     val icon: ImageVector,
@@ -45,17 +46,18 @@ fun BottomNavBar(
     onItemClick: (BottomNavItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colors = LocalComunicacaoEscolarColors.current
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(colors.background)
     ) {
-        // Linha superior — border-t border-gray-100 do protótipo
+        // Linha superior
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(0.5.dp)
-                .background(Color(0xFFF3F4F6))
+                .background(colors.lightGray)
         )
 
         Row(
@@ -85,6 +87,7 @@ private fun BottomNavItemView(
     isActive: Boolean,
     onClick: () -> Unit
 ) {
+    val colors = LocalComunicacaoEscolarColors.current
     val interactionSource = remember { MutableInteractionSource() }
 
     Column(
@@ -103,7 +106,7 @@ private fun BottomNavItemView(
             Icon(
                 imageVector = item.icon,
                 contentDescription = item.contentDescription,
-                tint = if (isActive) Color(0xFF111827) else Color(0xFF9CA3AF),
+                tint = if (isActive) colors.textPrimary else colors.iconGray,
                 modifier = Modifier.size(22.dp)
             )
 
@@ -113,7 +116,7 @@ private fun BottomNavItemView(
                         .align(Alignment.TopEnd)
                         .size(16.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF1E272C)),
+                        .background(colors.primaryDark),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -135,7 +138,7 @@ private fun BottomNavItemView(
                     .width(20.dp)
                     .height(3.dp)
                     .clip(RoundedCornerShape(50))
-                    .background(Color(0xFF111827))
+                    .background(colors.textPrimary)
             )
         } else {
             // Reserva o espaço pra não deslocar o layout

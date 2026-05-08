@@ -56,7 +56,15 @@ data class ApiLoginUser(
 
 data class ApiMembership(
     @SerializedName("school_id") val schoolId: String = "",
-    @SerializedName("role") val role: String = ""
+    @SerializedName("role") val role: String = "",
+    @SerializedName("class_id") val classId: String? = null,
+    @SerializedName("associated_students") val associatedStudents: List<ApiAssociatedStudent> = emptyList()
+)
+
+data class ApiAssociatedStudent(
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("full_name") val fullName: String = "",
+    @SerializedName("class_id") val classId: String? = null
 )
 
 fun ApiLoginUser.toUser(): User {

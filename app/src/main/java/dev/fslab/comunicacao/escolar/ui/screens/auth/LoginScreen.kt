@@ -1,6 +1,5 @@
 package dev.fslab.comunicacao.escolar.ui.screens.auth
 
-import android.app.Activity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -20,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -35,7 +36,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,7 +46,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
@@ -63,13 +62,14 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowCompat
 import dev.fslab.comunicacao.escolar.R
 
 import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
+import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeMode
+import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
 
 /**
  * LoginScreen — Tela de autenticação.
@@ -80,11 +80,13 @@ import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 @Composable
 fun LoginScreen(
     authViewModel: AuthViewModel,
+    themeViewModel: ThemeViewModel,
     onNavigateToCadastro: () -> Unit = {},
     onLoginSuccess: () -> Unit = {}
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val authState by authViewModel.authState.collectAsState()
+    val themeMode by themeViewModel.themeMode.collectAsState()
 
     val isLoading = authState is AuthState.Loading
     val errorMessage = (authState as? AuthState.Error)?.message
@@ -92,19 +94,6 @@ fun LoginScreen(
     LaunchedEffect(authState) {
         if (authState is AuthState.Success) {
             onLoginSuccess()
-        }
-    }
-
-    // Garante ícones escuros nas system bars (enableEdgeToEdge torna as barras transparentes;
-    // a cor de fundo vem do background do composable raiz)
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            WindowCompat.getInsetsController(window, view).apply {
-                isAppearanceLightStatusBars = true
-                isAppearanceLightNavigationBars = true
-            }
         }
     }
 
@@ -119,7 +108,7 @@ fun LoginScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.White)
+            .background(colors.background)
             .imePadding()
     ) {
         Column(
@@ -180,15 +169,15 @@ fun LoginScreen(
                 isError = errorMessage != null,
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = colors.inputBorder,
-                    focusedBorderColor = colors.primaryDark,
+                    focusedBorderColor = colors.focusedIndicator,
                     errorBorderColor = colors.error,
-                    cursorColor = colors.primaryDark,
-                    focusedLabelColor = colors.primaryDark,
+                    cursorColor = colors.focusedIndicator,
+                    focusedLabelColor = colors.focusedIndicator,
                     unfocusedLabelColor = colors.textSecondary,
                     focusedTextColor = colors.textPrimary,
                     unfocusedTextColor = colors.textPrimary,
-                    unfocusedContainerColor = Color.White,
-                    focusedContainerColor = Color.White
+                    unfocusedContainerColor = colors.background,
+                    focusedContainerColor = colors.background
                 )
             )
 
@@ -220,15 +209,15 @@ fun LoginScreen(
                 isError = errorMessage != null,
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = colors.inputBorder,
-                    focusedBorderColor = colors.primaryDark,
+                    focusedBorderColor = colors.focusedIndicator,
                     errorBorderColor = colors.error,
-                    cursorColor = colors.primaryDark,
-                    focusedLabelColor = colors.primaryDark,
+                    cursorColor = colors.focusedIndicator,
+                    focusedLabelColor = colors.focusedIndicator,
                     unfocusedLabelColor = colors.textSecondary,
                     focusedTextColor = colors.textPrimary,
                     unfocusedTextColor = colors.textPrimary,
-                    unfocusedContainerColor = Color.White,
-                    focusedContainerColor = Color.White
+                    unfocusedContainerColor = colors.background,
+                    focusedContainerColor = colors.background
                 )
             )
 
@@ -250,7 +239,8 @@ fun LoginScreen(
                         checked = lembrarMe,
                         onCheckedChange = { lembrarMe = it },
                         colors = CheckboxDefaults.colors(
-                            checkedColor = colors.primaryDark,
+                            checkedColor = colors.textPrimary,
+                            checkmarkColor = colors.background,
                             uncheckedColor = colors.inputBorder
                         )
                     )
@@ -280,7 +270,8 @@ fun LoginScreen(
                     .height(52.dp),
                 shape = RoundedCornerShape(26.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.primaryDark,
+                    containerColor = colors.buttonContainer,
+                    contentColor = colors.buttonText,
                     disabledContainerColor = colors.mediumGray
                 ),
                 enabled = !isLoading && email.isNotBlank() && senha.isNotBlank()
@@ -295,7 +286,7 @@ fun LoginScreen(
                     Text(
                         text = "Entrar",
                         style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
-                        color = colors.textOnPrimary
+                        color = colors.buttonText
                     )
                 }
             }
@@ -335,7 +326,7 @@ fun LoginScreen(
                 shape = RoundedCornerShape(26.dp),
                 border = BorderStroke(1.dp, colors.inputBorder),
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color.White
+                    containerColor = colors.background
                 ),
                 enabled = !isLoading
             ) {
@@ -378,6 +369,24 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
         }
+
+        // Ícone de alternância de tema — sobre a Column para receber toques
+        IconButton(
+            onClick = {
+                themeViewModel.setThemeMode(
+                    if (colors.isDark) ThemeMode.LIGHT else ThemeMode.DARK
+                )
+            },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 48.dp, end = 8.dp)
+        ) {
+            Icon(
+                imageVector = if (colors.isDark) Icons.Filled.DarkMode else Icons.Filled.LightMode,
+                contentDescription = if (colors.isDark) "Mudar para tema claro" else "Mudar para tema escuro",
+                tint = colors.textSecondary
+            )
+        }
     }
 }
 
@@ -385,6 +394,9 @@ fun LoginScreen(
 @Composable
 private fun LoginScreenPreview() {
     ComunicacaoEscolarTheme {
-        LoginScreen(authViewModel = androidx.lifecycle.viewmodel.compose.viewModel())
+        LoginScreen(
+            authViewModel = androidx.lifecycle.viewmodel.compose.viewModel(),
+            themeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+        )
     }
 }

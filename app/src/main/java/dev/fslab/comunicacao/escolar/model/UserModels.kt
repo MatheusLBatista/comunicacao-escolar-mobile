@@ -21,6 +21,7 @@ data class ApiUser(
     @SerializedName("email") val email: String? = null,
     @SerializedName("active") val active: Boolean = true,
     @SerializedName("auth_provider") val authProvider: String = "local",
+    @SerializedName("avatar_url") val avatarUrl: String? = null,
     @SerializedName("memberships") val memberships: List<ApiMembership> = emptyList(),
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null
@@ -38,6 +39,7 @@ data class ApiUser(
             nome = fullName,
             email = email ?: "",
             role = userRole,
+            avatar = avatarUrl,
             schoolId = activeMembership?.schoolId?.ifEmpty { null }
         )
     }

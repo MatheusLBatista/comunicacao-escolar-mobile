@@ -13,7 +13,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -47,6 +46,9 @@ data class ComunicacaoEscolarColors(
     val featureCyan: Color,
     val featurePink: Color,
     val featureRed: Color,
+    val focusedIndicator: Color,
+    val buttonContainer: Color,
+    val buttonText: Color,
     val isDark: Boolean = false
 )
 
@@ -79,38 +81,44 @@ val LightComunicacaoEscolarColors = ComunicacaoEscolarColors(
     featureCyan = Color(0xFF06B6D4),
     featurePink = Color(0xFFEC4899),
     featureRed = Color(0xFFEF4444),
+    focusedIndicator = PrimaryBlueDark,
+    buttonContainer = PrimaryBlueDark,
+    buttonText = Color.White,
     isDark = false
 )
 
 val DarkComunicacaoEscolarColors = ComunicacaoEscolarColors(
-    background = Color(0xFF0D0B1E),
-    backgroundGradientStart = Color(0xFF1A1533),
-    backgroundGradientEnd = Color(0xFF0D0B1E),
-    surface = Color(0xFF1E1A38),
-    textPrimary = Color(0xFFEEEDF5),
-    textSecondary = Color(0xFF9B97B8),
-    textTertiary = Color(0xFF7B779A),
+    background = Color(0xFF121212),
+    backgroundGradientStart = Color(0xFF1E1E1E),
+    backgroundGradientEnd = Color(0xFF121212),
+    surface = Color(0xFF1E1E1E),
+    textPrimary = Color(0xFFE0E0E0),
+    textSecondary = Color(0xFF9E9E9E),
+    textTertiary = Color(0xFF757575),
     textOnPrimary = Color.White,
-    textInput = Color(0xFFEEEDF5),
+    textInput = Color(0xFFE0E0E0),
     primary = Color(0xFF455A64),
-    primaryDark = Color(0xFF263238),
-    iconGray = Color(0xFF9B97B8),
-    inputBorder = Color(0xFF2E2A4A),
-    mediumGray = Color(0xFF5C587A),
-    errorBackground = Color(0xFF3D1A2E),
-    errorText = Color(0xFFFF8A9B),
-    errorButton = Color(0xFFE05577),
-    error = Color(0xFFFF6B81),
-    successBackground = Color(0xFF132D24),
-    successText = Color(0xFF6EEDB0),
-    success = Color(0xFF4ADE80),
-    lightGray = Color(0xFF252142),
+    primaryDark = Color(0xFF37474F),
+    iconGray = Color(0xFF9E9E9E),
+    inputBorder = Color(0xFF424242),
+    mediumGray = Color(0xFF616161),
+    errorBackground = Color(0xFF2C1515),
+    errorText = Color(0xFFEF9A9A),
+    errorButton = Color(0xFFE57373),
+    error = Color(0xFFEF5350),
+    successBackground = Color(0xFF1B2E22),
+    successText = Color(0xFF80CBC4),
+    success = Color(0xFF4CAF50),
+    lightGray = Color(0xFF2C2C2C),
     featureBlue = Color(0xFF6B8AFF),
     featureGreen = Color(0xFF4ADE80),
     featureOrange = Color(0xFFFFBB5C),
     featureCyan = Color(0xFF22D3EE),
     featurePink = Color(0xFFF472B6),
     featureRed = Color(0xFFFF6B81),
+    focusedIndicator = Color(0xFFE0E0E0),
+    buttonContainer = Color(0xFFE0E0E0),
+    buttonText = Color(0xFF121212),
     isDark = true
 )
 
@@ -118,15 +126,15 @@ val LocalComunicacaoEscolarColors = compositionLocalOf { LightComunicacaoEscolar
 
 private val DarkColorScheme = darkColorScheme(
     primary = Color(0xFF455A64),
-    secondary = Color(0xFF9B97B8),
-    tertiary = Color(0xFF263238),
-    background = Color(0xFF0D0D0D),
-    surface = Color(0xFF1A1A1A),
+    secondary = Color(0xFF9E9E9E),
+    tertiary = Color(0xFF37474F),
+    background = Color(0xFF121212),
+    surface = Color(0xFF1E1E1E),
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
-    onBackground = Color(0xFFEEEDF5),
-    onSurface = Color(0xFFEEEDF5)
+    onBackground = Color(0xFFE0E0E0),
+    onSurface = Color(0xFFE0E0E0)
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -169,13 +177,7 @@ fun ComunicacaoEscolarTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-
-            window.statusBarColor = filaColors.background.toArgb()
-            window.navigationBarColor = filaColors.background.toArgb()
-
-            val insetsController =
-                WindowCompat.getInsetsController(window, view)
-
+            val insetsController = WindowCompat.getInsetsController(window, view)
             insetsController.isAppearanceLightStatusBars = !darkTheme
             insetsController.isAppearanceLightNavigationBars = !darkTheme
         }
