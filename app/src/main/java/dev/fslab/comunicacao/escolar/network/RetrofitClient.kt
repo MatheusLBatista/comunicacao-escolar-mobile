@@ -1,6 +1,8 @@
 package dev.fslab.comunicacao.escolar.network
 
 import com.google.gson.GsonBuilder
+import dev.fslab.comunicacao.escolar.model.ApiAssociatedStudent
+import dev.fslab.comunicacao.escolar.model.ApiAssociatedStudentDeserializer
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -9,10 +11,11 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    const val BASE_URL = "http://localhost:3011/"
+    const val BASE_URL = "http://10.82.0.42:3010/"
 
     private val gson = GsonBuilder()
         .setLenient()
+        .registerTypeAdapter(ApiAssociatedStudent::class.java, ApiAssociatedStudentDeserializer())
         .create()
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
