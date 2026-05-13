@@ -1,6 +1,7 @@
 package dev.fslab.comunicacao.escolar.ui.screens.responsavel
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -20,11 +21,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -63,8 +67,12 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
             textAlign = TextAlign.Center,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 28.dp, bottom = 12.dp)
+                .padding(top = 28.dp, bottom = 24.dp)
         )
+
+        QuickAccessSection()
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         when (uiState) {
             is DailyLogsUiState.Loading -> {
@@ -127,18 +135,21 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    groups.forEach { group ->
+                    groups.forEachIndexed { index, group ->
                         item {
                             Text(
                                 text = group.dateLabel,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = colors.textSecondary,
-                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                                modifier = Modifier.padding(top = 20.dp, bottom = 8.dp)
                             )
                         }
                         items(group.logs) { log ->
                             DailyLogCard(log = log)
+                        }
+                        if (index != groups.lastIndex) {
+                            item { Spacer(modifier = Modifier.height(12.dp)) }
                         }
                     }
                     item { Spacer(modifier = Modifier.height(16.dp)) }
@@ -149,79 +160,174 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
 }
 
 @Composable
-private fun DailyLogCard(log: DailyLog) {
+private fun QuickAccessSection() {
+    val colors = LocalComunicacaoEscolarColors.current
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "ACESSO RÁPIDO",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        QuickAccessCard(
+            title = "Autorizações de Saída",
+            subtitle = "1 aguardando liberação",
+            onClick = {}
+        )
+    }
+}
+
+@Composable
+private fun QuickAccessCard(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
     val colors = LocalComunicacaoEscolarColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    Column(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(color = if (isPressed) colors.lightGray else colors.background)
+            .clip(RoundedCornerShape(16.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
-                onClick = {}
-            )
-            .padding(horizontal = 12.dp, vertical = 12.dp)
+                onClick = onClick
+            ),
+        shape = RoundedCornerShape(16.dp),
+        color = if (isPressed) colors.lightGray else colors.background,
+        tonalElevation = 0.dp,
+        shadowElevation = 1.dp
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, colors.inputBorder, RoundedCornerShape(16.dp))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(36.dp)
                     .clip(CircleShape)
                     .background(colors.lightGray),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Person,
+                    imageVector = Icons.AutoMirrored.Outlined.ExitToApp,
                     contentDescription = null,
                     tint = colors.iconGray,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(18.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(10.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = log.childName,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary
-                    )
-                    if (log.time.isNotBlank()) {
-                        Text(
-                            text = log.time,
-                            fontSize = 12.sp,
-                            color = colors.textSecondary
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = log.description,
-                    fontSize = 14.sp,
-                    color = colors.textSecondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                    text = title,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary
                 )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = subtitle,
+                    fontSize = 13.sp,
+                    color = colors.textSecondary
+                )
+            }
+
+            Icon(
+                imageVector = Icons.Outlined.ChevronRight,
+                contentDescription = null,
+                tint = colors.textSecondary
+            )
+        }
+    }
+}
+
+@Composable
+private fun DailyLogCard(log: DailyLog) {
+    val colors = LocalComunicacaoEscolarColors.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(color = if (isPressed) colors.lightGray else colors.background)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = {}
+                )
+                .padding(horizontal = 12.dp, vertical = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(colors.lightGray),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = colors.iconGray,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = log.childName,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colors.textPrimary
+                        )
+                        if (log.time.isNotBlank()) {
+                            Text(
+                                text = log.time,
+                                fontSize = 12.sp,
+                                color = colors.textSecondary
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = log.description,
+                        fontSize = 14.sp,
+                        color = colors.textSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
 
         HorizontalDivider(
             color = colors.inputBorder,
-            thickness = 0.5.dp,
-            modifier = Modifier.padding(top = 12.dp) // 4.dp -> 12.dp
+            thickness = 1.dp,
+            modifier = Modifier.padding(top = 8.dp)
         )
     }
 }

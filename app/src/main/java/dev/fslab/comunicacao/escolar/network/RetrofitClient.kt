@@ -45,4 +45,8 @@ object RetrofitClient {
     val dailyLogsApi: DailyLogsApi by lazy {
         retrofit.create(DailyLogsApi::class.java)
     }
+
+    val adminApi: AdminApi by lazy {
+        retrofit.create(AdminApi::class.java)
+    }
 }
