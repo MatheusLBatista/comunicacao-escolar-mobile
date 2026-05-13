@@ -59,7 +59,7 @@ class TokenAuthenticator : Authenticator {
                 val mediaType = "application/json; charset=utf-8".toMediaType()
 
                 val refreshRequest = Request.Builder()
-                    .url(RetrofitClient.BASE_URL + "refresh")
+                    .url(RetrofitClient.BASE_URL + "auth/refresh")
                     .post(refreshBody.toRequestBody(mediaType))
                     .build()
 

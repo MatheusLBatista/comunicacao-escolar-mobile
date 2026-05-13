@@ -39,7 +39,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -72,8 +71,6 @@ fun MuralScreen() {
 	if (!view.isInEditMode) {
 		SideEffect {
 			val window = (view.context as Activity).window
-			window.statusBarColor = background.toArgb()
-			window.navigationBarColor = background.toArgb()
 			val insetsController = WindowCompat.getInsetsController(window, view)
 			insetsController.isAppearanceLightStatusBars = true
 			insetsController.isAppearanceLightNavigationBars = true

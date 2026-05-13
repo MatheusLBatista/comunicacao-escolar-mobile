@@ -1,5 +1,10 @@
 package dev.fslab.comunicacao.escolar.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -34,9 +39,11 @@ sealed class Screen(val route: String) {
     // object ProfessorDiario : Screen("professor_diario")
     // object ProfessorConversas : Screen("professor_conversas")
 
-    // Admin (já implementado separadamente)
-    // object AdminDashboard : Screen("admin_dashboard")
+    // Admin
+    object AdminHome : Screen("admin_home")
 }
+
+private val TRANSITION_DURATION = 320
 
 /**
  * NavGraph — Define todas as telas e transições de navegação da aplicação.
@@ -47,14 +54,41 @@ fun NavGraph(
     themeViewModel: ThemeViewModel,
     authViewModel: AuthViewModel = viewModel()
 ) {
+    val startDestination = if (authViewModel.currentUser.value != null) Screen.Home.route else Screen.Login.route
+
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route
+        startDestination = startDestination,
+        enterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(TRANSITION_DURATION)
+            ) + fadeIn(animationSpec = tween(TRANSITION_DURATION))
+        },
+        exitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { -it / 3 },
+                animationSpec = tween(TRANSITION_DURATION)
+            ) + fadeOut(animationSpec = tween(TRANSITION_DURATION))
+        },
+        popEnterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { -it / 3 },
+                animationSpec = tween(TRANSITION_DURATION)
+            ) + fadeIn(animationSpec = tween(TRANSITION_DURATION))
+        },
+        popExitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(TRANSITION_DURATION)
+            ) + fadeOut(animationSpec = tween(TRANSITION_DURATION))
+        }
     ) {
 
         composable(Screen.Login.route) {
             LoginScreen(
                 authViewModel = authViewModel,
+                themeViewModel = themeViewModel,
                 onNavigateToCadastro = {
                     navController.navigateSafely(Screen.Cadastro.route)
                 },
@@ -81,7 +115,8 @@ fun NavGraph(
         composable(Screen.Home.route) {
             HomeScreen(
                 navController = navController,
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                themeViewModel = themeViewModel
             )
         }
     }

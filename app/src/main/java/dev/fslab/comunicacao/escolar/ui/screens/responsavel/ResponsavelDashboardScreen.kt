@@ -1,6 +1,11 @@
 package dev.fslab.comunicacao.escolar.ui.screens.responsavel
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +42,7 @@ import dev.fslab.comunicacao.escolar.navigation.Screen
 import dev.fslab.comunicacao.escolar.ui.components.BottomNavBar
 import dev.fslab.comunicacao.escolar.ui.components.BottomNavItem
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
+import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
 
 private val responsavelNavItems = listOf(
     BottomNavItem(
@@ -74,6 +80,7 @@ fun ResponsavelDashboardScreen(
     user: User,
     accessToken: String,
     authViewModel: dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel,
+    themeViewModel: ThemeViewModel,
     onLogout: () -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
@@ -94,13 +101,16 @@ fun ResponsavelDashboardScreen(
             )
         }
     ) { innerPadding ->
-        Box(
+        AnimatedContent(
+            targetState = currentRoute,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(colors.background)
-        ) {
-            when (currentRoute) {
+                .background(colors.background),
+            transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(220)) },
+            label = "responsavel_tab"
+        ) { route ->
+            when (route) {
                 Screen.Atividades.route -> AtividadesScreen(user = user, accessToken = accessToken)
                 Screen.Conversas.route  -> ConversasScreen(user = user, accessToken = accessToken)
                 Screen.Mural.route      -> MuralScreen(user = user, accessToken = accessToken)
@@ -108,6 +118,7 @@ fun ResponsavelDashboardScreen(
                 Screen.Perfil.route     -> PerfilScreen(
                     user = user,
                     authViewModel = authViewModel,
+                    themeViewModel = themeViewModel,
                     onLogout = onLogout
                 )
             }
@@ -115,8 +126,7 @@ fun ResponsavelDashboardScreen(
     }
 }
 
-// ── Telas do Responsável ──────────────────────────────────────────────────────
-
+// Telas do Responsável
 @Composable
 fun AtividadesScreen(user: User, accessToken: String) {
     if (user.schoolId == null) {
@@ -168,8 +178,7 @@ fun AgendaScreen(user: User, accessToken: String) {
     }
 }
 
-// ── Composables auxiliares ─────────────────────────────────────────────────────
-
+// Composables auxiliares
 /**
  * Estado vazio exibido quando o usuário não tem escola vinculada.
  */
