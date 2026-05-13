@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    const val BASE_URL = "http://localhost:3011/"
+    const val BASE_URL = "http://10.0.2.2:3000"
 
     private val gson = GsonBuilder()
         .setLenient()
@@ -40,5 +40,9 @@ object RetrofitClient {
 
     val userApi: UserApi by lazy {
         retrofit.create(UserApi::class.java)
+    }
+
+    val dailyLogsApi: DailyLogsApi by lazy {
+        retrofit.create(DailyLogsApi::class.java)
     }
 }

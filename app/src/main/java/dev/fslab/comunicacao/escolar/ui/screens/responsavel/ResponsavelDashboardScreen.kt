@@ -119,14 +119,13 @@ fun ResponsavelDashboardScreen(
 
 @Composable
 fun AtividadesScreen(user: User, accessToken: String) {
-    val colors = LocalComunicacaoEscolarColors.current
     if (user.schoolId == null) {
         SemEscolaVinculada(
             icon = Icons.AutoMirrored.Outlined.Assignment,
             nomeTela = "Atividades"
         )
     } else {
-        PlaceholderTela(nome = "Atividades", colors = colors)
+        ActivityScreen()
     }
 }
 
