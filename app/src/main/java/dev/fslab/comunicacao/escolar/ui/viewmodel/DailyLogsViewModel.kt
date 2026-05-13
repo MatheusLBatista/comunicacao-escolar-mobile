@@ -45,8 +45,14 @@ class DailyLogsViewModel : ViewModel() {
         viewModelScope.launch {
             _uiState.value = DailyLogsUiState.Loading
 
+            val accessToken = dev.fslab.comunicacao.escolar.network.TokenManager.getAccessToken()
+            if (accessToken.isNullOrBlank()) {
+                _uiState.value = DailyLogsUiState.Error("Sessão expirada. Faça login novamente.")
+                return@launch
+            }
+
             try {
-                val response = RetrofitClient.dailyLogsApi.getDailyLogs()
+                val response = RetrofitClient.dailyLogsApi.getDailyLogs("Bearer $accessToken")
 
                 if (response.error) {
                     _uiState.value = DailyLogsUiState.Error(response.getErrorMessage())
@@ -62,7 +68,12 @@ class DailyLogsViewModel : ViewModel() {
                 val groups = buildGroups(docs)
                 _uiState.value = DailyLogsUiState.Content(groups)
             } catch (e: retrofit2.HttpException) {
-                _uiState.value = DailyLogsUiState.Error("Erro ao carregar atividades (${e.code()}).")
+                val message = if (e.code() == 498) {
+                    "Sessão expirada. Faça login novamente."
+                } else {
+                    "Erro ao carregar atividades (${e.code()})."
+                }
+                _uiState.value = DailyLogsUiState.Error(message)
             } catch (e: java.net.UnknownHostException) {
                 _uiState.value = DailyLogsUiState.Error("Sem conexão com a internet.")
             } catch (e: java.net.SocketTimeoutException) {
@@ -90,7 +101,7 @@ class DailyLogsViewModel : ViewModel() {
         val dateLabel = parsedDate?.let { dateFormatter.format(it) } ?: date
         val timeLabel = parsedDate?.let { timeFormatter.format(it) } ?: ""
         val description = buildDescription(observation, entries, isPresent)
-        val studentName = buildStudentName(studentId)
+        val studentName = buildStudentName(student?.fullName.orEmpty())
 
         return DailyLog(
             id = id,
@@ -130,12 +141,12 @@ class DailyLogsViewModel : ViewModel() {
         return parts.joinToString(" • ").ifBlank { "Sem observações." }
     }
 
-    private fun buildStudentName(studentId: String): String {
-        if (studentId.isBlank()) {
+    private fun buildStudentName(fullName: String): String {
+        val trimmed = fullName.trim()
+        if (trimmed.isBlank()) {
             return "Aluno"
         }
-        val suffix = studentId.takeLast(4)
-        return "Aluno $suffix"
+        return trimmed.split(" ").firstOrNull { it.isNotBlank() } ?: trimmed
     }
 
     private fun parseIsoDate(value: String): java.util.Date? {

@@ -70,10 +70,6 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
                 .padding(top = 28.dp, bottom = 24.dp)
         )
 
-        QuickAccessSection()
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         when (uiState) {
             is DailyLogsUiState.Loading -> {
                 Box(
@@ -135,6 +131,10 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    item {
+                        QuickAccessSection()
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
                     groups.forEachIndexed { index, group ->
                         item {
                             Text(
@@ -208,7 +208,7 @@ private fun QuickAccessCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(1.dp, colors.inputBorder, RoundedCornerShape(16.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(

@@ -22,9 +22,9 @@ data class DailyLogsData(
 
 data class DailyLogDoc(
     @SerializedName("_id") val id: String = "",
-    @SerializedName("school_id") val schoolId: String = "",
-    @SerializedName("student_id") val studentId: String = "",
-    @SerializedName("teacher_id") val teacherId: String = "",
+    @SerializedName("school_id") val school: DailyLogSchool? = null,
+    @SerializedName("student_id") val student: DailyLogStudent? = null,
+    @SerializedName("teacher_id") val teacher: DailyLogTeacher? = null,
     @SerializedName("dailylogtemplate_id") val dailyLogTemplateId: String = "",
     @SerializedName("is_present") val isPresent: Boolean = true,
     @SerializedName("entries") val entries: List<DailyLogEntry> = emptyList(),
@@ -41,3 +41,19 @@ data class DailyLogEntry(
     @SerializedName("value") val value: String = ""
 )
 
+data class DailyLogStudent(
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("full_name") val fullName: String = "",
+    @SerializedName("avatar_url") val avatarUrl: String? = null
+)
+
+data class DailyLogSchool(
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("name") val name: String = ""
+)
+
+data class DailyLogTeacher(
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("full_name") val fullName: String = "",
+    @SerializedName("avatar_url") val avatarUrl: String? = null
+)
