@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
+import retrofit2.HttpException
+import android.util.Log
 
 
 sealed class MuralState {
@@ -33,8 +35,27 @@ class MuralViewModel : ViewModel() {
                 val response = RetrofitClient.muralApi.getPosts(schoolId)
                 _posts.value = response
                 _muralState.value = MuralState.Success(response)
+                Log.d(TAG, "Posts carregados com sucesso: ${response.size} posts")
+            } catch (e: HttpException) {
+                val errorMessage = when (e.code()) {
+                    404 -> "Post não encontrado."
+                    401 -> "Não autorizado. Faça login novamente."
+                    403 -> "Acesso negado ao mural."
+                    500 -> "Erro no servidor. Tente novamente mais tarde."
+                    else -> "Erro ao carregar posts (${e.code()}"
+                }
+                _muralState.value = MuralState.Error(errorMessage)
+                Log.e(TAG, "Erro HTTP ao carregar posts: ${e.code()}", e)
+            } catch (e: java.net.UnknownHostException) {
+                _muralState.value = MuralState.Error("Sem conexão com a internet")
+                Log.e(TAG,"Erro de conexão", e)
+            } catch (e: java.net.SocketTimeoutException) {
+                _muralState.value = MuralState.Error("Tempo de conexão esgotado")
+                Log.e(TAG, "Timeout ao carregar posts", e)
             } catch (e: Exception) {
-
+                val errorMsg = e.localizedMessage ?: "Erro ao carregar posts. Tente novamnete."
+                _muralState.value = MuralState.Error(errorMsg)
+                Log.e(TAG, "Errp ao carregar posts", e)
             }
         }
     }

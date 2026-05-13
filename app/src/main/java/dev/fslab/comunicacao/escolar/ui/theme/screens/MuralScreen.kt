@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -49,25 +50,34 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.fslab.comunicacao.escolar.R
 import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
 import dev.fslab.comunicacao.escolar.ui.theme.Poppins
+import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralViewModel
 
 @Composable
-fun MuralScreen() {
+fun MuralScreen(
+	schoolId: String = "",
+	viewModel: MuralViewModel = viewModel()
+) {
 	val background = Color(0xFFF4F4F5)
 	val textPrimary = Color(0xFF000000)
 	val textSecondary = Color(0xFF40484C)
 	val likeColor = Color(0xFF40484C)
 
+	val muralState by viewModel.muralState.collectAsState()
+	val posts by viewModel.posts.collectAsState()
+
+	val context = LocalContext.current
+	val view = LocalView.current
+
 	var isLiked by remember { mutableStateOf(false) }
 	var likeCount by remember { mutableIntStateOf(24) }
-	val context = LocalContext.current
 	val muralImageResId = remember {
 		context.resources.getIdentifier("mural_ciencias", "drawable", context.packageName)
 	}
 
-	val view = LocalView.current
 	if (!view.isInEditMode) {
 		SideEffect {
 			val window = (view.context as Activity).window
