@@ -1,0 +1,41 @@
+package dev.fslab.comunicacao.escolar.ui.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dev.fslab.comunicacao.escolar.model.MuralResponse
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+import dev.fslab.comunicacao.escolar.network.RetrofitClient
+
+
+sealed class MuralState {
+    object Idle: MuralState()
+    object Loading: MuralState()
+    data class Success(val posts: List<MuralResponse>) : MuralState()
+    data class Error(val message: String) : MuralState()
+}
+class MuralViewModel : ViewModel() {
+    companion object {
+        private const val TAG = "MuralViewModel"
+    }
+    private val _muralState = MutableStateFlow<MuralState>(MuralState.Idle)
+    val muralState: StateFlow<MuralState> = _muralState.asStateFlow()
+
+    private val _posts = MutableStateFlow<List<MuralResponse>>(emptyList())
+    val posts: StateFlow<List<MuralResponse>> = _posts.asStateFlow()
+
+    fun getPosts(schoolId: String) {
+        viewModelScope.launch {
+            _muralState.value = MuralState.Loading
+            try {
+                val response = RetrofitClient.muralApi.getPosts(schoolId)
+                _posts.value = response
+                _muralState.value = MuralState.Success(response)
+            } catch (e: Exception) {
+
+            }
+        }
+    }
+}
