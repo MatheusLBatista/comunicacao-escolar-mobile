@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,11 +25,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,22 +56,27 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.fslab.comunicacao.escolar.R
+import dev.fslab.comunicacao.escolar.model.MuralResponse
 import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
 import dev.fslab.comunicacao.escolar.ui.theme.Poppins
+import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
+import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralViewModel
 
 @Composable
 fun MuralScreen(
 	schoolId: String = "",
-	viewModel: MuralViewModel = viewModel()
+	muralViewModel: MuralViewModel = viewModel(),
+	authViewModel: AuthViewModel = viewModel()
 ) {
 	val background = Color(0xFFF4F4F5)
 	val textPrimary = Color(0xFF000000)
 	val textSecondary = Color(0xFF40484C)
 	val likeColor = Color(0xFF40484C)
 
-	val muralState by viewModel.muralState.collectAsState()
-	val posts by viewModel.posts.collectAsState()
+	val muralState by muralViewModel.muralState.collectAsState()
+	val posts by muralViewModel.posts.collectAsState()
+	val currentUser by authViewModel.currentUser.collectAsState()
 
 	val context = LocalContext.current
 	val view = LocalView.current
@@ -78,6 +87,12 @@ fun MuralScreen(
 		context.resources.getIdentifier("mural_ciencias", "drawable", context.packageName)
 	}
 
+
+	LaunchedEffect(currentUser) {
+		currentUser?.schoolId?.let  {
+			schoolId -> muralViewModel.getPosts(schoolId)
+		}
+	}
 	if (!view.isInEditMode) {
 		SideEffect {
 			val window = (view.context as Activity).window
@@ -112,126 +127,60 @@ fun MuralScreen(
 
 		Spacer(modifier = Modifier.height(22.dp))
 
-		Row(verticalAlignment = Alignment.CenterVertically) {
-			Image(
-				painter = painterResource(id = R.drawable.avatar_neo),
-				contentDescription = "Avatar do professor",
-				contentScale = ContentScale.Crop,
-				modifier = Modifier
-					.size(44.dp)
-					.clip(CircleShape)
-			)
-
-			Column(modifier = Modifier.padding(start = 12.dp)) {
+		when(muralState) {
+			MuralState.Idle -> {
+				Text("Carregando posts...")
+			}
+			MuralState.Loading -> {
+				CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+			}
+			is MuralState.Error -> {
 				Text(
-					text = "Prof. Anderson",
-					color = textPrimary,
-					style = MaterialTheme.typography.bodyMedium.copy(
-						fontFamily = Poppins,
-						fontWeight = FontWeight.SemiBold,
-						fontSize = 14.sp
-					)
-				)
-				Text(
-					text = "Escola das Flores • 2h atrás",
-					color = textSecondary,
-					style = MaterialTheme.typography.bodySmall.copy(
-						fontFamily = Poppins,
-						fontWeight = FontWeight.Normal,
-						fontSize = 12.sp
-					)
+					text = (muralState as MuralState.Error).message,
+					color = Color.Red,
+					modifier = Modifier.padding(16.dp)
 				)
 			}
-		}
-
-		Spacer(modifier = Modifier.height(18.dp))
-
-		Text(
-			text = "Feira de Ciências Anual 2026",
-			color = textPrimary,
-			style = MaterialTheme.typography.titleLarge.copy(
-				fontFamily = Poppins,
-				fontWeight = FontWeight.SemiBold,
-				fontSize = 16.sp
-			)
-		)
-
-		Spacer(modifier = Modifier.height(12.dp))
-
-		Text(
-			text = "Junte-se a nós para um dia de inovação e descoberta! Alunos de todas as turmas estarão apresentando seus projetos incríveis no salão principal. Venha prestigiar o talento dos nossos futuros cientistas!",
-			color = textSecondary,
-			style = MaterialTheme.typography.bodyMedium.copy(
-				fontFamily = Poppins,
-				fontWeight = FontWeight.Normal,
-				fontSize = 14.sp
-			)
-		)
-
-		Spacer(modifier = Modifier.height(22.dp))
-
-		Box(
-			modifier = Modifier
-				.fillMaxWidth()
-				.aspectRatio(4f / 3f)
-				.clip(RoundedCornerShape(36.dp)),
-			contentAlignment = Alignment.Center
-		) {
-			if (muralImageResId != 0) {
-				Image(
-					painter = painterResource(id = muralImageResId),
-					contentDescription = "Imagem da publicação",
-					contentScale = ContentScale.Crop,
-					modifier = Modifier.fillMaxSize()
-				)
-			} else {
-				Box(
-					modifier = Modifier
-						.fillMaxSize()
-						.background(
-							brush = Brush.radialGradient(
-								colors = listOf(Color(0xFF5D6672), Color(0xFF0F1621), Color(0xFF050A13)),
-								radius = 900f
-							)
-						),
-					contentAlignment = Alignment.Center
-				) {
-					Icon(
-						imageVector = Icons.Filled.Science,
-						contentDescription = "Ilustração da publicação",
-						tint = Color(0xFF27E4E2),
-						modifier = Modifier.size(92.dp)
-					)
+			is MuralState.Success -> {
+				if(posts.isEmpty()) {
+					Text("Nenhum post encontrado")
+				} else {
+					LazyColumn {
+						itemsIndexed(posts) { index,
+							post ->
+							MuralPostCard(post)
+							Spacer(modifier = Modifier.height(16.dp))
+						}
+					}
 				}
 			}
 		}
+	}
+}
 
-		Spacer(modifier = Modifier.height(18.dp))
-
-		Row(verticalAlignment = Alignment.CenterVertically) {
-			IconButton(
-				onClick = {
-					isLiked = !isLiked
-					likeCount += if (isLiked) 1 else -1
-				},
-				modifier = Modifier.size(34.dp)
-			) {
-				Icon(
-					imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-					contentDescription = "Curtidas",
-					tint = likeColor,
-					modifier = Modifier.size(28.dp)
-				)
-			}
-			Text(
-				text = likeCount.toString(),
-				color = likeColor,
-				style = MaterialTheme.typography.titleLarge,
-				modifier = Modifier.padding(start = 10.dp)
-			)
-		}
-
-		Spacer(modifier = Modifier.height(16.dp))
+@Composable
+fun MuralPostCard(post: MuralResponse) {
+	Column(modifier = Modifier
+		.fillMaxWidth()
+		.background(Color.White, RoundedCornerShape(12.dp))
+		.padding(16.dp)
+	){
+		Text(
+			text = post.title,
+			style = MaterialTheme.typography.titleMedium,
+			fontWeight = FontWeight.SemiBold
+		)
+		Spacer(modifier = Modifier.height(8.dp))
+		Text(
+			text = post.content,
+			style = MaterialTheme.typography.bodySmall,
+			color = Color.Gray
+		)
+		Spacer(modifier = Modifier.height(8.dp))
+		Text(
+			text = "Público: ${post.target.scope}",
+			style = MaterialTheme.typography.labelSmall
+		)
 	}
 }
 

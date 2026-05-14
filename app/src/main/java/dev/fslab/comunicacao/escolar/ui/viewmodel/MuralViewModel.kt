@@ -59,4 +59,9 @@ class MuralViewModel : ViewModel() {
             }
         }
     }
+    fun clearError() {
+        if(_muralState.value is MuralState.Error) {
+            _muralState.value = MuralState.Idle
+        }
+    }
 }
