@@ -7,5 +7,14 @@ data class DailyLog(
     val description: String,
     val date: String,
     val avatarRes: Int? = null,
-    val timestamp: Long = 0L
+    val timestamp: Long = 0L,
+    val teacherName: String = "",
+    val observation: String = "",
+    val isPresent: Boolean = true,
+    val entries: List<DailyLogDetailEntry> = emptyList()
+)
+
+data class DailyLogDetailEntry(
+    val label: String,
+    val value: String
 )

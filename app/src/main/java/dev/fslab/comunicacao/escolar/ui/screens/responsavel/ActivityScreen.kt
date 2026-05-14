@@ -34,6 +34,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +54,15 @@ import dev.fslab.comunicacao.escolar.ui.viewmodel.DailyLogsViewModel
 fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
     val colors = LocalComunicacaoEscolarColors.current
     val uiState by viewModel.uiState.collectAsState()
+    var selectedLog by remember { mutableStateOf<DailyLog?>(null) }
+
+    if (selectedLog != null) {
+        dev.fslab.comunicacao.escolar.ui.screens.responsavel.DailyLogDetailScreen(
+            log = selectedLog!!,
+            onBack = { selectedLog = null }
+        )
+        return
+    }
 
     Column(
         modifier = Modifier
@@ -146,7 +157,10 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
                             )
                         }
                         items(group.logs) { log ->
-                            DailyLogCard(log = log)
+                            DailyLogCard(
+                                log = log,
+                                onClick = { selectedLog = log }
+                            )
                         }
                         if (index != groups.lastIndex) {
                             item { Spacer(modifier = Modifier.height(12.dp)) }
@@ -253,7 +267,7 @@ private fun QuickAccessCard(
 }
 
 @Composable
-private fun DailyLogCard(log: DailyLog) {
+private fun DailyLogCard(log: DailyLog, onClick: () -> Unit) {
     val colors = LocalComunicacaoEscolarColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -267,7 +281,7 @@ private fun DailyLogCard(log: DailyLog) {
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
-                    onClick = {}
+                    onClick = onClick
                 )
                 .padding(horizontal = 12.dp, vertical = 12.dp)
         ) {

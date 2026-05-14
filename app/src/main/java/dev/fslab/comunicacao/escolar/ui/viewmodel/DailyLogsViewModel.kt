@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.fslab.comunicacao.escolar.model.DailyLog
 import dev.fslab.comunicacao.escolar.model.DailyLogDoc
+import dev.fslab.comunicacao.escolar.model.DailyLogDetailEntry
 import dev.fslab.comunicacao.escolar.model.DailyLogEntry
+import dev.fslab.comunicacao.escolar.model.DailyLogTemplateField
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -102,6 +104,8 @@ class DailyLogsViewModel : ViewModel() {
         val timeLabel = parsedDate?.let { timeFormatter.format(it) } ?: ""
         val description = buildDescription(observation, entries, isPresent)
         val studentName = buildStudentName(student?.fullName.orEmpty())
+        val teacherName = buildTeacherName(teacher?.fullName.orEmpty())
+        val detailEntries = buildDetailEntries(entries, isPresent, dailyLogTemplate?.fields.orEmpty())
 
         return DailyLog(
             id = id,
@@ -110,8 +114,55 @@ class DailyLogsViewModel : ViewModel() {
             description = description,
             date = dateLabel,
             avatarRes = null,
-            timestamp = parsedDate?.time ?: 0L
+            timestamp = parsedDate?.time ?: 0L,
+            teacherName = teacherName,
+            observation = observation,
+            isPresent = isPresent,
+            entries = detailEntries
         )
+    }
+
+    private fun buildDetailEntries(
+        entries: List<DailyLogEntry>,
+        isPresent: Boolean,
+        templateFields: List<DailyLogTemplateField>
+    ): List<DailyLogDetailEntry> {
+        val labelByKey = templateFields
+            .filter { it.key.isNotBlank() }
+            .associate { it.key to it.label.trim() }
+
+        val mappedEntries = entries.mapNotNull { entry ->
+            val label = labelByKey[entry.fieldKey]?.ifBlank { null } ?: formatFallbackLabel(entry.fieldKey)
+            val value = entry.value.trim()
+            if (label.isBlank() || value.isBlank()) {
+                null
+            } else {
+                DailyLogDetailEntry(label = label, value = value)
+            }
+        }
+
+        val presenceValue = if (isPresent) "Sim" else "Não"
+        return buildList {
+            add(DailyLogDetailEntry(label = "Presença", value = presenceValue))
+            addAll(mappedEntries)
+        }
+    }
+
+    private fun formatFallbackLabel(fieldKey: String): String {
+        return fieldKey
+            .trim()
+            .replace("_", " ")
+            .replaceFirstChar { char ->
+                if (char.isLowerCase()) char.titlecase(Locale.getDefault()) else char.toString()
+            }
+    }
+
+    private fun buildTeacherName(fullName: String): String {
+        val trimmed = fullName.trim()
+        if (trimmed.isBlank()) {
+            return ""
+        }
+        return trimmed.split(" ").firstOrNull { it.isNotBlank() } ?: trimmed
     }
 
     private fun buildDescription(
