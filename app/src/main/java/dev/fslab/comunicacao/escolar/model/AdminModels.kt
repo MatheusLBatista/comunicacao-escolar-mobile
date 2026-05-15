@@ -13,7 +13,8 @@ data class Turma(
     val nome: String,
     val ano: Int = 2026,
     val shift: String = "",
-    val professor: String? = null
+    val professor: String? = null,
+    val professorId: String? = null
 )
 
 // API response wrappers
@@ -48,7 +49,8 @@ data class ApiClass(
         nome = name,
         ano = year,
         shift = shift,
-        professor = teachers.firstOrNull()?.fullName
+        professor = teachers.firstOrNull()?.fullName,
+        professorId = teachers.firstOrNull()?.id
     )
 }
 
@@ -102,13 +104,14 @@ data class ApiSchoolUser(
 // API DailyLogTemplate
 data class ApiDailyLogTemplate(
     @SerializedName("_id") val id: String = "",
+    @SerializedName("name") val name: String = "",
     @SerializedName("fields") val fields: List<ApiTemplateField> = emptyList(),
     @SerializedName("ativo") val ativo: Boolean = true,
     @SerializedName("school_id") val schoolId: String? = null
 ) {
     fun toComunicadoTemplate() = ComunicadoTemplate(
         id = id,
-        nome = fields.firstOrNull()?.label?.let { "Template · $it" } ?: "Diário de Bordo",
+        nome = name.ifBlank { fields.firstOrNull()?.label ?: "Diário de Bordo" },
         campos = fields.map { f ->
             CampoTemplate(
                 id = f.id ?: UUID.randomUUID().toString(),
@@ -134,6 +137,7 @@ data class ApiTemplateField(
 
 data class CreateTemplateRequest(
     @SerializedName("school_id") val schoolId: String,
+    @SerializedName("name") val name: String,
     @SerializedName("fields") val fields: List<CreateTemplateFieldRequest> = emptyList()
 )
 
@@ -217,6 +221,10 @@ data class LinkToSchoolRequest(
 
 data class ApiStudentInput(
     @SerializedName("full_name") val fullName: String,
+    @SerializedName("class_id") val classId: String
+)
+
+data class MoveStudentClassRequest(
     @SerializedName("class_id") val classId: String
 )
 

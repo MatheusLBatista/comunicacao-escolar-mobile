@@ -3,6 +3,7 @@ package dev.fslab.comunicacao.escolar.ui.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import org.json.JSONObject
 import dev.fslab.comunicacao.escolar.model.AdminStats
 import dev.fslab.comunicacao.escolar.model.ApiAuditLog
 import dev.fslab.comunicacao.escolar.model.ApiClass
@@ -11,6 +12,7 @@ import dev.fslab.comunicacao.escolar.model.ApiSchoolUser
 import dev.fslab.comunicacao.escolar.model.AlunoAdmin
 import dev.fslab.comunicacao.escolar.model.ApiStudentInput
 import dev.fslab.comunicacao.escolar.model.CreateClassRequest
+import dev.fslab.comunicacao.escolar.model.MoveStudentClassRequest
 import dev.fslab.comunicacao.escolar.model.UpdateClassRequest
 import dev.fslab.comunicacao.escolar.model.CreateTemplateRequest
 import dev.fslab.comunicacao.escolar.model.LinkToSchoolRequest
@@ -55,6 +57,13 @@ class AdminViewModel : ViewModel() {
     private val _alunosLoading = MutableStateFlow(false)
     val alunosLoading: StateFlow<Boolean> = _alunosLoading.asStateFlow()
 
+    // Alunos sem turma (para picker em TurmaDetailScreen)
+    private val _alunosSemTurma = MutableStateFlow<List<AlunoAdmin>>(emptyList())
+    val alunosSemTurma: StateFlow<List<AlunoAdmin>> = _alunosSemTurma.asStateFlow()
+
+    private val _alunosSemTurmaLoading = MutableStateFlow(false)
+    val alunosSemTurmaLoading: StateFlow<Boolean> = _alunosSemTurmaLoading.asStateFlow()
+
     // Templates
     private val _templates = MutableStateFlow<List<ApiDailyLogTemplate>>(emptyList())
     val templates: StateFlow<List<ApiDailyLogTemplate>> = _templates.asStateFlow()
@@ -79,6 +88,10 @@ class AdminViewModel : ViewModel() {
 
     private val _actionSuccess = MutableStateFlow<String?>(null)
     val actionSuccess: StateFlow<String?> = _actionSuccess.asStateFlow()
+
+    // Field-level errors (email field in VincularUsuarioScreen)
+    private val _linkFieldError = MutableStateFlow<String?>(null)
+    val linkFieldError: StateFlow<String?> = _linkFieldError.asStateFlow()
 
     // Turmas actions
     fun loadTurmas(schoolId: String) {
@@ -121,7 +134,11 @@ class AdminViewModel : ViewModel() {
                     _actionError.value = response.getErrorMessage()
                 }
             } catch (e: Exception) {
-                _actionError.value = e.localizedMessage ?: "Erro ao vincular turma"
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao vincular turma. Tente novamente.",
+                    on404 = "Turma ou professor não encontrado.",
+                    on409 = "Este professor já está vinculado a essa turma."
+                )
                 Log.e(TAG, "assignTeacherToClass error", e)
             }
         }
@@ -143,7 +160,10 @@ class AdminViewModel : ViewModel() {
                     _actionError.value = response.getErrorMessage()
                 }
             } catch (e: Exception) {
-                _actionError.value = e.localizedMessage ?: "Erro ao desvincular turma"
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao remover professor da turma. Tente novamente.",
+                    on404 = "Turma não encontrada."
+                )
                 Log.e(TAG, "removeTeacherFromClass error", e)
             }
         }
@@ -163,7 +183,10 @@ class AdminViewModel : ViewModel() {
                     _actionError.value = response.getErrorMessage()
                 }
             } catch (e: Exception) {
-                _actionError.value = e.localizedMessage ?: "Erro ao criar turma"
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao criar turma. Tente novamente.",
+                    on409 = "Já existe uma turma com esse nome."
+                )
                 Log.e(TAG, "createTurma error", e)
             }
         }
@@ -234,21 +257,25 @@ class AdminViewModel : ViewModel() {
                     LinkToSchoolRequest(email = email, role = role, student = student)
                 )
                 if (!response.error) {
+                    if (role == "teacher" && classId != null) {
+                        val userId = response.data?.id
+                        if (userId != null) {
+                            assignTeacherToClass(schoolId, classId, userId, onSuccess = {})
+                        }
+                    }
                     _actionSuccess.value = "Usuário vinculado com sucesso!"
                     onSuccess()
                 } else {
                     _actionError.value = response.getErrorMessage()
                 }
             } catch (e: retrofit2.HttpException) {
-                val msg = when (e.code()) {
-                    404 -> "Usuário com esse e-mail não encontrado."
-                    409 -> "Usuário já está vinculado a esta escola."
-                    else -> "Erro ao vincular (${e.code()})."
+                when (e.code()) {
+                    409 -> _linkFieldError.value = "Este usuário já está vinculado à escola."
+                    else -> _actionError.value = e.toFriendlyMessage()
                 }
-                _actionError.value = msg
                 Log.e(TAG, "linkToSchool HTTP error", e)
             } catch (e: Exception) {
-                _actionError.value = e.localizedMessage ?: "Erro ao vincular usuário"
+                _actionError.value = "Erro ao vincular usuário. Verifique sua conexão."
                 Log.e(TAG, "linkToSchool error", e)
             }
         }
@@ -275,7 +302,11 @@ class AdminViewModel : ViewModel() {
                     _actionError.value = response.getErrorMessage()
                 }
             } catch (e: Exception) {
-                _actionError.value = e.localizedMessage ?: "Erro ao adicionar filho"
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao adicionar aluno. Tente novamente.",
+                    on404 = "Responsável ou turma não encontrado.",
+                    on409 = "Este aluno já está vinculado a esse responsável."
+                )
                 Log.e(TAG, "addStudentToParent error", e)
             }
         }
@@ -297,8 +328,72 @@ class AdminViewModel : ViewModel() {
                     _actionError.value = response.getErrorMessage()
                 }
             } catch (e: Exception) {
-                _actionError.value = e.localizedMessage ?: "Erro ao remover filho"
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao remover aluno. Tente novamente.",
+                    on404 = "Aluno não encontrado."
+                )
                 Log.e(TAG, "removeStudentFromParent error", e)
+            }
+        }
+    }
+
+    fun loadAlunosSemTurma(schoolId: String) {
+        viewModelScope.launch {
+            _alunosSemTurmaLoading.value = true
+            try {
+                val response = RetrofitClient.adminApi.listUsers(
+                    schoolId,
+                    mapOf("limit" to PAGE_LIMIT, "role" to "student")
+                )
+                if (!response.error) {
+                    _alunosSemTurma.value = (response.data?.docs ?: emptyList())
+                        .map { it.toAlunoAdmin(schoolId) }
+                        .filter { it.classId == null }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "loadAlunosSemTurma error", e)
+            } finally {
+                _alunosSemTurmaLoading.value = false
+            }
+        }
+    }
+
+    fun assignStudentToClass(schoolId: String, studentId: String, classId: String, onSuccess: () -> Unit) {
+        val parent = _responsaveis.value.find { resp ->
+            resp.memberships.any { m -> m.role == "parent" && m.associatedStudents.any { s -> s.id == studentId } }
+        }
+        if (parent == null) {
+            _actionError.value = "Responsável do aluno não encontrado. Recarregue a página e tente novamente."
+            return
+        }
+        moveStudentToClass(schoolId, parent.id, studentId, classId, onSuccess)
+    }
+
+    fun moveStudentToClass(
+        schoolId: String,
+        parentId: String,
+        studentId: String,
+        classId: String,
+        onSuccess: () -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.adminApi.moveStudentToClass(
+                    schoolId, parentId, studentId, MoveStudentClassRequest(classId = classId)
+                )
+                if (!response.error) {
+                    loadAlunos(schoolId, classId)
+                    loadAlunosSemTurma(schoolId)
+                    onSuccess()
+                } else {
+                    _actionError.value = response.getErrorMessage()
+                }
+            } catch (e: Exception) {
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao mover aluno de turma. Tente novamente.",
+                    on404 = "Aluno ou turma não encontrado."
+                )
+                Log.e(TAG, "moveStudentToClass error", e)
             }
         }
     }
@@ -329,6 +424,7 @@ class AdminViewModel : ViewModel() {
                 val response = RetrofitClient.adminApi.createTemplate(
                     CreateTemplateRequest(
                         schoolId = schoolId,
+                        name = nome.trim(),
                         fields = listOf(
                             dev.fslab.comunicacao.escolar.model.CreateTemplateFieldRequest(
                                 key = key,
@@ -345,7 +441,10 @@ class AdminViewModel : ViewModel() {
                     _actionError.value = response.getErrorMessage()
                 }
             } catch (e: Exception) {
-                _actionError.value = e.localizedMessage ?: "Erro ao criar template"
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao criar template. Tente novamente.",
+                    on409 = "Já existe um template com esse nome."
+                )
                 Log.e(TAG, "createTemplate error", e)
             }
         }
@@ -405,7 +504,87 @@ class AdminViewModel : ViewModel() {
         }
     }
 
+    fun deactivateMembership(schoolId: String, userId: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.adminApi.deactivateMembership(schoolId, userId)
+                if (!response.error) {
+                    loadUsuarios(schoolId)
+                    loadTurmas(schoolId)
+                    onSuccess()
+                } else {
+                    _actionError.value = response.getErrorMessage()
+                }
+            } catch (e: Exception) {
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao desvincular usuário. Tente novamente.",
+                    on404 = "Usuário não encontrado nesta escola."
+                )
+                Log.e(TAG, "deactivateMembership error", e)
+            }
+        }
+    }
+
+    fun activateMembership(schoolId: String, userId: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.adminApi.activateMembership(schoolId, userId)
+                if (!response.error) {
+                    loadUsuarios(schoolId)
+                    loadTurmas(schoolId)
+                    onSuccess()
+                } else {
+                    _actionError.value = response.getErrorMessage()
+                }
+            } catch (e: Exception) {
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao reativar usuário. Tente novamente.",
+                    on404 = "Usuário não encontrado nesta escola."
+                )
+                Log.e(TAG, "activateMembership error", e)
+            }
+        }
+    }
+
     // Clear feedback
     fun clearActionError() { _actionError.value = null }
     fun clearActionSuccess() { _actionSuccess.value = null }
+    fun clearLinkFieldError() { _linkFieldError.value = null }
+
+    private fun retrofit2.HttpException.toFriendlyMessage(): String {
+        if (code() == 400 || code() == 422) {
+            try {
+                val body = response()?.errorBody()?.string()
+                if (!body.isNullOrBlank()) {
+                    val json = JSONObject(body)
+                    val arr = json.optJSONArray("errors")
+                    if (arr != null && arr.length() > 0) {
+                        val msg = arr.getJSONObject(0).optString("message")
+                        if (msg.isNotBlank()) return msg
+                    }
+                    val msg = json.optString("message")
+                    if (msg.isNotBlank()) return msg
+                }
+            } catch (_: Exception) {}
+        }
+        return when (code()) {
+            400 -> "Dados inválidos. Verifique as informações e tente novamente."
+            401 -> "Sessão expirada. Faça login novamente."
+            403 -> "Você não tem permissão para esta ação."
+            404 -> "Registro não encontrado."
+            409 -> "Este registro já existe."
+            500, 502, 503 -> "Erro no servidor. Tente novamente em instantes."
+            else -> "Erro inesperado. Tente novamente."
+        }
+    }
+
+    private fun Exception.toFriendlyMessage(
+        fallback: String,
+        on404: String? = null,
+        on409: String? = null
+    ): String = if (this is retrofit2.HttpException) when (code()) {
+        404 -> on404 ?: toFriendlyMessage()
+        409 -> on409 ?: toFriendlyMessage()
+        else -> toFriendlyMessage()
+    } else fallback
 }
