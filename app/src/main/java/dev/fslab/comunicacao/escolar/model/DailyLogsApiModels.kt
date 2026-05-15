@@ -26,6 +26,7 @@ data class DailyLogDoc(
     @SerializedName("student_id") val student: DailyLogStudent? = null,
     @SerializedName("teacher_id") val teacher: DailyLogTeacher? = null,
     @SerializedName("dailylogtemplate_id") val dailyLogTemplate: DailyLogTemplate? = null,
+    @SerializedName("conversation_id") val conversationId: String = "",
     @SerializedName("is_present") val isPresent: Boolean = true,
     @SerializedName("entries") val entries: List<DailyLogEntry> = emptyList(),
     @SerializedName("attachments") val attachments: List<Any> = emptyList(),

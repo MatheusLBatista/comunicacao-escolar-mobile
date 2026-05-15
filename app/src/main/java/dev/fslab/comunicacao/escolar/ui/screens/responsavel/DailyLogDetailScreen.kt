@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -39,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.fslab.comunicacao.escolar.model.DailyLog
@@ -51,6 +53,7 @@ fun DailyLogDetailScreen(
     onBack: () -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
+
     val message = log.observation.trim().ifBlank { log.description }
     val dateTimeLabel = buildDateTimeLabel(log.date, log.time)
     val teacherName = log.teacherName.ifBlank { "Professor(a)" }
@@ -232,13 +235,19 @@ private fun DailyLogMessageComposer() {
         modifier = Modifier
             .fillMaxWidth()
             .imePadding()
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .navigationBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         OutlinedTextField(
             value = message,
             onValueChange = { message = it },
             modifier = Modifier.weight(1f),
+            textStyle = TextStyle(
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                color = colors.textPrimary
+            ),
             placeholder = {
                 Text(
                     text = "Escreva uma mensagem...",
@@ -249,8 +258,10 @@ private fun DailyLogMessageComposer() {
             shape = RoundedCornerShape(24.dp),
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = colors.inputBorder,
-                unfocusedBorderColor = colors.inputBorder,
+                focusedBorderColor = colors.lightGray,
+                unfocusedBorderColor = colors.lightGray,
+                focusedContainerColor = colors.lightGray,
+                unfocusedContainerColor = colors.lightGray,
                 focusedTextColor = colors.textPrimary,
                 unfocusedTextColor = colors.textPrimary,
                 cursorColor = colors.primary
@@ -260,11 +271,11 @@ private fun DailyLogMessageComposer() {
         Spacer(modifier = Modifier.width(12.dp))
 
         IconButton(
-            onClick = {},
+            onClick = { },
             modifier = Modifier
-                .size(44.dp)
+                .size(48.dp)
                 .clip(CircleShape)
-                .background(colors.textPrimary)
+                .background(colors.textInput)
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Outlined.Send,

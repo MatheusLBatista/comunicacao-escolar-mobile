@@ -1,6 +1,11 @@
 # comunicacao-escolar-mobile
 
+## Chat messages
 
+- API base (emulator): http://10.0.2.2:5000/
+- Endpoint: POST /conversations/{conversationId}/messages
+- Header: Authorization: Bearer {token_jwt}
+- Body: { "text": "conteudo da mensagem" }
 
 ## Getting started
 

@@ -118,7 +118,8 @@ class DailyLogsViewModel : ViewModel() {
             teacherName = teacherName,
             observation = observation,
             isPresent = isPresent,
-            entries = detailEntries
+            entries = detailEntries,
+            conversationId = conversationId
         )
     }
 
