@@ -85,6 +85,7 @@ sealed class AdminSubScreen {
     object VincularUsuario : AdminSubScreen()
     object Alunos : AdminSubScreen()
     object Templates : AdminSubScreen()
+    object NovoTemplate : AdminSubScreen()
     data class TemplateDetail(val template: ComunicadoTemplate) : AdminSubScreen()
     object AuditLogs : AdminSubScreen()
 }
@@ -268,7 +269,8 @@ fun AdminDashboardScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
                             onBack = { subScreenStack.removeLast() },
-                            onProfessorClick = { subScreenStack.add(AdminSubScreen.ProfessorDetail(it)) }
+                            onProfessorClick = { subScreenStack.add(AdminSubScreen.ProfessorDetail(it)) },
+                            onResponsavelClick = { subScreenStack.add(AdminSubScreen.ResponsavelDetail(it)) }
                         )
 
                     is AdminSubScreen.Usuarios ->
@@ -320,7 +322,15 @@ fun AdminDashboardScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
                             onBack = { subScreenStack.removeLast() },
-                            onTemplateClick = { subScreenStack.add(AdminSubScreen.TemplateDetail(it)) }
+                            onTemplateClick = { subScreenStack.add(AdminSubScreen.TemplateDetail(it)) },
+                            onNovoTemplate = { subScreenStack.add(AdminSubScreen.NovoTemplate) }
+                        )
+
+                    is AdminSubScreen.NovoTemplate ->
+                        NovoTemplateScreen(
+                            schoolId = schoolId,
+                            adminViewModel = adminViewModel,
+                            onBack = { subScreenStack.removeLast() }
                         )
 
                     is AdminSubScreen.TemplateDetail ->

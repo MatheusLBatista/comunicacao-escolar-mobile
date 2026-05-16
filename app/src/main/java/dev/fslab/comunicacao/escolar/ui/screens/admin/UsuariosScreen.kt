@@ -346,6 +346,16 @@ fun ProfessorDetailScreen(
             onDismissRequest = { showDesvincularDialog = false },
             shape = RoundedCornerShape(16.dp),
             title = {
+                val view = LocalView.current
+                val colors = LocalComunicacaoEscolarColors.current
+                SideEffect {
+                    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = colors.background.toArgb()
+                        androidx.core.view.WindowCompat.getInsetsController(window, view)
+                            .isAppearanceLightNavigationBars = !colors.isDark
+                    }
+                }
                 Text(
                     text = "Desvincular professor",
                     style = MaterialTheme.typography.titleMedium,
@@ -389,6 +399,16 @@ fun ProfessorDetailScreen(
             onDismissRequest = { turmaParaRemover = null },
             shape = RoundedCornerShape(16.dp),
             title = {
+                val view = LocalView.current
+                val colors = LocalComunicacaoEscolarColors.current
+                SideEffect {
+                    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = colors.background.toArgb()
+                        androidx.core.view.WindowCompat.getInsetsController(window, view)
+                            .isAppearanceLightNavigationBars = !colors.isDark
+                    }
+                }
                 Text(
                     text = "Remover turma",
                     style = MaterialTheme.typography.titleMedium,
@@ -689,6 +709,16 @@ fun ResponsavelDetailScreen(
             onDismissRequest = { showDesvincularDialog = false },
             shape = RoundedCornerShape(16.dp),
             title = {
+                val view = LocalView.current
+                val colors = LocalComunicacaoEscolarColors.current
+                SideEffect {
+                    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = colors.background.toArgb()
+                        androidx.core.view.WindowCompat.getInsetsController(window, view)
+                            .isAppearanceLightNavigationBars = !colors.isDark
+                    }
+                }
                 Text(
                     text = "Desvincular responsável",
                     style = MaterialTheme.typography.titleMedium,
@@ -698,7 +728,7 @@ fun ResponsavelDetailScreen(
             },
             text = {
                 Text(
-                    text = "Desvincular ${responsavel.nome} desta escola? O vínculo pode ser restaurado posteriormente.",
+                    text = "Desvincular ${responsavel.nome} desta escola? Os filhos vinculados também serão desvinculados automaticamente.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = LocalComunicacaoEscolarColors.current.textSecondary
                 )
@@ -707,7 +737,7 @@ fun ResponsavelDetailScreen(
                 Button(
                     onClick = {
                         showDesvincularDialog = false
-                        adminViewModel.deactivateMembership(schoolId, responsavel.id) { onBack() }
+                        adminViewModel.deactivateResponsavel(schoolId, responsavel.id) { onBack() }
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = LocalComunicacaoEscolarColors.current.error,
@@ -739,6 +769,16 @@ fun ResponsavelDetailScreen(
             onDismissRequest = { filhoParaRemover = null },
             shape = RoundedCornerShape(16.dp),
             title = {
+                val view = LocalView.current
+                val colors = LocalComunicacaoEscolarColors.current
+                SideEffect {
+                    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = colors.background.toArgb()
+                        androidx.core.view.WindowCompat.getInsetsController(window, view)
+                            .isAppearanceLightNavigationBars = !colors.isDark
+                    }
+                }
                 Text(
                     text = "Remover filho",
                     style = MaterialTheme.typography.titleMedium,
@@ -945,6 +985,7 @@ fun ResponsavelDetailScreen(
             },
             onSaveTurma = { novaClassId ->
                 adminViewModel.moveStudentToClass(schoolId, responsavel.id, filho.id, novaClassId) {
+                    adminViewModel.loadUsuarios(schoolId)
                     scope.launch { filhoSheetState.hide() }.invokeOnCompletion { filhoSelecionado = null }
                 }
             }

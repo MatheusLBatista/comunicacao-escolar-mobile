@@ -47,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -56,8 +57,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -339,7 +342,18 @@ fun PerfilScreen(
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
-            title = { Text("Editar nome", fontWeight = FontWeight.Bold, color = colors.textPrimary) },
+            title = {
+                val view = LocalView.current
+                SideEffect {
+                    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = colors.background.toArgb()
+                        androidx.core.view.WindowCompat.getInsetsController(window, view)
+                            .isAppearanceLightNavigationBars = !colors.isDark
+                    }
+                }
+                Text("Editar nome", fontWeight = FontWeight.Bold, color = colors.textPrimary)
+            },
             text = {
                 OutlinedTextField(
                     value = nomeTemp,
@@ -388,6 +402,15 @@ fun PerfilScreen(
     // Seletor de tema
     if (showThemeDialog) {
         Dialog(onDismissRequest = { showThemeDialog = false }) {
+            val view = LocalView.current
+            SideEffect {
+                val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                if (window != null) {
+                    window.navigationBarColor = colors.background.toArgb()
+                    androidx.core.view.WindowCompat.getInsetsController(window, view)
+                        .isAppearanceLightNavigationBars = !colors.isDark
+                }
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

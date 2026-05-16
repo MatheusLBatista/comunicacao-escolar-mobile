@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -55,7 +56,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -82,6 +82,7 @@ import dev.fslab.comunicacao.escolar.model.AlunoAdmin
 import dev.fslab.comunicacao.escolar.model.ApiClass
 import dev.fslab.comunicacao.escolar.model.ApiSchoolUser
 import dev.fslab.comunicacao.escolar.model.ProfessorAdmin
+import dev.fslab.comunicacao.escolar.model.ResponsavelAdmin
 import dev.fslab.comunicacao.escolar.model.Turma
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AdminViewModel
@@ -506,7 +507,6 @@ private fun NovaTurmaBottomSheet(
                         Column(
                             modifier = Modifier
                                 .width(widthDp)
-                                .shadow(4.dp, RoundedCornerShape(12.dp))
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(colors.surface)
                         ) {
@@ -565,7 +565,8 @@ fun TurmaDetailScreen(
     schoolId: String,
     adminViewModel: AdminViewModel,
     onBack: () -> Unit,
-    onProfessorClick: (ProfessorAdmin) -> Unit = {}
+    onProfessorClick: (ProfessorAdmin) -> Unit = {},
+    onResponsavelClick: (ResponsavelAdmin) -> Unit = {}
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val alunos by adminViewModel.alunos.collectAsState()
@@ -642,9 +643,7 @@ fun TurmaDetailScreen(
                 Spacer(modifier = Modifier.height(28.dp))
             }
 
-            val firstTeacher = apiClass?.teachers?.firstOrNull { t ->
-                activeProfessorIds.isEmpty() || t.id in activeProfessorIds
-            }
+            val classTeachers = apiClass?.teachers ?: emptyList()
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp),
@@ -652,7 +651,7 @@ fun TurmaDetailScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "PROFESSOR",
+                        text = "PROFESSORES",
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = colors.textSecondary
@@ -670,10 +669,10 @@ fun TurmaDetailScreen(
                     }
                 }
             }
-            if (firstTeacher != null) {
-                item {
-                    val professorUser = professores.find { it.id == firstTeacher.id }
-                    val professorInteraction = remember { MutableInteractionSource() }
+            if (classTeachers.isNotEmpty()) {
+                items(classTeachers, key = { it.id }) { teacher ->
+                    val professorUser = professores.find { it.id == teacher.id }
+                    val teacherInteraction = remember { MutableInteractionSource() }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -682,7 +681,7 @@ fun TurmaDetailScreen(
                             .let { m ->
                                 if (professorUser != null)
                                     m.clickable(
-                                        interactionSource = professorInteraction,
+                                        interactionSource = teacherInteraction,
                                         indication = null
                                     ) { onProfessorClick(professorUser.toProfessorAdmin()) }
                                 else m
@@ -691,9 +690,9 @@ fun TurmaDetailScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        UserAvatar(nome = firstTeacher.fullName, size = 40)
+                        UserAvatar(nome = teacher.fullName, size = 40)
                         Text(
-                            text = firstTeacher.fullName,
+                            text = teacher.fullName,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = colors.textPrimary,
@@ -710,6 +709,15 @@ fun TurmaDetailScreen(
                             )
                         }
                     }
+                }
+                item { Spacer(modifier = Modifier.height(28.dp)) }
+            } else {
+                item {
+                    Text(
+                        text = "Nenhum professor atribuído",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary
+                    )
                     Spacer(modifier = Modifier.height(28.dp))
                 }
             }
@@ -766,13 +774,28 @@ fun TurmaDetailScreen(
     }
 
     selectedAluno?.let { aluno ->
+        val parentId = parentUserMap[aluno.id]?.id
         AlunoDetalheBottomSheet(
             aluno = aluno,
             turma = apiClass,
             parentUser = parentUserMap[aluno.id],
             onDismiss = { selectedAluno = null },
             onTurmaClick = { selectedAluno = null },
-            onResponsavelClick = { selectedAluno = null }
+            onResponsavelClick = { resp -> selectedAluno = null; onResponsavelClick(resp) },
+            allTurmas = allTurmas,
+            onMoverParaTurma = { classId ->
+                if (parentId != null) {
+                    adminViewModel.moveStudentToClass(schoolId, parentId, aluno.id, classId) {
+                        selectedAluno = null
+                        adminViewModel.loadAlunos(schoolId, turma.id)
+                    }
+                } else {
+                    adminViewModel.assignStudentToClass(schoolId, aluno.id, classId) {
+                        selectedAluno = null
+                        adminViewModel.loadAlunos(schoolId, turma.id)
+                    }
+                }
+            }
         )
     }
 
@@ -789,6 +812,7 @@ fun TurmaDetailScreen(
             }
         )
     }
+
 
     if (showAdicionarAluno) {
         AdicionarAlunoTurmaBottomSheet(
@@ -875,6 +899,20 @@ private fun AdicionarProfessorBottomSheet(
             )
         }
     ) {
+        val sheetView = LocalView.current
+        val isDark = colors.isDark
+        val bgColor = colors.background
+        SideEffect {
+            val window = (sheetView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+            if (window != null) {
+                window.setBackgroundDrawable(
+                    android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+                )
+                window.navigationBarColor = bgColor.toArgb()
+                androidx.core.view.WindowCompat.getInsetsController(window, sheetView)
+                    .isAppearanceLightNavigationBars = !isDark
+            }
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -915,6 +953,7 @@ private fun AdicionarProfessorBottomSheet(
                 }
             } else {
                 LazyColumn(
+                    modifier = Modifier.heightIn(max = 400.dp),
                     contentPadding = PaddingValues(bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -990,6 +1029,20 @@ private fun AdicionarAlunoTurmaBottomSheet(
             )
         }
     ) {
+        val sheetView = LocalView.current
+        val isDark = colors.isDark
+        val bgColor = colors.background
+        SideEffect {
+            val window = (sheetView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+            if (window != null) {
+                window.setBackgroundDrawable(
+                    android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+                )
+                window.navigationBarColor = bgColor.toArgb()
+                androidx.core.view.WindowCompat.getInsetsController(window, sheetView)
+                    .isAppearanceLightNavigationBars = !isDark
+            }
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1032,6 +1085,7 @@ private fun AdicionarAlunoTurmaBottomSheet(
                     )
                 }
                 else -> LazyColumn(
+                    modifier = Modifier.heightIn(max = 400.dp),
                     contentPadding = PaddingValues(bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {

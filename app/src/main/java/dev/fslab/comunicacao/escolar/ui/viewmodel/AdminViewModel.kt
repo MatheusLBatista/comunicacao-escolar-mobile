@@ -14,6 +14,7 @@ import dev.fslab.comunicacao.escolar.model.ApiStudentInput
 import dev.fslab.comunicacao.escolar.model.CreateClassRequest
 import dev.fslab.comunicacao.escolar.model.MoveStudentClassRequest
 import dev.fslab.comunicacao.escolar.model.UpdateClassRequest
+import dev.fslab.comunicacao.escolar.model.CreateTemplateFieldRequest
 import dev.fslab.comunicacao.escolar.model.CreateTemplateRequest
 import dev.fslab.comunicacao.escolar.model.LinkToSchoolRequest
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
@@ -258,9 +259,27 @@ class AdminViewModel : ViewModel() {
                 )
                 if (!response.error) {
                     if (role == "teacher" && classId != null) {
-                        val userId = response.data?.id
+                        val userId = response.data?.id?.takeIf { it.isNotBlank() }
                         if (userId != null) {
-                            assignTeacherToClass(schoolId, classId, userId, onSuccess = {})
+                            try {
+                                val classesResp = RetrofitClient.adminApi.listClasses(schoolId, mapOf("limit" to PAGE_LIMIT))
+                                val freshClass = classesResp.data?.docs?.find { it.id == classId }
+                                    ?: _turmas.value.find { it.id == classId }
+                                if (freshClass != null) {
+                                    val currentIds = freshClass.teachers.map { it.id }
+                                    if (userId !in currentIds) {
+                                        val updateResp = RetrofitClient.adminApi.updateClass(
+                                            schoolId, classId,
+                                            UpdateClassRequest(teacherIds = currentIds + userId)
+                                        )
+                                        if (updateResp.data != null) {
+                                            _turmas.value = _turmas.value.map { if (it.id == classId) updateResp.data else it }
+                                        }
+                                    }
+                                }
+                            } catch (_: Exception) {
+                                // Silencia falha de atribuição — vínculo principal teve sucesso
+                            }
                         }
                     }
                     _actionSuccess.value = "Usuário vinculado com sucesso!"
@@ -417,21 +436,19 @@ class AdminViewModel : ViewModel() {
         }
     }
 
-    fun createTemplate(schoolId: String, nome: String, onSuccess: (ApiDailyLogTemplate) -> Unit) {
+    fun createTemplate(
+        schoolId: String,
+        nome: String,
+        fields: List<CreateTemplateFieldRequest> = emptyList(),
+        onSuccess: (ApiDailyLogTemplate) -> Unit
+    ) {
         viewModelScope.launch {
             try {
-                val key = nome.trim().lowercase().replace(" ", "_")
                 val response = RetrofitClient.adminApi.createTemplate(
                     CreateTemplateRequest(
                         schoolId = schoolId,
                         name = nome.trim(),
-                        fields = listOf(
-                            dev.fslab.comunicacao.escolar.model.CreateTemplateFieldRequest(
-                                key = key,
-                                label = nome.trim(),
-                                type = "text"
-                            )
-                        )
+                        fields = fields
                     )
                 )
                 if (!response.error && response.data != null) {
@@ -500,6 +517,39 @@ class AdminViewModel : ViewModel() {
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "loadDashboardStats error", e)
+            }
+        }
+    }
+
+    fun deactivateResponsavel(schoolId: String, responsavelId: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val studentIds = _responsaveis.value
+                    .find { it.id == responsavelId }
+                    ?.memberships
+                    ?.filter { it.role == "parent" }
+                    ?.flatMap { it.associatedStudents }
+                    ?.map { it.id }
+                    ?: emptyList()
+
+                for (studentId in studentIds) {
+                    RetrofitClient.adminApi.deactivateMembership(schoolId, studentId)
+                }
+
+                val response = RetrofitClient.adminApi.deactivateMembership(schoolId, responsavelId)
+                if (!response.error) {
+                    loadUsuarios(schoolId)
+                    loadTurmas(schoolId)
+                    onSuccess()
+                } else {
+                    _actionError.value = response.getErrorMessage()
+                }
+            } catch (e: Exception) {
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao desvincular responsável. Tente novamente.",
+                    on404 = "Responsável não encontrado nesta escola."
+                )
+                Log.e(TAG, "deactivateResponsavel error", e)
             }
         }
     }

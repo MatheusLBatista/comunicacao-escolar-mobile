@@ -194,13 +194,28 @@ fun AlunosScreen(
     }
 
     selectedAluno?.let { aluno ->
+        val parentId = parentUserMap[aluno.id]?.id
         AlunoDetalheBottomSheet(
             aluno = aluno,
             turma = aluno.classId?.let { id -> allTurmas.find { it.id == id } },
             parentUser = parentUserMap[aluno.id],
             onDismiss = { selectedAluno = null },
             onTurmaClick = { turma -> selectedAluno = null; onTurmaClick(turma) },
-            onResponsavelClick = { resp -> selectedAluno = null; onResponsavelClick(resp) }
+            onResponsavelClick = { resp -> selectedAluno = null; onResponsavelClick(resp) },
+            allTurmas = allTurmas,
+            onMoverParaTurma = { classId ->
+                if (parentId != null) {
+                    adminViewModel.moveStudentToClass(schoolId, parentId, aluno.id, classId) {
+                        selectedAluno = null
+                        adminViewModel.loadAlunos(schoolId)
+                    }
+                } else {
+                    adminViewModel.assignStudentToClass(schoolId, aluno.id, classId) {
+                        selectedAluno = null
+                        adminViewModel.loadAlunos(schoolId)
+                    }
+                }
+            }
         )
     }
 }
@@ -213,7 +228,9 @@ internal fun AlunoDetalheBottomSheet(
     parentUser: ApiSchoolUser?,
     onDismiss: () -> Unit,
     onTurmaClick: (Turma) -> Unit,
-    onResponsavelClick: (ResponsavelAdmin) -> Unit
+    onResponsavelClick: (ResponsavelAdmin) -> Unit,
+    allTurmas: List<ApiClass> = emptyList(),
+    onMoverParaTurma: ((classId: String) -> Unit)? = null
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val sheetState = rememberModalBottomSheetState()
@@ -269,7 +286,17 @@ internal fun AlunoDetalheBottomSheet(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(8.dp))
-            if (turma != null) {
+            if (onMoverParaTurma != null && allTurmas.isNotEmpty()) {
+                val turmasList = remember(allTurmas) { allTurmas.map { it.toTurma() } }
+                TurmaDropdownField(
+                    turmas = turmasList,
+                    selectedTurma = turma?.toTurma(),
+                    onTurmaSelected = { selected ->
+                        if (selected.id != turma?.id) onMoverParaTurma(selected.id)
+                    },
+                    placeholder = "Selecionar turma"
+                )
+            } else if (turma != null) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -334,7 +361,7 @@ internal fun AlunoDetalheBottomSheet(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
                         ) { onResponsavelClick(parentUser.toResponsavelAdmin()) }
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
