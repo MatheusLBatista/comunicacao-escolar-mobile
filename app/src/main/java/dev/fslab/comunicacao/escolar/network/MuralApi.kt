@@ -13,6 +13,6 @@ import retrofit2.http.Path
 interface MuralApi {
 
     @GET("schools/{id}/posts")
-    suspend fun getPosts(@Path("id") id: String): List<MuralResponse>
+    suspend fun getPosts(@Path("id") id: String): MuralResponse
 
 }

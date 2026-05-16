@@ -64,6 +64,7 @@ import dev.fslab.comunicacao.escolar.ui.theme.Poppins
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralViewModel
+import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 
 @Composable
 fun MuralScreen(
@@ -76,6 +77,8 @@ fun MuralScreen(
 	val textPrimary = Color(0xFF000000)
 	val textSecondary = Color(0xFF40484C)
 	val likeColor = Color(0xFF40484C)
+
+	val colors = LocalComunicacaoEscolarColors.current
 
 	val muralState by muralViewModel.muralState.collectAsState()
 	val posts by muralViewModel.posts.collectAsState()
@@ -109,10 +112,9 @@ fun MuralScreen(
 	Column(
 		modifier = Modifier
 			.fillMaxSize()
-			.background(background)
+			.background(colors.background)
 			.statusBarsPadding()
 			.navigationBarsPadding()
-			.verticalScroll(rememberScrollState())
 			.padding(horizontal = 24.dp)
 	) {
 		Text(
@@ -146,11 +148,11 @@ fun MuralScreen(
 				)
 			}
 			is MuralState.Success -> {
-				if(posts.isEmpty()) {
+				if(posts!!.data.docs.isEmpty()) {
 					Text("Nenhum post encontrado")
 				} else {
 					LazyColumn {
-						itemsIndexed(posts) { index,
+						itemsIndexed(posts!!.data.docs) { index,
 							post ->
 							MuralPostCard(post)
 							Spacer(modifier = Modifier.height(16.dp))
@@ -164,9 +166,10 @@ fun MuralScreen(
 
 @Composable
 fun MuralPostCard(post: Docs) {
+	val colors = LocalComunicacaoEscolarColors.current
 	Column(modifier = Modifier
 		.fillMaxWidth()
-		.background(Color.White, RoundedCornerShape(12.dp))
+		.background(colors.background, RoundedCornerShape(12.dp))
 		.padding(16.dp)
 	){
 		Text(

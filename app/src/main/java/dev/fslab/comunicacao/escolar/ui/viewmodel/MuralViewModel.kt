@@ -15,7 +15,7 @@ import android.util.Log
 sealed class MuralState {
     object Idle: MuralState()
     object Loading: MuralState()
-    data class Success(val posts: List<MuralResponse>) : MuralState()
+    data class Success(val posts:MuralResponse) : MuralState()
     data class Error(val message: String) : MuralState()
 }
 class MuralViewModel : ViewModel() {
@@ -25,8 +25,8 @@ class MuralViewModel : ViewModel() {
     private val _muralState = MutableStateFlow<MuralState>(MuralState.Idle)
     val muralState: StateFlow<MuralState> = _muralState.asStateFlow()
 
-    private val _posts = MutableStateFlow<List<MuralResponse>>(emptyList())
-    val posts: StateFlow<List<MuralResponse>> = _posts.asStateFlow()
+    private val _posts = MutableStateFlow<MuralResponse?>(null)
+    val posts: StateFlow<MuralResponse?> = _posts.asStateFlow()
 
     fun getPosts(schoolId: String) {
         Log.d(TAG, "Estamos começando uma requisição")
@@ -37,7 +37,7 @@ class MuralViewModel : ViewModel() {
                 val response = RetrofitClient.muralApi.getPosts(schoolId)
                 _posts.value = response
                 _muralState.value = MuralState.Success(response)
-                Log.d(TAG, "Posts carregados com sucesso: ${response.size} posts")
+                Log.d(TAG, "Posts carregados com sucesso: ${response.data.docs.size} posts")
             } catch (e: HttpException) {
                 val errorMessage = when (e.code()) {
                     404 -> "Post não encontrado."
