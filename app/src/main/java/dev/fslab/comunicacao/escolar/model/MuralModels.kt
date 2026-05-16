@@ -11,7 +11,7 @@ data class TargetInfo(
     @SerializedName("target_id") val target_id: String? = null
 )
 
-data class  MuralResponse (
+data class  Docs (
     @SerializedName("_id") val id:String = "",
     @SerializedName("school_id") val school_id:String =" ",
     @SerializedName("title") val title:String = "",
@@ -21,4 +21,27 @@ data class  MuralResponse (
     @SerializedName("active") val active: Boolean = true,
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null
+)
+
+
+data class Dados (
+    @SerializedName("docs") val docs: List<Docs> = emptyList(),
+    @SerializedName("totalDocs") val totalDocs: Int,
+    @SerializedName("limit") val limit: Int,
+    @SerializedName("totalPages") val totalPages: Int,
+    @SerializedName("page") val page: Int,
+    @SerializedName("pagingCounter") val pagingCounter: Int,
+    @SerializedName("hasPrevPage") val hasPrevPage: Boolean,
+    @SerializedName("hasNextPage") val hasNextPage: Boolean,
+    @SerializedName("prevPage") val prevPage: Int? = null,
+    @SerializedName("nextPage") val nextPage: Int? = null
+)
+data class MuralResponse (
+    @SerializedName("error") val error: Boolean,
+    @SerializedName("code") val code: Int,
+    @SerializedName("message") val message: String? = "",
+    @SerializedName("data") val data: Dados
+
+
+
 )

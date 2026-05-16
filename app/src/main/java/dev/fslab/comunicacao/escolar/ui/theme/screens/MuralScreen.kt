@@ -1,6 +1,7 @@
 package dev.fslab.comunicacao.escolar.ui.theme.screens
 
 import android.app.Activity
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -56,6 +57,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.fslab.comunicacao.escolar.R
+import dev.fslab.comunicacao.escolar.model.Docs
 import dev.fslab.comunicacao.escolar.model.MuralResponse
 import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
 import dev.fslab.comunicacao.escolar.ui.theme.Poppins
@@ -69,6 +71,7 @@ fun MuralScreen(
 	muralViewModel: MuralViewModel = viewModel(),
 	authViewModel: AuthViewModel = viewModel()
 ) {
+
 	val background = Color(0xFFF4F4F5)
 	val textPrimary = Color(0xFF000000)
 	val textSecondary = Color(0xFF40484C)
@@ -87,8 +90,9 @@ fun MuralScreen(
 		context.resources.getIdentifier("mural_ciencias", "drawable", context.packageName)
 	}
 
-
-	LaunchedEffect(currentUser) {
+	println("Mural2 ${currentUser}")
+//	print
+	LaunchedEffect(currentUser?.schoolId) {
 		currentUser?.schoolId?.let  {
 			schoolId -> muralViewModel.getPosts(schoolId)
 		}
@@ -159,7 +163,7 @@ fun MuralScreen(
 }
 
 @Composable
-fun MuralPostCard(post: MuralResponse) {
+fun MuralPostCard(post: Docs) {
 	Column(modifier = Modifier
 		.fillMaxWidth()
 		.background(Color.White, RoundedCornerShape(12.dp))

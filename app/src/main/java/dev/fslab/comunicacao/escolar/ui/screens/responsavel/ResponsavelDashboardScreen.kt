@@ -43,6 +43,8 @@ import dev.fslab.comunicacao.escolar.ui.components.BottomNavBar
 import dev.fslab.comunicacao.escolar.ui.components.BottomNavItem
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
+import dev.fslab.comunicacao.escolar.ui.theme.screens.MuralScreen as MuralScreenReal
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 private val responsavelNavItems = listOf(
     BottomNavItem(
@@ -113,7 +115,10 @@ fun ResponsavelDashboardScreen(
             when (route) {
                 Screen.Atividades.route -> AtividadesScreen(user = user, accessToken = accessToken)
                 Screen.Conversas.route  -> ConversasScreen(user = user, accessToken = accessToken)
-                Screen.Mural.route      -> MuralScreen(user = user, accessToken = accessToken)
+                Screen.Mural.route      -> MuralScreenReal(
+                    muralViewModel = viewModel(),
+                    authViewModel = authViewModel
+                )
                 Screen.Agenda.route     -> AgendaScreen(user = user, accessToken = accessToken)
                 Screen.Perfil.route     -> PerfilScreen(
                     user = user,
@@ -153,18 +158,6 @@ fun ConversasScreen(user: User, accessToken: String) {
     }
 }
 
-@Composable
-fun MuralScreen(user: User, accessToken: String) {
-    val colors = LocalComunicacaoEscolarColors.current
-    if (user.schoolId == null) {
-        SemEscolaVinculada(
-            icon = Icons.Outlined.FavoriteBorder,
-            nomeTela = "Mural"
-        )
-    } else {
-        PlaceholderTela(nome = "Mural", colors = colors)
-    }
-}
 
 @Composable
 fun AgendaScreen(user: User, accessToken: String) {

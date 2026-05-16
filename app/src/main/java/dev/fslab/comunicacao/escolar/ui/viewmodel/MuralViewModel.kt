@@ -29,6 +29,8 @@ class MuralViewModel : ViewModel() {
     val posts: StateFlow<List<MuralResponse>> = _posts.asStateFlow()
 
     fun getPosts(schoolId: String) {
+        Log.d(TAG, "Estamos começando uma requisição")
+
         viewModelScope.launch {
             _muralState.value = MuralState.Loading
             try {
@@ -55,7 +57,7 @@ class MuralViewModel : ViewModel() {
             } catch (e: Exception) {
                 val errorMsg = e.localizedMessage ?: "Erro ao carregar posts. Tente novamnete."
                 _muralState.value = MuralState.Error(errorMsg)
-                Log.e(TAG, "Errp ao carregar posts", e)
+                Log.e(TAG, "Erro ao carregar posts", e)
             }
         }
     }
