@@ -46,10 +46,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarDuration
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
+import dev.fslab.comunicacao.escolar.ui.components.AppToast
+import dev.fslab.comunicacao.escolar.ui.components.rememberAppToastState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -73,6 +71,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -94,7 +93,8 @@ fun UsuariosScreen(
     adminViewModel: AdminViewModel,
     onBack: () -> Unit,
     onProfessorClick: (ProfessorAdmin) -> Unit,
-    onResponsavelClick: (ResponsavelAdmin) -> Unit
+    onResponsavelClick: (ResponsavelAdmin) -> Unit,
+    onVincularClick: () -> Unit = {}
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val apiProfessores by adminViewModel.professores.collectAsState()
@@ -107,6 +107,7 @@ fun UsuariosScreen(
         if (schoolId.isNotBlank()) adminViewModel.loadUsuarios(schoolId)
     }
 
+    Box(modifier = Modifier.fillMaxSize()) {
     AdminSubScreenScaffold(title = "Usuários", onBack = onBack) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Search bar
@@ -187,7 +188,7 @@ fun UsuariosScreen(
                     }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 16.dp),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(filtrados, key = { it.id }) { prof ->
@@ -206,7 +207,7 @@ fun UsuariosScreen(
                     }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 16.dp),
+                    contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(filtrados, key = { it.id }) { resp ->
@@ -218,6 +219,19 @@ fun UsuariosScreen(
                     }
                 }
             }
+        }
+    }
+
+        FloatingActionButton(
+            onClick = onVincularClick,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 24.dp, bottom = 16.dp),
+            containerColor = colors.buttonContainer,
+            contentColor = colors.buttonText,
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Icon(imageVector = Icons.Outlined.Add, contentDescription = "Vincular usuário")
         }
     }
 }
@@ -241,12 +255,16 @@ internal fun UsuarioListItem(nome: String, subtitle: String, onClick: () -> Unit
                 text = nome,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = colors.textPrimary
+                color = colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = colors.textSecondary
+                color = colors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
         Icon(
@@ -319,14 +337,78 @@ fun ProfessorDetailScreen(
     }
     var showAddSheet by remember { mutableStateOf(false) }
     var turmaParaRemover by remember { mutableStateOf<Turma?>(null) }
+    var showDesvincularDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
+
+    if (showDesvincularDialog) {
+        AlertDialog(
+            onDismissRequest = { showDesvincularDialog = false },
+            shape = RoundedCornerShape(16.dp),
+            title = {
+                val view = LocalView.current
+                val colors = LocalComunicacaoEscolarColors.current
+                SideEffect {
+                    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = colors.background.toArgb()
+                        androidx.core.view.WindowCompat.getInsetsController(window, view)
+                            .isAppearanceLightNavigationBars = !colors.isDark
+                    }
+                }
+                Text(
+                    text = "Desvincular professor",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = LocalComunicacaoEscolarColors.current.textPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Desvincular ${professor.nome} desta escola? O vínculo pode ser restaurado posteriormente.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = LocalComunicacaoEscolarColors.current.textSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDesvincularDialog = false
+                        adminViewModel.deactivateMembership(schoolId, professor.id) { onBack() }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = LocalComunicacaoEscolarColors.current.error,
+                        contentColor = LocalComunicacaoEscolarColors.current.buttonText
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Desvincular", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDesvincularDialog = false }) {
+                    Text("Cancelar", style = MaterialTheme.typography.bodyMedium, color = LocalComunicacaoEscolarColors.current.textSecondary)
+                }
+            },
+            containerColor = LocalComunicacaoEscolarColors.current.background
+        )
+    }
 
     turmaParaRemover?.let { turma ->
         AlertDialog(
             onDismissRequest = { turmaParaRemover = null },
             shape = RoundedCornerShape(16.dp),
             title = {
+                val view = LocalView.current
+                val colors = LocalComunicacaoEscolarColors.current
+                SideEffect {
+                    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = colors.background.toArgb()
+                        androidx.core.view.WindowCompat.getInsetsController(window, view)
+                            .isAppearanceLightNavigationBars = !colors.isDark
+                    }
+                }
                 Text(
                     text = "Remover turma",
                     style = MaterialTheme.typography.titleMedium,
@@ -462,6 +544,19 @@ fun ProfessorDetailScreen(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { showDesvincularDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(vertical = 14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.error,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Desvincular da escola", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                }
                 Spacer(modifier = Modifier.height(80.dp))
             }
         }
@@ -505,7 +600,6 @@ private fun AdicionarTurmaBottomSheet(
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     var selected by remember { mutableStateOf<Turma?>(null) }
-    var showMenu by remember { mutableStateOf(false) }
     val isEmpty = turmasDisponiveis.isEmpty()
 
     ModalBottomSheet(
@@ -551,76 +645,20 @@ private fun AdicionarTurmaBottomSheet(
                 modifier = Modifier.padding(bottom = 4.dp)
             )
 
-            var dropdownWidth by remember { mutableStateOf(0) }
-            val density = LocalDensity.current
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onSizeChanged { dropdownWidth = it.width }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(colors.surface)
-                        .then(
-                            if (!isEmpty) Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { showMenu = true } else Modifier
-                        )
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = when {
-                            isEmpty -> "Todas as turmas já vinculadas"
-                            selected != null -> selected!!.nome
-                            else -> "Selecione uma turma..."
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (selected != null && !isEmpty) colors.textPrimary else colors.textSecondary
-                    )
-                    Icon(
-                        imageVector = Icons.Outlined.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = colors.textSecondary
-                    )
-                }
-                if (!isEmpty) {
-                    DropdownMenu(
-                        expanded = showMenu,
-                        onDismissRequest = { showMenu = false },
-                        offset = DpOffset(x = 0.dp, y = -6.dp),
-                        modifier = Modifier
-                            .width(with(density) { dropdownWidth.toDp() })
-                            .background(colors.surface)
-                    ) {
-                        turmasDisponiveis.forEach { t ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        t.nome,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = colors.textPrimary
-                                    )
-                                },
-                                onClick = {
-                                    selected = t
-                                    showMenu = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
+            TurmaDropdownField(
+                turmas = turmasDisponiveis,
+                selectedTurma = selected,
+                onTurmaSelected = { selected = it },
+                enabled = !isEmpty,
+                disabledText = "Todas as turmas já vinculadas"
+            )
 
             Button(
                 onClick = { selected?.let { onAdd(it) } },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = selected != null,
                 shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.buttonContainer,
                     contentColor = colors.buttonText,
@@ -642,13 +680,14 @@ fun ResponsavelDetailScreen(
     responsavel: ResponsavelAdmin,
     schoolId: String,
     adminViewModel: AdminViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onTurmaClick: (Turma) -> Unit = {}
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val allTurmas by adminViewModel.turmas.collectAsState()
     val apiResponsaveis by adminViewModel.responsaveis.collectAsState()
     val actionError by adminViewModel.actionError.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val toastState = rememberAppToastState()
     val filhos = remember(apiResponsaveis) {
         val atualizado = apiResponsaveis.find { it.id == responsavel.id }
         val fonte = atualizado?.toResponsavelAdmin(schoolId)?.filhos ?: responsavel.filhos
@@ -660,13 +699,67 @@ fun ResponsavelDetailScreen(
     var showAddSheet by remember { mutableStateOf(false) }
     var filhoParaRemover by remember { mutableStateOf<FilhoAdmin?>(null) }
     var filhoSelecionado by remember { mutableStateOf<FilhoAdmin?>(null) }
+    var showDesvincularDialog by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val filhoSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
 
+    if (showDesvincularDialog) {
+        AlertDialog(
+            onDismissRequest = { showDesvincularDialog = false },
+            shape = RoundedCornerShape(16.dp),
+            title = {
+                val view = LocalView.current
+                val colors = LocalComunicacaoEscolarColors.current
+                SideEffect {
+                    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = colors.background.toArgb()
+                        androidx.core.view.WindowCompat.getInsetsController(window, view)
+                            .isAppearanceLightNavigationBars = !colors.isDark
+                    }
+                }
+                Text(
+                    text = "Desvincular responsável",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = LocalComunicacaoEscolarColors.current.textPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Desvincular ${responsavel.nome} desta escola? Os filhos vinculados também serão desvinculados automaticamente.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = LocalComunicacaoEscolarColors.current.textSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDesvincularDialog = false
+                        adminViewModel.deactivateResponsavel(schoolId, responsavel.id) { onBack() }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = LocalComunicacaoEscolarColors.current.error,
+                        contentColor = LocalComunicacaoEscolarColors.current.buttonText
+                    ),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Desvincular", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = Color.White)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDesvincularDialog = false }) {
+                    Text("Cancelar", style = MaterialTheme.typography.bodyMedium, color = LocalComunicacaoEscolarColors.current.textSecondary)
+                }
+            },
+            containerColor = LocalComunicacaoEscolarColors.current.background
+        )
+    }
+
     LaunchedEffect(actionError) {
         actionError?.let {
-            snackbarHostState.showSnackbar(message = it, duration = SnackbarDuration.Short)
+            toastState.showError(it)
             adminViewModel.clearActionError()
         }
     }
@@ -676,6 +769,16 @@ fun ResponsavelDetailScreen(
             onDismissRequest = { filhoParaRemover = null },
             shape = RoundedCornerShape(16.dp),
             title = {
+                val view = LocalView.current
+                val colors = LocalComunicacaoEscolarColors.current
+                SideEffect {
+                    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = colors.background.toArgb()
+                        androidx.core.view.WindowCompat.getInsetsController(window, view)
+                            .isAppearanceLightNavigationBars = !colors.isDark
+                    }
+                }
                 Text(
                     text = "Remover filho",
                     style = MaterialTheme.typography.titleMedium,
@@ -758,9 +861,8 @@ fun ResponsavelDetailScreen(
                 )
 
                 filhos.forEachIndexed { idx, filho ->
-                    val turmaNome = filho.classId?.let { cid ->
-                        allTurmas.find { it.id == cid }?.name
-                    }
+                    val turmaApi = filho.classId?.let { cid -> allTurmas.find { it.id == cid } }
+                    val turmaNome = turmaApi?.name
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -778,11 +880,34 @@ fun ResponsavelDetailScreen(
                                 fontWeight = FontWeight.Medium,
                                 color = colors.textPrimary
                             )
-                            Text(
-                                text = turmaNome ?: "Sem turma",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = colors.textSecondary
-                            )
+                            if (turmaNome != null) {
+                                Row(
+                                    modifier = Modifier.clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { onTurmaClick(turmaApi!!.toTurma()) },
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        text = turmaNome,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.textPrimary
+                                    )
+                                    Icon(
+                                        imageVector = Icons.Outlined.ChevronRight,
+                                        contentDescription = null,
+                                        tint = colors.textSecondary,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                }
+                            } else {
+                                Text(
+                                    text = "Sem turma",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.textSecondary
+                                )
+                            }
                         }
                         IconButton(onClick = { filhoParaRemover = filho }, modifier = Modifier.size(32.dp)) {
                             Icon(
@@ -801,6 +926,19 @@ fun ResponsavelDetailScreen(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = { showDesvincularDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    contentPadding = PaddingValues(vertical = 14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.error,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Desvincular da escola", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                }
                 Spacer(modifier = Modifier.height(80.dp))
             }
         }
@@ -817,19 +955,7 @@ fun ResponsavelDetailScreen(
             Icon(imageVector = Icons.Outlined.Add, contentDescription = "Adicionar filho")
         }
 
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .navigationBarsPadding()
-                .padding(bottom = 16.dp)
-        ) { data ->
-            Snackbar(
-                snackbarData = data,
-                containerColor = colors.surface,
-                contentColor = colors.textPrimary
-            )
-        }
+        AppToast(state = toastState)
     }
 
     if (showAddSheet) {
@@ -848,13 +974,20 @@ fun ResponsavelDetailScreen(
     }
 
     filhoSelecionado?.let { filho ->
-        val turma = filho.classId?.let { cid -> allTurmas.find { it.id == cid } }
+        val turmaAtual = filho.classId?.let { cid -> allTurmas.find { it.id == cid } }
         FilhoDetailBottomSheet(
             sheetState = filhoSheetState,
             filho = filho,
-            turma = turma,
+            turmaAtual = turmaAtual,
+            todasTurmas = allTurmas.map { it.toTurma() },
             onDismiss = {
                 scope.launch { filhoSheetState.hide() }.invokeOnCompletion { filhoSelecionado = null }
+            },
+            onSaveTurma = { novaClassId ->
+                adminViewModel.moveStudentToClass(schoolId, responsavel.id, filho.id, novaClassId) {
+                    adminViewModel.loadUsuarios(schoolId)
+                    scope.launch { filhoSheetState.hide() }.invokeOnCompletion { filhoSelecionado = null }
+                }
             }
         )
     }
@@ -871,7 +1004,6 @@ private fun AdicionarFilhoBottomSheet(
     val colors = LocalComunicacaoEscolarColors.current
     var nome by remember { mutableStateOf("") }
     var selectedTurma by remember { mutableStateOf<Turma?>(null) }
-    var showMenu by remember { mutableStateOf(false) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -941,68 +1073,19 @@ private fun AdicionarFilhoBottomSheet(
                 )
             )
 
-            var dropdownWidth by remember { mutableStateOf(0) }
-            val density = LocalDensity.current
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onSizeChanged { dropdownWidth = it.width }
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(colors.surface)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { showMenu = true }
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = selectedTurma?.nome ?: "Selecione a turma do aluno...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (selectedTurma != null) colors.textPrimary else colors.textSecondary
-                    )
-                    Icon(
-                        imageVector = Icons.Outlined.KeyboardArrowDown,
-                        contentDescription = null,
-                        tint = colors.textSecondary
-                    )
-                }
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false },
-                    offset = DpOffset(x = 0.dp, y = -6.dp),
-                    modifier = Modifier
-                        .width(with(density) { dropdownWidth.toDp() })
-                        .background(colors.surface)
-                ) {
-                    turmas.forEach { t ->
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    t.nome,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colors.textPrimary
-                                )
-                            },
-                            onClick = {
-                                selectedTurma = t
-                                showMenu = false
-                            }
-                        )
-                    }
-                }
-            }
+            TurmaDropdownField(
+                turmas = turmas,
+                selectedTurma = selectedTurma,
+                onTurmaSelected = { selectedTurma = it },
+                placeholder = "Selecione a turma do aluno..."
+            )
 
             Button(
                 onClick = { if (nome.isNotBlank() && selectedTurma != null) onAdd(nome.trim(), selectedTurma!!.id) },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = nome.isNotBlank() && selectedTurma != null,
                 shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 14.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = colors.buttonContainer,
                     contentColor = colors.buttonText,
@@ -1022,10 +1105,17 @@ private fun AdicionarFilhoBottomSheet(
 private fun FilhoDetailBottomSheet(
     sheetState: androidx.compose.material3.SheetState,
     filho: FilhoAdmin,
-    turma: ApiClass?,
-    onDismiss: () -> Unit
+    turmaAtual: ApiClass?,
+    todasTurmas: List<Turma>,
+    onDismiss: () -> Unit,
+    onSaveTurma: (classId: String) -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
+    var selectedTurma by remember(turmaAtual) {
+        mutableStateOf(todasTurmas.find { it.id == turmaAtual?.id })
+    }
+    val changed = selectedTurma?.id != turmaAtual?.id
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
@@ -1058,18 +1148,19 @@ private fun FilhoDetailBottomSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp, vertical = 8.dp),
+                .padding(horizontal = 20.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            UserAvatar(nome = filho.nome, size = 64)
-            Spacer(modifier = Modifier.height(12.dp))
+            UserAvatar(nome = filho.nome, size = 56)
             Text(
                 text = filho.nome,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = colors.textPrimary
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(4.dp))
+
             Text(
                 text = "TURMA",
                 style = MaterialTheme.typography.labelSmall,
@@ -1077,41 +1168,32 @@ private fun FilhoDetailBottomSheet(
                 color = colors.textSecondary,
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            if (turma != null) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(colors.surface)
-                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = turma.name,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = colors.textPrimary
-                        )
-                        Text(
-                            text = buildString {
-                                if (turma.shift.isNotBlank()) append(turma.shift)
-                                append(" · ${turma.year}")
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textSecondary
-                        )
-                    }
-                }
-            } else {
+            TurmaDropdownField(
+                turmas = todasTurmas,
+                selectedTurma = selectedTurma,
+                onTurmaSelected = { selectedTurma = it },
+                placeholder = "Selecione a turma..."
+            )
+            Button(
+                onClick = { selectedTurma?.let { onSaveTurma(it.id) } },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = changed && selectedTurma != null,
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(vertical = 14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.buttonContainer,
+                    contentColor = colors.buttonText,
+                    disabledContainerColor = colors.inputBorder,
+                    disabledContentColor = colors.textSecondary
+                )
+            ) {
                 Text(
-                    text = "Nenhuma turma vinculada",
+                    text = if (turmaAtual == null) "Atribuir turma" else "Alterar turma",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = colors.textSecondary
+                    fontWeight = FontWeight.SemiBold
                 )
             }
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(4.dp))
         }
     }
 }

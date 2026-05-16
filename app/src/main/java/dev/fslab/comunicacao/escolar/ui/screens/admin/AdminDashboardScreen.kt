@@ -36,7 +36,6 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Face
-import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material3.Icon
@@ -86,6 +85,7 @@ sealed class AdminSubScreen {
     object VincularUsuario : AdminSubScreen()
     object Alunos : AdminSubScreen()
     object Templates : AdminSubScreen()
+    object NovoTemplate : AdminSubScreen()
     data class TemplateDetail(val template: ComunicadoTemplate) : AdminSubScreen()
     object AuditLogs : AdminSubScreen()
 }
@@ -268,7 +268,9 @@ fun AdminDashboardScreen(
                             turma = screen.turma,
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeLast() },
+                            onProfessorClick = { subScreenStack.add(AdminSubScreen.ProfessorDetail(it)) },
+                            onResponsavelClick = { subScreenStack.add(AdminSubScreen.ResponsavelDetail(it)) }
                         )
 
                     is AdminSubScreen.Usuarios ->
@@ -277,7 +279,8 @@ fun AdminDashboardScreen(
                             adminViewModel = adminViewModel,
                             onBack = { subScreenStack.removeLast() },
                             onProfessorClick = { subScreenStack.add(AdminSubScreen.ProfessorDetail(it)) },
-                            onResponsavelClick = { subScreenStack.add(AdminSubScreen.ResponsavelDetail(it)) }
+                            onResponsavelClick = { subScreenStack.add(AdminSubScreen.ResponsavelDetail(it)) },
+                            onVincularClick = { subScreenStack.add(AdminSubScreen.VincularUsuario) }
                         )
 
                     is AdminSubScreen.ProfessorDetail ->
@@ -294,7 +297,8 @@ fun AdminDashboardScreen(
                             responsavel = screen.responsavel,
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeLast() },
+                            onTurmaClick = { subScreenStack.add(AdminSubScreen.TurmaDetail(it)) }
                         )
 
                     is AdminSubScreen.VincularUsuario ->
@@ -308,7 +312,9 @@ fun AdminDashboardScreen(
                         AlunosScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeLast() },
+                            onTurmaClick = { subScreenStack.add(AdminSubScreen.TurmaDetail(it)) },
+                            onResponsavelClick = { subScreenStack.add(AdminSubScreen.ResponsavelDetail(it)) }
                         )
 
                     is AdminSubScreen.Templates ->
@@ -316,7 +322,15 @@ fun AdminDashboardScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
                             onBack = { subScreenStack.removeLast() },
-                            onTemplateClick = { subScreenStack.add(AdminSubScreen.TemplateDetail(it)) }
+                            onTemplateClick = { subScreenStack.add(AdminSubScreen.TemplateDetail(it)) },
+                            onNovoTemplate = { subScreenStack.add(AdminSubScreen.NovoTemplate) }
+                        )
+
+                    is AdminSubScreen.NovoTemplate ->
+                        NovoTemplateScreen(
+                            schoolId = schoolId,
+                            adminViewModel = adminViewModel,
+                            onBack = { subScreenStack.removeLast() }
                         )
 
                     is AdminSubScreen.TemplateDetail ->
@@ -399,7 +413,6 @@ private fun AdminHomeScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 QuickAccessItem(icon = Icons.Outlined.People, title = "Usuários", subtitle = "Professores e responsáveis", onClick = { onNavigate(AdminSubScreen.Usuarios) })
-                QuickAccessItem(icon = Icons.Outlined.PersonAdd, title = "Vincular Usuário", subtitle = "Adicionar usuário à escola", onClick = { onNavigate(AdminSubScreen.VincularUsuario) })
                 QuickAccessItem(icon = Icons.Outlined.Face, title = "Alunos", subtitle = "Ver todos os alunos da escola", onClick = { onNavigate(AdminSubScreen.Alunos) })
                 QuickAccessItem(icon = Icons.Outlined.School, title = "Turmas", subtitle = "Criar e editar turmas", onClick = { onNavigate(AdminSubScreen.Turmas) })
                 QuickAccessItem(icon = Icons.Outlined.Description, title = "Templates de Comunicado", subtitle = "Gerenciar modelos de diário", onClick = { onNavigate(AdminSubScreen.Templates) })

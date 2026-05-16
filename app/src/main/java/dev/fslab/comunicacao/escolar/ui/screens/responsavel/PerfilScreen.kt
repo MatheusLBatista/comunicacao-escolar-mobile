@@ -26,7 +26,10 @@ import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.window.Dialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.ui.draw.blur
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,8 +57,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -336,7 +342,18 @@ fun PerfilScreen(
     if (showEditDialog) {
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
-            title = { Text("Editar nome", fontWeight = FontWeight.Bold, color = colors.textPrimary) },
+            title = {
+                val view = LocalView.current
+                SideEffect {
+                    val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                    if (window != null) {
+                        window.navigationBarColor = colors.background.toArgb()
+                        androidx.core.view.WindowCompat.getInsetsController(window, view)
+                            .isAppearanceLightNavigationBars = !colors.isDark
+                    }
+                }
+                Text("Editar nome", fontWeight = FontWeight.Bold, color = colors.textPrimary)
+            },
             text = {
                 OutlinedTextField(
                     value = nomeTemp,
@@ -384,59 +401,73 @@ fun PerfilScreen(
 
     // Seletor de tema
     if (showThemeDialog) {
-        AlertDialog(
-            onDismissRequest = { showThemeDialog = false },
-            title = {
-                Text("Tema do aplicativo", fontWeight = FontWeight.Bold, color = colors.textPrimary)
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf(
-                        ThemeMode.SYSTEM to "Seguir o sistema",
-                        ThemeMode.LIGHT  to "Claro",
-                        ThemeMode.DARK   to "Escuro"
-                    ).forEach { (mode, label) ->
-                        val selected = themeMode == mode
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(if (selected) colors.lightGray else Color.Transparent)
-                                .clickable {
-                                    themeViewModel.setThemeMode(mode)
-                                    showThemeDialog = false
-                                }
-                                .padding(vertical = 12.dp, horizontal = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = label,
-                                fontSize = 14.sp,
-                                color = if (selected) colors.textPrimary else colors.textSecondary,
-                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+        Dialog(onDismissRequest = { showThemeDialog = false }) {
+            val view = LocalView.current
+            SideEffect {
+                val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                if (window != null) {
+                    window.navigationBarColor = colors.background.toArgb()
+                    androidx.core.view.WindowCompat.getInsetsController(window, view)
+                        .isAppearanceLightNavigationBars = !colors.isDark
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(colors.surface)
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    "Tema do aplicativo",
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                listOf(
+                    ThemeMode.SYSTEM to "Seguir o sistema",
+                    ThemeMode.LIGHT  to "Claro",
+                    ThemeMode.DARK   to "Escuro"
+                ).forEach { (mode, label) ->
+                    val selected = themeMode == mode
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                themeViewModel.setThemeMode(mode)
+                                showThemeDialog = false
+                            },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected,
+                            onClick = {
+                                themeViewModel.setThemeMode(mode)
+                                showThemeDialog = false
+                            },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = colors.buttonContainer,
+                                unselectedColor = colors.textSecondary
                             )
-                            if (selected) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(colors.primaryDark)
-                                )
-                            }
-                        }
+                        )
+                        Text(
+                            text = label,
+                            fontSize = 14.sp,
+                            color = if (selected) colors.textPrimary else colors.textSecondary,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                        )
                     }
                 }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showThemeDialog = false }) {
+                TextButton(
+                    onClick = { showThemeDialog = false },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
                     Text("Cancelar", color = colors.textSecondary)
                 }
-            },
-            containerColor = colors.surface,
-            shape = RoundedCornerShape(20.dp)
-        )
+            }
+        }
     }
 }
 

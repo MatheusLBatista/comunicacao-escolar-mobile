@@ -21,7 +21,16 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
@@ -48,10 +57,14 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.rememberCoroutineScope
 import dev.fslab.comunicacao.escolar.model.ComunicadoTemplate
+import dev.fslab.comunicacao.escolar.model.CreateTemplateFieldRequest
 import dev.fslab.comunicacao.escolar.model.TipoCampo
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
+import dev.fslab.comunicacao.escolar.ui.viewmodel.AdminViewModel
 import java.util.UUID
+import kotlinx.coroutines.launch
 
 @Stable
 private class CampoUiState(
@@ -124,6 +137,143 @@ fun TemplateDetailScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun NovoTemplateScreen(
+    schoolId: String,
+    adminViewModel: AdminViewModel,
+    onBack: () -> Unit
+) {
+    val colors = LocalComunicacaoEscolarColors.current
+    val focusManager = LocalFocusManager.current
+    val scope = rememberCoroutineScope()
+    var nome by remember { mutableStateOf("") }
+    val campos = remember { mutableStateListOf<CampoUiState>() }
+    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    var nomeFieldFocused by remember { mutableStateOf(false) }
+    val imeVisible = WindowInsets.isImeVisible
+    val cursorBrush = androidx.compose.ui.graphics.SolidColor(
+        if (imeVisible) colors.textPrimary else Color.Transparent
+    )
+
+    LaunchedEffect(Unit) {
+        focusRequester.requestFocus()
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .statusBarsPadding()
+    ) {
+        // Header com título editável
+        Box(modifier = Modifier.fillMaxWidth().height(56.dp)) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Voltar",
+                    tint = colors.textPrimary
+                )
+            }
+            androidx.compose.foundation.text.BasicTextField(
+                value = nome,
+                onValueChange = { nome = it },
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .padding(horizontal = 56.dp)
+                    .focusRequester(focusRequester)
+                    .onFocusChanged { nomeFieldFocused = it.isFocused },
+                textStyle = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                ),
+                cursorBrush = cursorBrush,
+                singleLine = true,
+                decorationBox = { inner ->
+                    Box(contentAlignment = Alignment.Center) {
+                        if (nome.isEmpty() && !nomeFieldFocused) {
+                            Text(
+                                "Nome do template",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.textSecondary,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
+                        inner()
+                    }
+                }
+            )
+            Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)) {
+                TextButton(
+                    onClick = {
+                        focusManager.clearFocus()
+                        scope.launch {
+                            val fields = campos.map { c ->
+                                CreateTemplateFieldRequest(
+                                    key = c.nome.trim().lowercase().replace(" ", "_")
+                                        .ifBlank { UUID.randomUUID().toString() },
+                                    label = c.nome.trim().ifBlank { "Campo" },
+                                    type = when (c.tipo) {
+                                        TipoCampo.SELECAO -> "select"
+                                        TipoCampo.SIM_NAO -> "boolean"
+                                        TipoCampo.TEXTO_LIVRE -> "text"
+                                    },
+                                    options = if (c.tipo == TipoCampo.SELECAO) c.opcoes.toList() else emptyList()
+                                )
+                            }
+                            adminViewModel.createTemplate(schoolId, nome.trim(), fields) {
+                                onBack()
+                            }
+                        }
+                    },
+                    enabled = nome.isNotBlank()
+                ) {
+                    Text(
+                        "Salvar",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (nome.isNotBlank()) colors.textPrimary else colors.textSecondary
+                    )
+                }
+            }
+        }
+        Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(colors.lightGray))
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            itemsIndexed(campos, key = { _, c -> c.id }) { index, campo ->
+                CampoCard(
+                    campo = campo,
+                    onDelete = { campos.removeAt(index) }
+                )
+            }
+
+            item {
+                AddCampoCard(onClick = {
+                    campos.add(
+                        CampoUiState(
+                            id = UUID.randomUUID().toString(),
+                            nome = "",
+                            tipo = TipoCampo.SELECAO,
+                            opcoes = emptyList()
+                        )
+                    )
+                })
+            }
+        }
+    }
+}
+
 @Composable
 private fun CampoCard(
     campo: CampoUiState,
@@ -153,12 +303,32 @@ private fun CampoCard(
                     .padding(end = 4.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = campo.nome.ifEmpty { "Novo campo" },
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = if (campo.nome.isEmpty()) colors.textSecondary else colors.textPrimary,
-                modifier = Modifier.weight(1f)
+            var nomeFocused by remember { mutableStateOf(false) }
+            androidx.compose.foundation.text.BasicTextField(
+                value = campo.nome,
+                onValueChange = { campo.nome = it },
+                modifier = Modifier
+                    .weight(1f)
+                    .onFocusChanged { nomeFocused = it.isFocused },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary
+                ),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.textPrimary),
+                singleLine = true,
+                decorationBox = { inner ->
+                    Box {
+                        if (campo.nome.isEmpty() && !nomeFocused) {
+                            Text(
+                                "Nome do campo",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = colors.textSecondary
+                            )
+                        }
+                        inner()
+                    }
+                }
             )
             IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
                 Icon(
@@ -261,21 +431,27 @@ private fun OpcaoRow(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        var opcaoFocused by remember { mutableStateOf(false) }
         androidx.compose.foundation.text.BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .onFocusChanged { opcaoFocused = it.isFocused },
             textStyle = MaterialTheme.typography.bodySmall.copy(color = colors.textPrimary),
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.textPrimary),
             singleLine = true,
             decorationBox = { inner ->
-                if (value.isEmpty()) {
-                    Text(
-                        "Nova opção",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = colors.textSecondary
-                    )
+                Box {
+                    if (value.isEmpty() && !opcaoFocused) {
+                        Text(
+                            "Nova opção",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colors.textSecondary
+                        )
+                    }
+                    inner()
                 }
-                inner()
             }
         )
         Spacer(modifier = Modifier.width(8.dp))
