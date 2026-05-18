@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.rememberNavController
 import dev.fslab.comunicacao.escolar.R
 import dev.fslab.comunicacao.escolar.model.Docs
 import dev.fslab.comunicacao.escolar.model.MuralResponse
@@ -65,12 +66,20 @@ import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralViewModel
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarDuration
+import kotlinx.coroutines.delay
+import androidx.navigation.NavController
+import dev.fslab.comunicacao.escolar.navigation.Screen
+import dev.fslab.comunicacao.escolar.navigation.navigateSafely
 
 @Composable
 fun MuralScreen(
 	schoolId: String = "",
 	muralViewModel: MuralViewModel = viewModel(),
-	authViewModel: AuthViewModel = viewModel()
+	authViewModel: AuthViewModel = viewModel(),
+	navController: NavController? = null
 ) {
 
 	val background = Color(0xFFF4F4F5)
@@ -87,19 +96,24 @@ fun MuralScreen(
 	val context = LocalContext.current
 	val view = LocalView.current
 
+	val snackbarHostState = remember { SnackbarHostState() }
 	var isLiked by remember { mutableStateOf(false) }
 	var likeCount by remember { mutableIntStateOf(24) }
 	val muralImageResId = remember {
 		context.resources.getIdentifier("mural_ciencias", "drawable", context.packageName)
 	}
 
-	println("Mural2 ${currentUser}")
-//	print
+	LaunchedEffect(Unit) {
+		muralViewModel.clearError()
+	}
+
+
 	LaunchedEffect(currentUser?.schoolId) {
 		currentUser?.schoolId?.let  {
 			schoolId -> muralViewModel.getPosts(schoolId)
 		}
 	}
+
 	if (!view.isInEditMode) {
 		SideEffect {
 			val window = (view.context as Activity).window
@@ -119,7 +133,7 @@ fun MuralScreen(
 	) {
 		Text(
 			text = "Mural",
-			color = textPrimary,
+			color = colors.textPrimary,
 			style = MaterialTheme.typography.headlineLarge.copy(
 				fontFamily = Poppins,
 				fontWeight = FontWeight.SemiBold,
@@ -191,10 +205,10 @@ fun MuralPostCard(post: Docs) {
 	}
 }
 
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun MuralScreenPreview() {
-	ComunicacaoEscolarTheme {
-		MuralScreen()
-	}
-}
+//@Preview(showBackground = true, showSystemUi = true)
+//@Composable
+//fun MuralScreenPreview() {
+//	ComunicacaoEscolarTheme {
+//		MuralScreen()
+//	}
+//}

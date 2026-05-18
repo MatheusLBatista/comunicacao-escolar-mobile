@@ -127,7 +127,8 @@ fun NavGraph(
         composable(Screen.Mural.route){
             MuralScreen(
                 muralViewModel = viewModel(),
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                navController = navController
             )
         }
 

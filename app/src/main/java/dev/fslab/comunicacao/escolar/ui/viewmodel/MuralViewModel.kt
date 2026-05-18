@@ -10,6 +10,8 @@ import kotlinx.coroutines.launch
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import retrofit2.HttpException
 import android.util.Log
+import dev.fslab.comunicacao.escolar.navigation.Screen
+import kotlinx.coroutines.delay
 
 
 sealed class MuralState {
@@ -18,6 +20,7 @@ sealed class MuralState {
     data class Success(val posts:MuralResponse) : MuralState()
     data class Error(val message: String) : MuralState()
 }
+
 class MuralViewModel : ViewModel() {
     companion object {
         private const val TAG = "MuralViewModel"
@@ -44,7 +47,8 @@ class MuralViewModel : ViewModel() {
                     401 -> "Não autorizado. Faça login novamente."
                     403 -> "Acesso negado ao mural."
                     500 -> "Erro no servidor. Tente novamente mais tarde."
-                    else -> "Erro ao carregar posts (${e.code()}"
+                    498 -> "Sua sessão de login expirou. Faça login novamente."
+                    else -> "Erro ao carregar posts (${e.code()})"
                 }
                 _muralState.value = MuralState.Error(errorMessage)
                 Log.e(TAG, "Erro HTTP ao carregar posts: ${e.code()}", e)
@@ -61,6 +65,7 @@ class MuralViewModel : ViewModel() {
             }
         }
     }
+
     fun clearError() {
         if(_muralState.value is MuralState.Error) {
             _muralState.value = MuralState.Idle

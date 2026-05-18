@@ -14,6 +14,7 @@ import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
 
+
 /**
  * HomeScreen — Roteador central pós-login.
  *
@@ -47,7 +48,13 @@ fun HomeScreen(
             accessToken = token,
             authViewModel = authViewModel,
             themeViewModel = themeViewModel,
-            onLogout = { authViewModel.logout() }
+            onLogout = { authViewModel.logout() },
+            navController = navController,
+            onNavigateToLogin = {
+                navController.navigateSafely(Screen.Login.route) {
+                    popUpTo(Screen.Home.route) {inclusive = true}
+                }
+            }
         )
         UserRole.PROFESSOR -> {
             ResponsavelDashboardScreen(
@@ -55,7 +62,14 @@ fun HomeScreen(
                 accessToken = token,
                 authViewModel = authViewModel,
                 themeViewModel = themeViewModel,
-                onLogout = { authViewModel.logout() }
+                onLogout = { authViewModel.logout() },
+                navController = navController,
+                onNavigateToLogin = {
+                    navController.navigateSafely(Screen.Login.route) {
+                        popUpTo(Screen.Home.route) {inclusive = true}
+                    }
+                }
+
             )
         }
         UserRole.ADMIN -> AdminDashboardScreen(
@@ -63,7 +77,8 @@ fun HomeScreen(
             accessToken = token,
             authViewModel = authViewModel,
             themeViewModel = themeViewModel,
-            onLogout = { authViewModel.logout() }
+            onLogout = { authViewModel.logout() },
+
         )
     }
 }

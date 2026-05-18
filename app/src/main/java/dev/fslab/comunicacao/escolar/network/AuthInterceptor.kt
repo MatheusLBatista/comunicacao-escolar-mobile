@@ -31,18 +31,25 @@ class AuthInterceptor : Interceptor {
         }
 
         // Não sobrescreve Authorization existente
-        if (request.header("Authorization") != null) {
-            return chain.proceed(request)
+        val requestWithToken = if (request.header("Authorization") != null) {
+            request
+        } else {
+            val token = TokenManager.getAccessToken()
+            if (token != null) {
+                request.newBuilder()
+                    .header("Authorization", "Bearer $token")
+                    .build()
+            } else {
+                request
+            }
         }
 
-        val token = TokenManager.getAccessToken()
-        return if (token != null) {
-            val authenticatedRequest = request.newBuilder()
-                .header("Authorization", "Bearer $token")
-                .build()
-            chain.proceed(authenticatedRequest)
-        } else {
-            chain.proceed(request)
+        val response = chain.proceed(requestWithToken)
+
+        if (response.code == 498) {
+            TokenManager.onSessionExpired?.invoke()
         }
+
+        return response
     }
 }

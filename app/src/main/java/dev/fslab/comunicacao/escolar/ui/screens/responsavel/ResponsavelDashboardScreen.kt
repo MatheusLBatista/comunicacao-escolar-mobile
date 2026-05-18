@@ -45,6 +45,7 @@ import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
 import dev.fslab.comunicacao.escolar.ui.theme.screens.MuralScreen as MuralScreenReal
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 
 private val responsavelNavItems = listOf(
     BottomNavItem(
@@ -83,7 +84,9 @@ fun ResponsavelDashboardScreen(
     accessToken: String,
     authViewModel: dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel,
     themeViewModel: ThemeViewModel,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    navController: NavController,
+    onNavigateToLogin: () -> Unit = {}
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     var currentRoute by rememberSaveable { mutableStateOf(Screen.Atividades.route) }
@@ -117,7 +120,9 @@ fun ResponsavelDashboardScreen(
                 Screen.Conversas.route  -> ConversasScreen(user = user, accessToken = accessToken)
                 Screen.Mural.route      -> MuralScreenReal(
                     muralViewModel = viewModel(),
-                    authViewModel = authViewModel
+                    authViewModel = authViewModel,
+                    navController = navController,
+
                 )
                 Screen.Agenda.route     -> AgendaScreen(user = user, accessToken = accessToken)
                 Screen.Perfil.route     -> PerfilScreen(
