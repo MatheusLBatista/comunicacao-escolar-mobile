@@ -1,10 +1,12 @@
 package dev.fslab.comunicacao.escolar.ui.screens.admin
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,20 +21,28 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.fslab.comunicacao.escolar.model.ComunicadoTemplate
+import dev.fslab.comunicacao.escolar.ui.components.ConfirmDialog
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AdminViewModel
 
@@ -46,9 +56,23 @@ fun TemplatesScreen(
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val apiTemplates by adminViewModel.templates.collectAsState()
+    var templateToDelete by remember { mutableStateOf<ComunicadoTemplate?>(null) }
 
     LaunchedEffect(schoolId) {
         if (schoolId.isNotBlank()) adminViewModel.loadTemplates(schoolId)
+    }
+
+    templateToDelete?.let { t ->
+        ConfirmDialog(
+            title = "Excluir template",
+            message = "Excluir \"${t.nome}\"? Esta ação não pode ser desfeita.",
+            confirmLabel = "Excluir",
+            onConfirm = {
+                adminViewModel.deleteTemplate(t.id) {}
+                templateToDelete = null
+            },
+            onDismiss = { templateToDelete = null }
+        )
     }
 
     AdminSubScreenScaffold(title = "Templates de Comunicado", onBack = onBack) {
@@ -67,7 +91,43 @@ fun TemplatesScreen(
             }
 
             items(apiTemplates.map { it.toComunicadoTemplate() }, key = { it.id }) { template ->
-                TemplateCard(template = template, onClick = { onTemplateClick(template) })
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = { value ->
+                        if (value == SwipeToDismissBoxValue.EndToStart) {
+                            templateToDelete = template
+                        }
+                        false
+                    }
+                )
+                SwipeToDismissBox(
+                    state = dismissState,
+                    enableDismissFromStartToEnd = false,
+                    backgroundContent = {
+                        val bgColor by animateColorAsState(
+                            targetValue = when (dismissState.targetValue) {
+                                SwipeToDismissBoxValue.EndToStart -> colors.error
+                                else -> Color.Transparent
+                            },
+                            label = "swipe_delete_bg"
+                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(bgColor),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Delete,
+                                contentDescription = "Excluir template",
+                                tint = Color.White,
+                                modifier = Modifier.padding(end = 20.dp)
+                            )
+                        }
+                    }
+                ) {
+                    TemplateCard(template = template, onClick = { onTemplateClick(template) })
+                }
             }
 
             item {
@@ -143,4 +203,3 @@ private fun NovoTemplateCard(onClick: () -> Unit) {
         )
     }
 }
-

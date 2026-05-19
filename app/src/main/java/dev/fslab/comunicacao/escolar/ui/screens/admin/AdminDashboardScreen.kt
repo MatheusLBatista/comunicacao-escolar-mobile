@@ -336,6 +336,7 @@ fun AdminDashboardScreen(
                     is AdminSubScreen.TemplateDetail ->
                         TemplateDetailScreen(
                             template = screen.template,
+                            adminViewModel = adminViewModel,
                             onBack = { subScreenStack.removeLast() }
                         )
 

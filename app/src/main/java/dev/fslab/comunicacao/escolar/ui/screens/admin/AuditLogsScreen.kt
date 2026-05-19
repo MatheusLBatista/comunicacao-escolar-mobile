@@ -149,7 +149,11 @@ private fun AuditLogCard(log: AuditLog) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (log.tipoAtor == TipoAtor.RESPONSAVEL) "Responsável" else "Professor",
+                    text = when (log.tipoAtor) {
+                        TipoAtor.ADMIN      -> "Admin"
+                        TipoAtor.PROFESSOR  -> "Professor"
+                        TipoAtor.RESPONSAVEL -> "Responsável"
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.textSecondary
                 )
@@ -177,16 +181,10 @@ private fun AuditLogCard(log: AuditLog) {
                 fontWeight = FontWeight.Medium,
                 color = colors.textPrimary
             )
-            if (log.aluno != null || log.dispositivo != null) {
+            if (log.aluno != null) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = buildString {
-                        if (log.aluno != null) append("Aluno: ${log.aluno}")
-                        if (log.dispositivo != null) {
-                            if (log.aluno != null) append(" · ")
-                            append(log.dispositivo)
-                        }
-                    },
+                    text = "Aluno: ${log.aluno}",
                     style = MaterialTheme.typography.labelSmall,
                     color = colors.textSecondary
                 )

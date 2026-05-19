@@ -8,6 +8,7 @@ import dev.fslab.comunicacao.escolar.model.ApiSchoolUser
 import dev.fslab.comunicacao.escolar.model.ApiStudentInput
 import dev.fslab.comunicacao.escolar.model.CreateClassRequest
 import dev.fslab.comunicacao.escolar.model.CreateTemplateRequest
+import dev.fslab.comunicacao.escolar.model.UpdateTemplateRequest
 import dev.fslab.comunicacao.escolar.model.LinkToSchoolRequest
 import dev.fslab.comunicacao.escolar.model.MoveStudentClassRequest
 import dev.fslab.comunicacao.escolar.model.PaginatedData
@@ -62,6 +63,17 @@ interface AdminApi {
     suspend fun createTemplate(
         @Body request: CreateTemplateRequest
     ): ApiResponse<ApiDailyLogTemplate>
+
+    @PATCH("daily-log-templates/{id}")
+    suspend fun updateTemplate(
+        @Path("id") id: String,
+        @Body request: UpdateTemplateRequest
+    ): ApiResponse<ApiDailyLogTemplate>
+
+    @DELETE("daily-log-templates/{id}")
+    suspend fun deleteTemplate(
+        @Path("id") id: String
+    ): ApiResponse<Any>
 
     // Audit Logs
 
