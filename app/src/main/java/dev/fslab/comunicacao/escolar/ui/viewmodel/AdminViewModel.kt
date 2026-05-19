@@ -16,6 +16,7 @@ import dev.fslab.comunicacao.escolar.model.MoveStudentClassRequest
 import dev.fslab.comunicacao.escolar.model.UpdateClassRequest
 import dev.fslab.comunicacao.escolar.model.CreateTemplateFieldRequest
 import dev.fslab.comunicacao.escolar.model.CreateTemplateRequest
+import dev.fslab.comunicacao.escolar.model.UpdateTemplateRequest
 import dev.fslab.comunicacao.escolar.model.LinkToSchoolRequest
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import kotlinx.coroutines.async
@@ -463,6 +464,52 @@ class AdminViewModel : ViewModel() {
                     on409 = "Já existe um template com esse nome."
                 )
                 Log.e(TAG, "createTemplate error", e)
+            }
+        }
+    }
+
+    fun updateTemplate(
+        id: String,
+        fields: List<CreateTemplateFieldRequest>,
+        onSuccess: () -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.adminApi.updateTemplate(id, UpdateTemplateRequest(fields))
+                if (!response.error && response.data != null) {
+                    _templates.value = _templates.value.map {
+                        if (it.id == response.data.id) response.data else it
+                    }
+                    onSuccess()
+                } else {
+                    _actionError.value = response.getErrorMessage()
+                }
+            } catch (e: Exception) {
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao salvar template. Tente novamente.",
+                    on404 = "Template não encontrado."
+                )
+                Log.e(TAG, "updateTemplate error", e)
+            }
+        }
+    }
+
+    fun deleteTemplate(id: String, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.adminApi.deleteTemplate(id)
+                if (!response.error) {
+                    _templates.value = _templates.value.filter { it.id != id }
+                    onSuccess()
+                } else {
+                    _actionError.value = response.getErrorMessage()
+                }
+            } catch (e: Exception) {
+                _actionError.value = e.toFriendlyMessage(
+                    fallback = "Erro ao deletar template. Tente novamente.",
+                    on404 = "Template não encontrado."
+                )
+                Log.e(TAG, "deleteTemplate error", e)
             }
         }
     }

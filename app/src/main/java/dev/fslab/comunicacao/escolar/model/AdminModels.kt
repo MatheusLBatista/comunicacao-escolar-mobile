@@ -141,6 +141,10 @@ data class CreateTemplateRequest(
     @SerializedName("fields") val fields: List<CreateTemplateFieldRequest> = emptyList()
 )
 
+data class UpdateTemplateRequest(
+    @SerializedName("fields") val fields: List<CreateTemplateFieldRequest>
+)
+
 data class CreateTemplateFieldRequest(
     @SerializedName("key") val key: String,
     @SerializedName("label") val label: String,
