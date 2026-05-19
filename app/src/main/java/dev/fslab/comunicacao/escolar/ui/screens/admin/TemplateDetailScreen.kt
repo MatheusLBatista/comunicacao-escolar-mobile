@@ -311,6 +311,7 @@ fun NovoTemplateScreen(
                         submitted = true
                         campos.forEach { it.submitted = true }
                         val valid = nome.isNotBlank() &&
+                            campos.isNotEmpty() &&
                             campos.all { it.nome.isNotBlank() } &&
                             campos.all { it.tipo != TipoCampo.SELECAO || it.opcoes.isNotEmpty() } &&
                             campos.all { it.tipo != TipoCampo.SELECAO || it.opcoes.all { o -> o.isNotBlank() } }
@@ -370,6 +371,14 @@ fun NovoTemplateScreen(
             }
 
             item {
+                if (submitted && campos.isEmpty()) {
+                    Text(
+                        "Adicione ao menos 1 campo",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.error,
+                        modifier = Modifier.padding(bottom = 4.dp)
+                    )
+                }
                 AddCampoCard(onClick = {
                     campos.add(
                         CampoUiState(

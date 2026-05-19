@@ -31,13 +31,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import dev.fslab.comunicacao.escolar.ui.theme.ErrorBackground
-import dev.fslab.comunicacao.escolar.ui.theme.ErrorText
-import dev.fslab.comunicacao.escolar.ui.theme.SuccessBackground
-import dev.fslab.comunicacao.escolar.ui.theme.SuccessText
+import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import kotlinx.coroutines.delay
 
 enum class ToastType { ERROR, SUCCESS }
@@ -58,6 +54,7 @@ fun rememberAppToastState() = remember { AppToastState() }
 
 @Composable
 fun BoxScope.AppToast(state: AppToastState) {
+    val colors = LocalComunicacaoEscolarColors.current
     val message = state.message
 
     LaunchedEffect(message) {
@@ -83,31 +80,30 @@ fun BoxScope.AppToast(state: AppToastState) {
             .padding(start = 16.dp, end = 16.dp, bottom = 20.dp)
     ) {
         val isError = state.type == ToastType.ERROR
-        val bgColor = if (isError) ErrorBackground else SuccessBackground
-        val textColor = if (isError) ErrorText else SuccessText
+        val iconTint = if (isError) colors.error else colors.textSecondary
         val icon = if (isError) Icons.Outlined.ErrorOutline else Icons.Outlined.CheckCircle
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .shadow(6.dp, RoundedCornerShape(16.dp))
+                .shadow(8.dp, RoundedCornerShape(16.dp))
                 .clip(RoundedCornerShape(16.dp))
-                .background(bgColor)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .background(colors.surface)
+                .padding(horizontal = 18.dp, vertical = 18.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = textColor,
-                modifier = Modifier.size(20.dp)
+                tint = iconTint,
+                modifier = Modifier.size(22.dp)
             )
             Text(
                 text = message ?: "",
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-                color = textColor,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
                 modifier = Modifier.weight(1f)
             )
         }

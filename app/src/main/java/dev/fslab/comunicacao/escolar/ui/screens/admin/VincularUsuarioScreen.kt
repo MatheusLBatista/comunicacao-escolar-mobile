@@ -31,8 +31,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import dev.fslab.comunicacao.escolar.ui.components.AppToast
-import dev.fslab.comunicacao.escolar.ui.components.rememberAppToastState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,7 +38,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,8 +51,6 @@ import androidx.compose.ui.unit.dp
 import dev.fslab.comunicacao.escolar.model.Turma
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AdminViewModel
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 private enum class PerfilAcesso(val label: String) {
     PROFESSOR("Professor"),
@@ -75,9 +70,6 @@ fun VincularUsuarioScreen(
     val actionSuccess by adminViewModel.actionSuccess.collectAsState()
     val linkFieldError by adminViewModel.linkFieldError.collectAsState()
 
-    val toastState = rememberAppToastState()
-    val scope = rememberCoroutineScope()
-
     var email by remember { mutableStateOf("") }
     var emailError by remember { mutableStateOf<String?>(null) }
     var perfil by remember { mutableStateOf(PerfilAcesso.PROFESSOR) }
@@ -91,7 +83,7 @@ fun VincularUsuarioScreen(
 
     LaunchedEffect(actionError) {
         if (actionError != null) {
-            toastState.showError(actionError!!)
+            emailError = actionError
             adminViewModel.clearActionError()
         }
     }
@@ -105,12 +97,8 @@ fun VincularUsuarioScreen(
 
     LaunchedEffect(actionSuccess) {
         if (actionSuccess != null) {
-            toastState.showSuccess(actionSuccess!!)
             adminViewModel.clearActionSuccess()
-            scope.launch {
-                delay(1200)
-                onBack()
-            }
+            onBack()
         }
     }
 
@@ -124,7 +112,6 @@ fun VincularUsuarioScreen(
     }
 
     AdminSubScreenScaffold(title = "Vincular Usuário", onBack = onBack) {
-        Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -344,7 +331,5 @@ fun VincularUsuarioScreen(
                 }
             }
 
-            AppToast(state = toastState)
-        }
     }
 }

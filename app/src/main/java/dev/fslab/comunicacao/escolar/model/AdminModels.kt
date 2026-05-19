@@ -188,15 +188,19 @@ data class ApiAuditLog(
         id = id,
         atorNome = extractName(userId) ?: "Usuário",
         tipoAtor = when (userRole) {
+            "admin"   -> TipoAtor.ADMIN
             "teacher" -> TipoAtor.PROFESSOR
             else      -> TipoAtor.RESPONSAVEL
         },
         acao = when (action) {
-            "view"     -> "visualizou"
-            "download" -> "baixou"
-            "export"   -> "exportou"
-            else       -> action
+            "create" -> "criou"
+            "update" -> "atualizou"
+            "delete" -> "removeu"
+            "view"   -> "visualizou"
+            else     -> action
         } + " " + when (resourceType) {
+            "user"            -> "Usuário"
+            "template"        -> "Template"
             "daily_log"       -> "Diário"
             "announcement"    -> "Comunicado"
             "message"         -> "Mensagem"
@@ -207,7 +211,7 @@ data class ApiAuditLog(
         },
         destino = resourceSummary.ifBlank { resourceType.replace("_", " ") },
         aluno = extractName(studentId),
-        dispositivo = deviceInfo?.platform?.ifBlank { null },
+        dispositivo = deviceInfo?.platform?.takeIf { it.isNotBlank() && it != "web" },
         dataHora = formatAuditDate(createdAt)
     )
 }
@@ -264,7 +268,7 @@ data class AuditLog(
     val dataHora: String
 )
 
-enum class TipoAtor { RESPONSAVEL, PROFESSOR }
+enum class TipoAtor { RESPONSAVEL, PROFESSOR, ADMIN }
 
 // Admin Stats
 data class AdminStats(
