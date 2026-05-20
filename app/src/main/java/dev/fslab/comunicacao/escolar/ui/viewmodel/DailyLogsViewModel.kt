@@ -102,7 +102,7 @@ class DailyLogsViewModel : ViewModel() {
         val parsedDate = parseIsoDate(date)
         val dateLabel = parsedDate?.let { dateFormatter.format(it) } ?: date
         val timeLabel = parsedDate?.let { timeFormatter.format(it) } ?: ""
-        val description = buildDescription(observation, entries, isPresent)
+        val description = buildDescription(observation, entries, isPresent, dailyLogTemplate?.fields.orEmpty())
         val studentName = buildStudentName(student?.fullName.orEmpty())
         val teacherName = buildTeacherName(teacher?.fullName.orEmpty())
         val detailEntries = buildDetailEntries(entries, isPresent, dailyLogTemplate?.fields.orEmpty())
@@ -169,26 +169,29 @@ class DailyLogsViewModel : ViewModel() {
     private fun buildDescription(
         observation: String,
         entries: List<DailyLogEntry>,
-        isPresent: Boolean
+        isPresent: Boolean,
+        templateFields: List<DailyLogTemplateField>
     ): String {
         if (observation.isNotBlank()) {
             return observation
         }
 
         if (!isPresent) {
-            val absenceReason = entries.firstOrNull { it.fieldKey == "absence_reason" }?.value
-            return absenceReason ?: "Aluno ausente."
+            val absenceEntry = entries.firstOrNull { it.fieldKey == "absence_reason" }
+                ?: entries.firstOrNull()
+            return absenceEntry?.value?.trim() ?: "Aluno ausente."
         }
 
-        val mood = entries.firstOrNull { it.fieldKey == "mood_status" }?.value
-        val participation = entries.firstOrNull { it.fieldKey == "participation" }?.value
-        val food = entries.firstOrNull { it.fieldKey == "food_intake" }?.value
+        val labelByKey = templateFields
+            .filter { it.key.isNotBlank() }
+            .associate { it.key to it.label.trim() }
 
-        val parts = listOfNotNull(
-            mood?.let { "Humor: $it" },
-            participation?.let { "Participação: $it" },
-            food?.let { "Alimentação: $it" }
-        )
+        val parts = entries.mapNotNull { entry ->
+            val label = labelByKey[entry.fieldKey]?.ifBlank { null }
+                ?: formatFallbackLabel(entry.fieldKey)
+            val value = entry.value.trim()
+            if (value.isBlank()) null else "$label: $value"
+        }
 
         return parts.joinToString(" • ").ifBlank { "Sem observações." }
     }
