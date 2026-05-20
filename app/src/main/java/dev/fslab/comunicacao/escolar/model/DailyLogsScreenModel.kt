@@ -12,7 +12,9 @@ data class DailyLog(
     val observation: String = "",
     val isPresent: Boolean = true,
     val entries: List<DailyLogDetailEntry> = emptyList(),
-    val conversationId: String = ""
+    val conversationId: String = "",
+    val studentAvatarUrl: String? = null,
+    val teacherAvatarUrl: String? = null
 )
 
 data class DailyLogDetailEntry(

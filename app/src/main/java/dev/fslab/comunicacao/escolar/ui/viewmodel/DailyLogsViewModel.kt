@@ -119,7 +119,9 @@ class DailyLogsViewModel : ViewModel() {
             observation = observation,
             isPresent = isPresent,
             entries = detailEntries,
-            conversationId = conversationId
+            conversationId = conversationId,
+            studentAvatarUrl = student?.avatarUrl?.takeIf { it.isNotBlank() },
+            teacherAvatarUrl = teacher?.avatarUrl?.takeIf { it.isNotBlank() }
         )
     }
 

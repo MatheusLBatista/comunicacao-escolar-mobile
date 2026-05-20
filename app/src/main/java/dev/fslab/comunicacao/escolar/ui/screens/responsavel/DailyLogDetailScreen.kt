@@ -43,6 +43,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import dev.fslab.comunicacao.escolar.model.DailyLog
 import dev.fslab.comunicacao.escolar.model.DailyLogDetailEntry
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
@@ -109,7 +113,8 @@ fun DailyLogDetailScreen(
                 DailyLogMessageCard(
                     teacherName = teacherName,
                     dateTimeLabel = dateTimeLabel,
-                    message = message
+                    message = message,
+                    teacherAvatarUrl = log.teacherAvatarUrl
                 )
             }
 
@@ -131,9 +136,11 @@ fun DailyLogDetailScreen(
 private fun DailyLogMessageCard(
     teacherName: String,
     dateTimeLabel: String,
-    message: String
+    message: String,
+    teacherAvatarUrl: String? = null
 ) {
     val colors = LocalComunicacaoEscolarColors.current
+    val context = LocalContext.current
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -155,12 +162,26 @@ private fun DailyLogMessageCard(
                     .background(colors.lightGray),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = null,
-                    tint = colors.iconGray,
-                    modifier = Modifier.size(22.dp)
-                )
+                if (teacherAvatarUrl != null) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(teacherAvatarUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = teacherName,
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = colors.iconGray,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))

@@ -24,6 +24,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ExitToApp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.ChevronRight
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -271,6 +274,7 @@ private fun DailyLogCard(log: DailyLog, onClick: () -> Unit) {
     val colors = LocalComunicacaoEscolarColors.current
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
+    val context = LocalContext.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -296,12 +300,26 @@ private fun DailyLogCard(log: DailyLog, onClick: () -> Unit) {
                         .background(colors.lightGray),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = null,
-                        tint = colors.iconGray,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    if (log.studentAvatarUrl != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(log.studentAvatarUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = log.childName,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(CircleShape),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = null,
+                            tint = colors.iconGray,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(10.dp))
