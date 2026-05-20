@@ -168,14 +168,13 @@ fun MuralScreen(user: User, accessToken: String) {
 
 @Composable
 fun AgendaScreen(user: User, accessToken: String) {
-    val colors = LocalComunicacaoEscolarColors.current
     if (user.schoolId == null) {
         SemEscolaVinculada(
             icon = Icons.Outlined.DateRange,
             nomeTela = "Agenda"
         )
     } else {
-        PlaceholderTela(nome = "Agenda", colors = colors)
+        AgendaResponsavelScreen(user = user, accessToken = accessToken)
     }
 }
 
