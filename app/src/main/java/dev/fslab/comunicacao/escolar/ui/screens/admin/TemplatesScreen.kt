@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -145,10 +146,14 @@ private fun TemplateCard(template: ComunicadoTemplate, onClick: () -> Unit) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(colors.surface)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -157,7 +162,6 @@ private fun TemplateCard(template: ComunicadoTemplate, onClick: () -> Unit) {
                 fontWeight = FontWeight.SemiBold,
                 color = colors.textPrimary
             )
-            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = "${template.campos.size} campos",
                 style = MaterialTheme.typography.bodySmall,
@@ -168,7 +172,7 @@ private fun TemplateCard(template: ComunicadoTemplate, onClick: () -> Unit) {
             imageVector = Icons.Outlined.ChevronRight,
             contentDescription = null,
             tint = colors.textSecondary,
-            modifier = Modifier.padding(start = 8.dp)
+            modifier = Modifier.size(18.dp)
         )
     }
 }

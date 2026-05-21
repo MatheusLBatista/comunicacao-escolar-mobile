@@ -52,7 +52,6 @@ fun BottomNavBar(
             .fillMaxWidth()
             .background(colors.background)
     ) {
-        // Linha superior
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -76,7 +75,6 @@ fun BottomNavBar(
             }
         }
 
-        // Padding da navigation bar do sistema (edge-to-edge)
         Spacer(modifier = Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))
     }
 }
@@ -101,7 +99,6 @@ private fun BottomNavItemView(
             )
             .padding(horizontal = 12.dp, vertical = 4.dp)
     ) {
-        // Ícone com badge
         Box {
             Icon(
                 imageVector = item.icon,
@@ -131,7 +128,6 @@ private fun BottomNavItemView(
 
         Spacer(modifier = Modifier.height(4.dp))
 
-        // Indicador de aba ativa — linha embaixo do ícone
         if (isActive) {
             Box(
                 modifier = Modifier

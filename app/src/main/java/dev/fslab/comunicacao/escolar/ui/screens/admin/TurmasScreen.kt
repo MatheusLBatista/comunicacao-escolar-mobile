@@ -136,7 +136,6 @@ fun TurmasScreen(
     Box(modifier = Modifier.fillMaxSize()) {
         AdminSubScreenScaffold(title = "Turmas", onBack = onBack) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Search bar
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -236,7 +235,6 @@ fun TurmasScreen(
             }
         }
 
-        // FAB
         FloatingActionButton(
             onClick = { showBottomSheet = true },
             modifier = Modifier

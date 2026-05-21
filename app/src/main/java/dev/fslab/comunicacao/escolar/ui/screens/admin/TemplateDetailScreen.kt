@@ -261,7 +261,6 @@ fun NovoTemplateScreen(
             .background(colors.background)
             .statusBarsPadding()
     ) {
-        // Header com título editável
         Box(modifier = Modifier.fillMaxWidth().height(56.dp)) {
             IconButton(
                 onClick = onBack,

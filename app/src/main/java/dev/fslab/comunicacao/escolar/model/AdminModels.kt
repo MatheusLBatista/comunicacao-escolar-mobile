@@ -7,7 +7,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-// Turma
 data class Turma(
     val id: String = UUID.randomUUID().toString(),
     val nome: String,
@@ -17,7 +16,6 @@ data class Turma(
     val professorId: String? = null
 )
 
-// API response wrappers
 data class ApiResponse<T>(
     @SerializedName("error") val error: Boolean = false,
     @SerializedName("code") val code: Int = 200,
@@ -35,7 +33,6 @@ data class PaginatedData<T>(
     @SerializedName("page") val page: Int = 1
 )
 
-// API Class (Turma)
 data class ApiClass(
     @SerializedName("_id") val id: String,
     @SerializedName("name") val name: String,
@@ -71,7 +68,6 @@ data class UpdateClassRequest(
     @SerializedName("teacher_ids") val teacherIds: List<String>
 )
 
-// API School User
 data class ApiSchoolUser(
     @SerializedName("_id") val id: String = "",
     @SerializedName("full_name") val fullName: String = "",
@@ -101,7 +97,6 @@ data class ApiSchoolUser(
     )
 }
 
-// API DailyLogTemplate
 data class ApiDailyLogTemplate(
     @SerializedName("_id") val id: String = "",
     @SerializedName("name") val name: String = "",
@@ -169,7 +164,6 @@ private fun formatAuditDate(isoString: String?): String {
     }
 }
 
-// API Audit Log
 data class ApiAuditLog(
     @SerializedName("_id") val id: String = "",
     @SerializedName("user_id") val userId: Any? = null,
@@ -220,7 +214,6 @@ data class ApiDeviceInfo(
     @SerializedName("platform") val platform: String = ""
 )
 
-// Link to School
 data class LinkToSchoolRequest(
     @SerializedName("email") val email: String,
     @SerializedName("role") val role: String,
@@ -236,7 +229,6 @@ data class MoveStudentClassRequest(
     @SerializedName("class_id") val classId: String
 )
 
-// Template de Comunicado
 data class ComunicadoTemplate(
     val id: String = UUID.randomUUID().toString(),
     val nome: String,
@@ -256,7 +248,6 @@ enum class TipoCampo(val label: String) {
     SIM_NAO("Sim / Não")
 }
 
-// Audit Log
 data class AuditLog(
     val id: String = UUID.randomUUID().toString(),
     val atorNome: String,
@@ -270,7 +261,6 @@ data class AuditLog(
 
 enum class TipoAtor { RESPONSAVEL, PROFESSOR, ADMIN }
 
-// Admin Stats
 data class AdminStats(
     val totalProfessores: Int,
     val totalResponsaveis: Int,
@@ -278,7 +268,6 @@ data class AdminStats(
     val totalTurmas: Int
 )
 
-// Professor (admin view)
 data class ProfessorAdmin(
     val id: String,
     val nome: String,
@@ -287,7 +276,6 @@ data class ProfessorAdmin(
     val turmas: List<Turma> = emptyList()
 )
 
-// Responsável (admin view)
 data class ResponsavelAdmin(
     val id: String,
     val nome: String,
@@ -303,7 +291,6 @@ data class FilhoAdmin(
     val classId: String? = null
 )
 
-// Aluno (admin view)
 data class AlunoAdmin(
     val id: String,
     val nome: String,

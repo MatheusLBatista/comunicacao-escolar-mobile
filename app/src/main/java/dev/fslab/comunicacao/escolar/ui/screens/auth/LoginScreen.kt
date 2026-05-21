@@ -121,7 +121,6 @@ fun LoginScreen(
         ) {
             Spacer(modifier = Modifier.height(64.dp))
 
-            // Título
             Text(
                 text = "Bem-vindo!",
                 style = androidx.compose.material3.MaterialTheme.typography.displayMedium,
@@ -130,7 +129,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Subtítulo
             Text(
                 text = "Entre na sua conta para acessar a plataforma escolar.",
                 style = androidx.compose.material3.MaterialTheme.typography.bodyLarge,
@@ -140,7 +138,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Mensagem de erro
             if (errorMessage != null) {
                 Text(
                     text = errorMessage,
@@ -153,7 +150,6 @@ fun LoginScreen(
                 )
             }
 
-            // Campo E-mail
             OutlinedTextField(
                 value = email,
                 onValueChange = { 
@@ -183,7 +179,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Campo Senha
             OutlinedTextField(
                 value = senha,
                 onValueChange = { 
@@ -223,7 +218,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Lembrar-me + Esqueceu a senha?
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -262,7 +256,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Botão Entrar
             Button(
                 onClick = { authViewModel.loginUser(email, senha) },
                 modifier = Modifier
@@ -293,7 +286,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Botão Entrar com Google
             OutlinedButton(
                 onClick = {
                     coroutineScope.launch {
@@ -314,7 +306,6 @@ fun LoginScreen(
                                 GoogleIdTokenCredential.createFrom(result.credential.data)
                             authViewModel.loginWithGoogle(googleCredential.idToken)
                         } catch (_: GetCredentialCancellationException) {
-                            // Usuário cancelou — sem ação
                         } catch (_: GetCredentialException) {
                             authViewModel.setError("Falha ao iniciar login com Google. Tente novamente.")
                         }
@@ -347,7 +338,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Cadastro
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
@@ -370,7 +360,6 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
 
-        // Ícone de alternância de tema — sobre a Column para receber toques
         IconButton(
             onClick = {
                 themeViewModel.setThemeMode(

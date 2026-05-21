@@ -70,6 +70,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import dev.fslab.comunicacao.escolar.model.User
+import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.PerfilUiState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.PerfilViewModel
@@ -125,32 +126,19 @@ fun PerfilScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize().background(colors.background)) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            AppHeader("Perfil")
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .then(if (showAvatarLightbox) Modifier.blur(20.dp) else Modifier)
         ) {
-            // Header
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Perfil",
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.textPrimary
-                )
-            }
 
-            // Avatar + Nome
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 32.dp),
+                    .padding(top = 12.dp, bottom = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Box {
@@ -160,7 +148,6 @@ fun PerfilScreen(
                             .clip(CircleShape)
                             .then(if (user.avatar != null) Modifier.clickable { showAvatarLightbox = true } else Modifier)
                     ) {
-                        // Avatar: foto real se disponível, ícone Person cinza caso contrário
                         if (user.avatar != null) {
                             AsyncImage(
                                 model = ImageRequest.Builder(LocalContext.current)
@@ -218,7 +205,6 @@ fun PerfilScreen(
                 )
             }
 
-            // Informações Pessoais
             SectionHeader("Informações Pessoais")
 
             InfoCard {
@@ -239,7 +225,6 @@ fun PerfilScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Preferências
             SectionHeader("Preferências")
 
             InfoCard {
@@ -262,7 +247,6 @@ fun PerfilScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Sair
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -295,13 +279,13 @@ fun PerfilScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
         }
+        }
 
         SnackbarHost(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
 
-        // Lightbox de avatar
         if (showAvatarLightbox && user.avatar != null) {
             Box(
                 modifier = Modifier
@@ -471,7 +455,6 @@ fun PerfilScreen(
     }
 }
 
-// Composables auxiliares
 @Composable
 private fun SectionHeader(title: String) {
     val colors = LocalComunicacaoEscolarColors.current
