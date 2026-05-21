@@ -237,7 +237,7 @@ fun AgendaScreen(user: User, accessToken: String) {
     if (user.schoolId == null) {
         SemEscolaVinculada(icon = Icons.Outlined.DateRange, nomeTela = "Agenda")
     } else {
-        PlaceholderTela(nome = "Agenda")
+        AgendaResponsavelScreen(user = user, accessToken = accessToken)
     }
 }
 
