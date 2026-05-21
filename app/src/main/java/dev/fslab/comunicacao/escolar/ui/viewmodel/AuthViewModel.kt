@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.fslab.comunicacao.escolar.model.*
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
+import dev.fslab.comunicacao.escolar.network.SocketManager
 import dev.fslab.comunicacao.escolar.network.TokenManager
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -171,6 +172,7 @@ class AuthViewModel : ViewModel() {
     fun logout() {
         val currentToken = TokenManager.getAccessToken()
 
+        SocketManager.disconnect()
         TokenManager.clearTokens()
         _accessToken.value = null
         _currentUser.value = null
