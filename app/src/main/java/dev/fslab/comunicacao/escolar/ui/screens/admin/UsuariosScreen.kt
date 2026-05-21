@@ -86,7 +86,6 @@ import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AdminViewModel
 import kotlinx.coroutines.launch
 
-// Usuários Screen
 @Composable
 fun UsuariosScreen(
     schoolId: String,
@@ -110,7 +109,6 @@ fun UsuariosScreen(
     Box(modifier = Modifier.fillMaxSize()) {
     AdminSubScreenScaffold(title = "Usuários", onBack = onBack) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Search bar
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -131,7 +129,8 @@ fun UsuariosScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .height(52.dp),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 shape = RoundedCornerShape(12.dp),
@@ -146,7 +145,6 @@ fun UsuariosScreen(
                 )
             )
 
-            // Tabs
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -313,7 +311,6 @@ private fun avatarColor(nome: String): Color {
     return colors[Math.abs(nome.hashCode()) % colors.size]
 }
 
-// Professor Detail Screen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfessorDetailScreen(
@@ -460,7 +457,6 @@ fun ProfessorDetailScreen(
                     .padding(horizontal = 20.dp)
             ) {
                 Spacer(modifier = Modifier.height(24.dp))
-                // Avatar
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                     UserAvatar(nome = professor.nome, size = 80)
                 }
@@ -673,7 +669,6 @@ private fun AdicionarTurmaBottomSheet(
     }
 }
 
-// Responsável Detail Screen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResponsavelDetailScreen(
