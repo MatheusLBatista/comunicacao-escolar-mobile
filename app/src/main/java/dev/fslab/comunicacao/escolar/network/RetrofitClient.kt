@@ -57,4 +57,8 @@ object RetrofitClient {
     val conversaApi: ConversaApi by lazy {
         retrofit.create(ConversaApi::class.java)
     }
+
+    val autorizacaoSaidaApi: AutorizacaoSaidaApi by lazy {
+        retrofit.create(AutorizacaoSaidaApi::class.java)
+    }
 }
