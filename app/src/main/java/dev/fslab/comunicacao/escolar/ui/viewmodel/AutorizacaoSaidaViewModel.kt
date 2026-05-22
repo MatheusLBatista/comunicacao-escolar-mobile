@@ -10,6 +10,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 sealed class AutorizacaoSaidaUiState {
     object Loading : AutorizacaoSaidaUiState()
@@ -25,6 +28,11 @@ class AutorizacaoSaidaViewModel : ViewModel() {
 
     private val _cancelando = MutableStateFlow<String?>(null)
     val cancelando: StateFlow<String?> = _cancelando.asStateFlow()
+
+    private val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+        timeZone = TimeZone.getTimeZone("UTC")
+    }
+    private val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
 
     init {
         loadAutorizacoes()
@@ -76,23 +84,25 @@ class AutorizacaoSaidaViewModel : ViewModel() {
             }
         }
     }
-}
 
-private fun AutorizacaoSaidaDoc.toUi(): AutorizacaoSaida {
-    val statusLabel = when (status) {
-        "pending"   -> "Aguardando saída"
-        "approved"  -> "Aprovado"
-        "cancelled" -> "Cancelado"
-        else        -> status
+    private fun AutorizacaoSaidaDoc.toUi(): AutorizacaoSaida {
+        val status = when {
+            !active  -> "Cancelado"
+            used     -> "Utilizado"
+            else     -> "Aguardando saída"
+        }
+        val firstName = student?.fullName?.trim()?.split(" ")?.firstOrNull() ?: "Aluno"
+        val validAte = runCatching { isoFormatter.parse(validUntil)?.let { dateFormatter.format(it) } }
+            .getOrNull() ?: validUntil
+
+        return AutorizacaoSaida(
+            id = id,
+            studentName = firstName,
+            studentAvatarUrl = student?.avatarUrl?.takeIf { it.isNotBlank() },
+            status = status,
+            autorizadoPor = authorizedPerson?.name.orEmpty(),
+            relacao = authorizedPerson?.relationship.orEmpty(),
+            validAte = validAte
+        )
     }
-    val firstName = student?.fullName?.trim()?.split(" ")?.firstOrNull() ?: "Aluno"
-    return AutorizacaoSaida(
-        id = id,
-        studentName = firstName,
-        studentAvatarUrl = student?.avatarUrl?.takeIf { it.isNotBlank() },
-        status = statusLabel,
-        autorizadoPor = authorizedPersonName,
-        relacao = authorizedPersonRelation,
-        horarioPrevisto = scheduledTime
-    )
 }

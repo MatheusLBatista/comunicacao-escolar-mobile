@@ -9,7 +9,7 @@ data class AutorizacaoSaida(
     val status: String,
     val autorizadoPor: String,
     val relacao: String,
-    val horarioPrevisto: String
+    val validAte: String
 )
 
 data class AutorizacoesSaidaResponse(
@@ -33,16 +33,32 @@ data class AutorizacoesSaidaData(
 data class AutorizacaoSaidaDoc(
     @SerializedName("_id") val id: String = "",
     @SerializedName("student_id") val student: AutorizacaoSaidaStudent? = null,
-    @SerializedName("status") val status: String = "pending",
-    @SerializedName("authorized_person_name") val authorizedPersonName: String = "",
-    @SerializedName("authorized_person_relation") val authorizedPersonRelation: String = "",
-    @SerializedName("scheduled_time") val scheduledTime: String = ""
+    @SerializedName("authorized_person") val authorizedPerson: AutorizacaoAuthorizedPerson? = null,
+    @SerializedName("authorized_by") val authorizedBy: AutorizacaoAuthorizedBy? = null,
+    @SerializedName("valid_from") val validFrom: String = "",
+    @SerializedName("valid_until") val validUntil: String = "",
+    @SerializedName("used") val used: Boolean = false,
+    @SerializedName("active") val active: Boolean = true,
+    @SerializedName("qr_code") val qrCode: String = ""
 )
 
 data class AutorizacaoSaidaStudent(
     @SerializedName("_id") val id: String = "",
     @SerializedName("full_name") val fullName: String = "",
     @SerializedName("avatar_url") val avatarUrl: String? = null
+)
+
+data class AutorizacaoAuthorizedPerson(
+    @SerializedName("name") val name: String = "",
+    @SerializedName("document") val document: String = "",
+    @SerializedName("relationship") val relationship: String = "",
+    @SerializedName("photo_url") val photoUrl: String? = null
+)
+
+data class AutorizacaoAuthorizedBy(
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("full_name") val fullName: String = "",
+    @SerializedName("email") val email: String = ""
 )
 
 data class CancelarAutorizacaoResponse(

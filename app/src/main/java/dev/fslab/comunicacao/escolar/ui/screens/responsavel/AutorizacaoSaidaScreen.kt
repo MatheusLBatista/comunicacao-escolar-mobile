@@ -2,6 +2,8 @@ package dev.fslab.comunicacao.escolar.ui.screens.responsavel
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,11 +29,11 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -262,18 +264,28 @@ private fun AutorizacaoCard(
                     autorizacao.autorizadoPor
             )
             InfoRow(
-                label = "Horário previsto:",
-                value = autorizacao.horarioPrevisto
+                label = "Válido até:",
+                value = autorizacao.validAte
             )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        OutlinedButton(
-            onClick = onCancelar,
-            enabled = !cancelando,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
+        val interactionSource = remember { MutableInteractionSource() }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .border(1.dp, colors.inputBorder, RoundedCornerShape(8.dp))
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = !cancelando,
+                    onClick = onCancelar
+                )
+                .padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center
         ) {
             if (cancelando) {
                 CircularProgressIndicator(
@@ -284,7 +296,8 @@ private fun AutorizacaoCard(
             } else {
                 Text(
                     text = "Cancelar autorização",
-                    color = colors.textPrimary
+                    fontSize = 14.sp,
+                    color = colors.textSecondary
                 )
             }
         }
