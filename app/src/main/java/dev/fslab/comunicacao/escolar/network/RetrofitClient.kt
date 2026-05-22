@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    const val BASE_URL = "http://localhost:3011/"
+    const val BASE_URL = "http://10.0.2.2:3000"
 
     private val gson = GsonBuilder()
         .setLenient()
@@ -34,11 +34,27 @@ object RetrofitClient {
         .addConverterFactory(GsonConverterFactory.create(gson))
         .build()
 
-    val authApi: AuthApi = retrofit.create(AuthApi::class.java)
+    val authApi: AuthApi by lazy {
+        retrofit.create(AuthApi::class.java)
+    }
 
-    val userApi: UserApi = retrofit.create(UserApi::class.java)
+    val userApi: UserApi by lazy {
+        retrofit.create(UserApi::class.java)
+    }
 
-    val adminApi: AdminApi = retrofit.create(AdminApi::class.java)
+    val dailyLogsApi: DailyLogsApi by lazy {
+        retrofit.create(DailyLogsApi::class.java)
+    }
 
-    val conversaApi: ConversaApi = retrofit.create(ConversaApi::class.java)
+    val adminApi: AdminApi by lazy {
+        retrofit.create(AdminApi::class.java)
+    }
+
+    val agendaApi: AgendaApi by lazy {
+        retrofit.create(AgendaApi::class.java)
+    }
+
+    val conversaApi: ConversaApi by lazy {
+        retrofit.create(ConversaApi::class.java)
+    }
 }
