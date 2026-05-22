@@ -129,6 +129,7 @@ fun ResponsavelDashboardScreen(
 // Telas do Responsável
 @Composable
 fun AtividadesScreen(user: User, accessToken: String) {
+    val colors = LocalComunicacaoEscolarColors.current
     if (user.schoolId == null) {
         SemEscolaVinculada(
             icon = Icons.AutoMirrored.Outlined.Assignment,

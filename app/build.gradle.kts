@@ -99,6 +99,9 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
+    // Drag-to-reorder para LazyColumn
+    implementation("sh.calvin.reorderable:reorderable:2.1.1")
+
     // Testes
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

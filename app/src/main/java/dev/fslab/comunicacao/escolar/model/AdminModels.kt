@@ -7,16 +7,15 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.UUID
 
-// Turma
 data class Turma(
     val id: String = UUID.randomUUID().toString(),
     val nome: String,
     val ano: Int = 2026,
     val shift: String = "",
-    val professor: String? = null
+    val professor: String? = null,
+    val professorId: String? = null
 )
 
-// API response wrappers
 data class ApiResponse<T>(
     @SerializedName("error") val error: Boolean = false,
     @SerializedName("code") val code: Int = 200,
@@ -34,7 +33,6 @@ data class PaginatedData<T>(
     @SerializedName("page") val page: Int = 1
 )
 
-// API Class (Turma)
 data class ApiClass(
     @SerializedName("_id") val id: String,
     @SerializedName("name") val name: String,
@@ -48,7 +46,8 @@ data class ApiClass(
         nome = name,
         ano = year,
         shift = shift,
-        professor = teachers.firstOrNull()?.fullName
+        professor = teachers.firstOrNull()?.fullName,
+        professorId = teachers.firstOrNull()?.id
     )
 }
 
@@ -69,7 +68,6 @@ data class UpdateClassRequest(
     @SerializedName("teacher_ids") val teacherIds: List<String>
 )
 
-// API School User
 data class ApiSchoolUser(
     @SerializedName("_id") val id: String = "",
     @SerializedName("full_name") val fullName: String = "",
@@ -99,16 +97,16 @@ data class ApiSchoolUser(
     )
 }
 
-// API DailyLogTemplate
 data class ApiDailyLogTemplate(
     @SerializedName("_id") val id: String = "",
+    @SerializedName("name") val name: String = "",
     @SerializedName("fields") val fields: List<ApiTemplateField> = emptyList(),
     @SerializedName("ativo") val ativo: Boolean = true,
     @SerializedName("school_id") val schoolId: String? = null
 ) {
     fun toComunicadoTemplate() = ComunicadoTemplate(
         id = id,
-        nome = fields.firstOrNull()?.label?.let { "Template · $it" } ?: "Diário de Bordo",
+        nome = name.ifBlank { fields.firstOrNull()?.label ?: "Diário de Bordo" },
         campos = fields.map { f ->
             CampoTemplate(
                 id = f.id ?: UUID.randomUUID().toString(),
@@ -134,7 +132,12 @@ data class ApiTemplateField(
 
 data class CreateTemplateRequest(
     @SerializedName("school_id") val schoolId: String,
+    @SerializedName("name") val name: String,
     @SerializedName("fields") val fields: List<CreateTemplateFieldRequest> = emptyList()
+)
+
+data class UpdateTemplateRequest(
+    @SerializedName("fields") val fields: List<CreateTemplateFieldRequest>
 )
 
 data class CreateTemplateFieldRequest(
@@ -161,7 +164,6 @@ private fun formatAuditDate(isoString: String?): String {
     }
 }
 
-// API Audit Log
 data class ApiAuditLog(
     @SerializedName("_id") val id: String = "",
     @SerializedName("user_id") val userId: Any? = null,
@@ -180,15 +182,19 @@ data class ApiAuditLog(
         id = id,
         atorNome = extractName(userId) ?: "Usuário",
         tipoAtor = when (userRole) {
+            "admin"   -> TipoAtor.ADMIN
             "teacher" -> TipoAtor.PROFESSOR
             else      -> TipoAtor.RESPONSAVEL
         },
         acao = when (action) {
-            "view"     -> "visualizou"
-            "download" -> "baixou"
-            "export"   -> "exportou"
-            else       -> action
+            "create" -> "criou"
+            "update" -> "atualizou"
+            "delete" -> "removeu"
+            "view"   -> "visualizou"
+            else     -> action
         } + " " + when (resourceType) {
+            "user"            -> "Usuário"
+            "template"        -> "Template"
             "daily_log"       -> "Diário"
             "announcement"    -> "Comunicado"
             "message"         -> "Mensagem"
@@ -199,7 +205,7 @@ data class ApiAuditLog(
         },
         destino = resourceSummary.ifBlank { resourceType.replace("_", " ") },
         aluno = extractName(studentId),
-        dispositivo = deviceInfo?.platform?.ifBlank { null },
+        dispositivo = deviceInfo?.platform?.takeIf { it.isNotBlank() && it != "web" },
         dataHora = formatAuditDate(createdAt)
     )
 }
@@ -208,7 +214,6 @@ data class ApiDeviceInfo(
     @SerializedName("platform") val platform: String = ""
 )
 
-// Link to School
 data class LinkToSchoolRequest(
     @SerializedName("email") val email: String,
     @SerializedName("role") val role: String,
@@ -220,7 +225,10 @@ data class ApiStudentInput(
     @SerializedName("class_id") val classId: String
 )
 
-// Template de Comunicado
+data class MoveStudentClassRequest(
+    @SerializedName("class_id") val classId: String
+)
+
 data class ComunicadoTemplate(
     val id: String = UUID.randomUUID().toString(),
     val nome: String,
@@ -240,7 +248,6 @@ enum class TipoCampo(val label: String) {
     SIM_NAO("Sim / Não")
 }
 
-// Audit Log
 data class AuditLog(
     val id: String = UUID.randomUUID().toString(),
     val atorNome: String,
@@ -252,9 +259,8 @@ data class AuditLog(
     val dataHora: String
 )
 
-enum class TipoAtor { RESPONSAVEL, PROFESSOR }
+enum class TipoAtor { RESPONSAVEL, PROFESSOR, ADMIN }
 
-// Admin Stats
 data class AdminStats(
     val totalProfessores: Int,
     val totalResponsaveis: Int,
@@ -262,7 +268,6 @@ data class AdminStats(
     val totalTurmas: Int
 )
 
-// Professor (admin view)
 data class ProfessorAdmin(
     val id: String,
     val nome: String,
@@ -271,7 +276,6 @@ data class ProfessorAdmin(
     val turmas: List<Turma> = emptyList()
 )
 
-// Responsável (admin view)
 data class ResponsavelAdmin(
     val id: String,
     val nome: String,
@@ -287,7 +291,6 @@ data class FilhoAdmin(
     val classId: String? = null
 )
 
-// Aluno (admin view)
 data class AlunoAdmin(
     val id: String,
     val nome: String,

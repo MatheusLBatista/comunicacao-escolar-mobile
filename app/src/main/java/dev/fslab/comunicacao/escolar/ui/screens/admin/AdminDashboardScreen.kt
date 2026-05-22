@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -36,7 +37,6 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Face
-import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material3.Icon
@@ -70,13 +70,17 @@ import dev.fslab.comunicacao.escolar.model.User
 import dev.fslab.comunicacao.escolar.navigation.Screen
 import dev.fslab.comunicacao.escolar.ui.components.BottomNavBar
 import dev.fslab.comunicacao.escolar.ui.components.BottomNavItem
+import dev.fslab.comunicacao.escolar.ui.components.AppHeader
+import dev.fslab.comunicacao.escolar.ui.screens.conversas.ConversaDetailScreen
+import dev.fslab.comunicacao.escolar.ui.screens.conversas.ConversaListScreen
+import dev.fslab.comunicacao.escolar.ui.screens.conversas.NovaConversaScreen
 import dev.fslab.comunicacao.escolar.ui.screens.responsavel.PerfilScreen
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AdminViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
+import dev.fslab.comunicacao.escolar.ui.viewmodel.ConversaViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
 
-// Sealed class for sub-screen navigation
 sealed class AdminSubScreen {
     object Turmas : AdminSubScreen()
     data class TurmaDetail(val turma: dev.fslab.comunicacao.escolar.model.Turma) : AdminSubScreen()
@@ -86,8 +90,11 @@ sealed class AdminSubScreen {
     object VincularUsuario : AdminSubScreen()
     object Alunos : AdminSubScreen()
     object Templates : AdminSubScreen()
+    object NovoTemplate : AdminSubScreen()
     data class TemplateDetail(val template: ComunicadoTemplate) : AdminSubScreen()
     object AuditLogs : AdminSubScreen()
+    data class ConversaDetail(val conversaId: String, val titulo: String, val avatarUrl: String? = null) : AdminSubScreen()
+    object NovaConversa : AdminSubScreen()
 }
 
 private sealed class AdminNavKey {
@@ -95,7 +102,6 @@ private sealed class AdminNavKey {
     data class SubScreen(val screen: AdminSubScreen, val depth: Int) : AdminNavKey()
 }
 
-// Bottom nav items
 private val adminNavItems = listOf(
     BottomNavItem(
         icon = Icons.Outlined.SpaceDashboard,
@@ -124,7 +130,6 @@ private val adminNavItems = listOf(
     )
 )
 
-// Admin Dashboard (shell)
 @Composable
 fun AdminDashboardScreen(
     user: User,
@@ -135,6 +140,7 @@ fun AdminDashboardScreen(
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val adminViewModel: AdminViewModel = viewModel()
+    val conversaViewModel: ConversaViewModel = viewModel()
     val schoolId = user.schoolId ?: ""
     var currentRoute by rememberSaveable { mutableStateOf(Screen.AdminHome.route) }
     val subScreenStack = remember { mutableStateListOf<AdminSubScreen>() }
@@ -156,14 +162,16 @@ fun AdminDashboardScreen(
     Scaffold(
         containerColor = colors.background,
         bottomBar = {
-            BottomNavBar(
-                items = adminNavItems,
-                currentRoute = currentRoute,
-                onItemClick = {
-                    subScreenStack.clear()
-                    currentRoute = it.route
-                }
-            )
+            if (subScreenStack.lastOrNull() !is AdminSubScreen.ConversaDetail) {
+                BottomNavBar(
+                    items = adminNavItems,
+                    currentRoute = currentRoute,
+                    onItemClick = {
+                        subScreenStack.clear()
+                        currentRoute = it.route
+                    }
+                )
+            }
         }
     ) { innerPadding ->
         val navKey: AdminNavKey = if (subScreenStack.isNotEmpty()) {
@@ -177,6 +185,7 @@ fun AdminDashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
                 .background(colors.background),
             transitionSpec = {
                 val isSubToSub = initialState is AdminNavKey.SubScreen && targetState is AdminNavKey.SubScreen
@@ -212,16 +221,14 @@ fun AdminDashboardScreen(
                         adminViewModel = adminViewModel,
                         onNavigate = { subScreenStack.add(it) }
                     )
-                    Screen.Conversas.route -> AdminPlaceholderTela(
-                        icon = {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.Chat,
-                                contentDescription = null,
-                                tint = colors.textSecondary.copy(alpha = 0.35f),
-                                modifier = Modifier.size(72.dp)
-                            )
+                    Screen.Conversas.route -> ConversaListScreen(
+                        user = user,
+                        accessToken = accessToken,
+                        conversaViewModel = conversaViewModel,
+                        onOpenConversa = { id, titulo, avatarUrl ->
+                            subScreenStack.add(AdminSubScreen.ConversaDetail(id, titulo, avatarUrl))
                         },
-                        nome = "Conversas"
+                        onNovaConversa = { subScreenStack.add(AdminSubScreen.NovaConversa) }
                     )
                     Screen.Mural.route -> AdminPlaceholderTela(
                         icon = {
@@ -268,7 +275,9 @@ fun AdminDashboardScreen(
                             turma = screen.turma,
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeLast() },
+                            onProfessorClick = { subScreenStack.add(AdminSubScreen.ProfessorDetail(it)) },
+                            onResponsavelClick = { subScreenStack.add(AdminSubScreen.ResponsavelDetail(it)) }
                         )
 
                     is AdminSubScreen.Usuarios ->
@@ -277,7 +286,8 @@ fun AdminDashboardScreen(
                             adminViewModel = adminViewModel,
                             onBack = { subScreenStack.removeLast() },
                             onProfessorClick = { subScreenStack.add(AdminSubScreen.ProfessorDetail(it)) },
-                            onResponsavelClick = { subScreenStack.add(AdminSubScreen.ResponsavelDetail(it)) }
+                            onResponsavelClick = { subScreenStack.add(AdminSubScreen.ResponsavelDetail(it)) },
+                            onVincularClick = { subScreenStack.add(AdminSubScreen.VincularUsuario) }
                         )
 
                     is AdminSubScreen.ProfessorDetail ->
@@ -294,7 +304,8 @@ fun AdminDashboardScreen(
                             responsavel = screen.responsavel,
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeLast() },
+                            onTurmaClick = { subScreenStack.add(AdminSubScreen.TurmaDetail(it)) }
                         )
 
                     is AdminSubScreen.VincularUsuario ->
@@ -308,7 +319,9 @@ fun AdminDashboardScreen(
                         AlunosScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeLast() },
+                            onTurmaClick = { subScreenStack.add(AdminSubScreen.TurmaDetail(it)) },
+                            onResponsavelClick = { subScreenStack.add(AdminSubScreen.ResponsavelDetail(it)) }
                         )
 
                     is AdminSubScreen.Templates ->
@@ -316,12 +329,21 @@ fun AdminDashboardScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
                             onBack = { subScreenStack.removeLast() },
-                            onTemplateClick = { subScreenStack.add(AdminSubScreen.TemplateDetail(it)) }
+                            onTemplateClick = { subScreenStack.add(AdminSubScreen.TemplateDetail(it)) },
+                            onNovoTemplate = { subScreenStack.add(AdminSubScreen.NovoTemplate) }
+                        )
+
+                    is AdminSubScreen.NovoTemplate ->
+                        NovoTemplateScreen(
+                            schoolId = schoolId,
+                            adminViewModel = adminViewModel,
+                            onBack = { subScreenStack.removeLast() }
                         )
 
                     is AdminSubScreen.TemplateDetail ->
                         TemplateDetailScreen(
                             template = screen.template,
+                            adminViewModel = adminViewModel,
                             onBack = { subScreenStack.removeLast() }
                         )
 
@@ -331,13 +353,33 @@ fun AdminDashboardScreen(
                             adminViewModel = adminViewModel,
                             onBack = { subScreenStack.removeLast() }
                         )
+
+                    is AdminSubScreen.ConversaDetail ->
+                        ConversaDetailScreen(
+                            conversaId = screen.conversaId,
+                            titulo = screen.titulo,
+                            avatarUrl = screen.avatarUrl,
+                            user = user,
+                            conversaViewModel = conversaViewModel,
+                            onBack = { subScreenStack.removeLast() }
+                        )
+
+                    is AdminSubScreen.NovaConversa ->
+                        NovaConversaScreen(
+                            user = user,
+                            conversaViewModel = conversaViewModel,
+                            onBack = { subScreenStack.removeLast() },
+                            onConversaCreated = { id, titulo, avatarUrl ->
+                                subScreenStack.removeLast()
+                                subScreenStack.add(AdminSubScreen.ConversaDetail(id, titulo, avatarUrl))
+                            }
+                        )
                 }
             }
         }
     }
 }
 
-// Visão Geral (Admin Home)
 @Composable
 private fun AdminHomeScreen(
     user: User,
@@ -347,26 +389,18 @@ private fun AdminHomeScreen(
     val stats by adminViewModel.stats.collectAsState()
     val colors = LocalComunicacaoEscolarColors.current
 
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(colors.background),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .background(colors.background)
     ) {
-        item {
-            Text(
-                text = "Visão Geral",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = colors.textPrimary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                textAlign = TextAlign.Center
-            )
-        }
+        AppHeader("Visão Geral")
 
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -399,12 +433,12 @@ private fun AdminHomeScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 QuickAccessItem(icon = Icons.Outlined.People, title = "Usuários", subtitle = "Professores e responsáveis", onClick = { onNavigate(AdminSubScreen.Usuarios) })
-                QuickAccessItem(icon = Icons.Outlined.PersonAdd, title = "Vincular Usuário", subtitle = "Adicionar usuário à escola", onClick = { onNavigate(AdminSubScreen.VincularUsuario) })
                 QuickAccessItem(icon = Icons.Outlined.Face, title = "Alunos", subtitle = "Ver todos os alunos da escola", onClick = { onNavigate(AdminSubScreen.Alunos) })
                 QuickAccessItem(icon = Icons.Outlined.School, title = "Turmas", subtitle = "Criar e editar turmas", onClick = { onNavigate(AdminSubScreen.Turmas) })
                 QuickAccessItem(icon = Icons.Outlined.Description, title = "Templates de Comunicado", subtitle = "Gerenciar modelos de diário", onClick = { onNavigate(AdminSubScreen.Templates) })
                 QuickAccessItem(icon = Icons.Outlined.History, title = "Logs de Auditoria", subtitle = "Rastrear ações do sistema", onClick = { onNavigate(AdminSubScreen.AuditLogs) }, showDivider = false)
             }
+        }
         }
     }
 }
@@ -460,12 +494,11 @@ private fun QuickAccessItem(
     }
 }
 
-// Shared scaffold for admin sub-screens
 @Composable
 fun AdminSubScreenScaffold(
     title: String,
     onBack: () -> Unit,
-    action: @Composable () -> Unit = {},
+    action: (@Composable () -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
@@ -473,29 +506,12 @@ fun AdminSubScreenScaffold(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
-            .statusBarsPadding()
     ) {
-        Box(modifier = Modifier.fillMaxWidth().height(56.dp)) {
-            IconButton(onClick = onBack, modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp)) {
-                Icon(imageVector = Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Voltar", tint = colors.textPrimary)
-            }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = colors.textPrimary,
-                modifier = Modifier.align(Alignment.Center)
-            )
-            Box(modifier = Modifier.align(Alignment.CenterEnd).padding(end = 4.dp)) {
-                action()
-            }
-        }
-        Box(modifier = Modifier.fillMaxWidth().height(0.5.dp).background(colors.lightGray))
+        AppHeader(title = title, onBack = onBack, action = action)
         content()
     }
 }
 
-// Placeholder for other tabs
 @Composable
 private fun AdminPlaceholderTela(icon: @Composable () -> Unit, nome: String) {
     val colors = LocalComunicacaoEscolarColors.current

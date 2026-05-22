@@ -49,4 +49,12 @@ object RetrofitClient {
     val adminApi: AdminApi by lazy {
         retrofit.create(AdminApi::class.java)
     }
+
+    val agendaApi: AgendaApi by lazy {
+        retrofit.create(AgendaApi::class.java)
+    }
+
+    val conversaApi: ConversaApi by lazy {
+        retrofit.create(ConversaApi::class.java)
+    }
 }
