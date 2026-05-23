@@ -13,7 +13,8 @@ data class TargetInfo(
 
 data class  Docs (
     @SerializedName("_id") val id:String = "",
-    @SerializedName("school_id") val school_id:String =" ",
+    @SerializedName("school_id") val school_id:String ="",
+    @SerializedName("author_id") val authorId: String = "",
     @SerializedName("title") val title:String = "",
     @SerializedName("content") val content:String ="",
     @SerializedName("target") val target: TargetInfo = TargetInfo(),
@@ -43,7 +44,4 @@ data class MuralResponse (
     @SerializedName("code") val code: Int,
     @SerializedName("message") val message: String? = "",
     @SerializedName("data") val data: Dados
-
-
-
 )

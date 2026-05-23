@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.outlined.Favorite
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -80,6 +81,12 @@ import dev.fslab.comunicacao.escolar.navigation.Screen
 import dev.fslab.comunicacao.escolar.navigation.navigateSafely
 import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeViewModel
+import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
+import dev.fslab.comunicacao.escolar.model.ApiUser
+import dev.fslab.comunicacao.escolar.network.RetrofitClient
+
 @Composable
 fun MuralScreen(
 	schoolId: String = "",
@@ -174,7 +181,7 @@ fun MuralScreen(
 					LazyColumn {
 						itemsIndexed(posts!!.data.docs) { index,
 							post ->
-							MuralPostCard(post, LikeViewModel(), currentUser!!)
+							MuralPostCard(post, currentUser = currentUser!!)
 							Spacer(modifier = Modifier.height(16.dp))
 						}
 					}
@@ -185,18 +192,99 @@ fun MuralScreen(
 }
 
 @Composable
+fun PostAttachments(attachments: List<String>) {
+	if (attachments.isEmpty()) return
+
+	val context = LocalContext.current
+	
+	Column(
+		modifier = Modifier
+			.fillMaxWidth()
+			.padding(vertical = 8.dp),
+		verticalArrangement = Arrangement.spacedBy(8.dp)
+	) {
+		attachments.forEach { url ->
+			// Corrige localhost para 10.0.2.2 caso esteja rodando no emulador
+//			val formattedUrl = url.replace("localhost", "10.0.2.2")
+			
+			Box(
+				modifier = Modifier
+					.fillMaxWidth()
+					.height(200.dp)
+					.clip(RoundedCornerShape(8.dp))
+					.background(Color.LightGray.copy(alpha = 0.3f)),
+				contentAlignment = Alignment.Center
+			) {
+				SubcomposeAsyncImage(
+					model = ImageRequest.Builder(context)
+						.data(url)
+						.crossfade(true)
+						.build(),
+					contentDescription = "Imagem do post",
+					contentScale = ContentScale.Crop,
+					modifier = Modifier.fillMaxSize(),
+					loading = {
+						CircularProgressIndicator(
+							modifier = Modifier.size(24.dp),
+							strokeWidth = 2.dp,
+							color = MaterialTheme.colorScheme.primary
+						)
+					},
+					error = {
+						Icon(
+							painter = painterResource(id = android.R.drawable.ic_menu_report_image),
+							contentDescription = "Erro ao carregar imagem",
+							tint = Color.Gray
+						)
+					}
+				)
+			}
+		}
+	}
+}
+
+@Composable
 fun MuralPostCard(
 	post: Docs,
-	likeViewModel: LikeViewModel = viewModel(),
+	likeViewModel: LikeViewModel = viewModel(key = post.id),
 	currentUser: User
 ) {
 	val colors = LocalComunicacaoEscolarColors.current
+	val context = LocalContext.current
 
 	val likeState by likeViewModel.likeState.collectAsState()
-	val like by likeViewModel.like.collectAsState()
-	var isLiked: Boolean = false
-	if(!post.userLiked!!.isEmpty()) {
-		isLiked = post.userLiked.contains(currentUser.id)
+	
+	var isLiked by remember { mutableStateOf(post.userLiked?.contains(currentUser.id) == true) }
+	var likesCount by remember { mutableIntStateOf(post.likesCount ?: 0) }
+	var author by remember { mutableStateOf<ApiUser?>(null) }
+
+	LaunchedEffect(post.authorId) {
+		if (post.authorId.isNotEmpty()) {
+			try {
+				val response = RetrofitClient.userApi.getById(post.authorId)
+				if (response.isSuccess()) {
+					author = response.data
+				}
+			} catch (e: Exception) {
+				Log.e("MuralPostCard", "Erro ao carregar autor: ${e.message}")
+			}
+		}
+	}
+
+	LaunchedEffect(likeState) {
+		if (likeState is LikeState.Success) {
+			val response = (likeState as LikeState.Success).like
+			val newlyLiked = response.data?.id != null
+			
+			if (newlyLiked != isLiked) {
+				isLiked = newlyLiked
+				if (newlyLiked) {
+					likesCount++
+				} else {
+					if (likesCount > 0) likesCount--
+				}
+			}
+		}
 	}
 
 	Column(modifier = Modifier
@@ -204,6 +292,48 @@ fun MuralPostCard(
 		.background(colors.background, RoundedCornerShape(12.dp))
 		.padding(16.dp)
 	){
+		// Seção do Autor
+		Row(
+			verticalAlignment = Alignment.CenterVertically,
+			modifier = Modifier.padding(bottom = 12.dp)
+		) {
+			val avatarModifier = Modifier
+				.size(32.dp)
+				.clip(CircleShape)
+				.background(Color.LightGray)
+
+			if (author?.avatarUrl != null) {
+				val avatarUrl = author?.avatarUrl?.replace("localhost", "10.0.2.2")
+				AsyncImage(
+					model = ImageRequest.Builder(context)
+						.data(avatarUrl)
+						.crossfade(true)
+						.build(),
+					contentDescription = "Avatar de ${author?.fullName}",
+					modifier = avatarModifier,
+					contentScale = ContentScale.Crop,
+					error = painterResource(id = android.R.drawable.ic_menu_report_image),
+					placeholder = painterResource(id = android.R.drawable.ic_menu_gallery)
+				)
+			} else {
+				Icon(
+					imageVector = Icons.Default.AccountCircle,
+					contentDescription = "Avatar Padrão",
+					modifier = avatarModifier,
+					tint = Color.Gray
+				)
+			}
+			
+			Spacer(modifier = Modifier.width(8.dp))
+			
+			Text(
+				text = author?.fullName ?: "Carregando...",
+				style = MaterialTheme.typography.labelLarge,
+				fontWeight = FontWeight.Medium,
+				color = colors.textPrimary
+			)
+		}
+
 		Text(
 			text = post.title,
 			style = MaterialTheme.typography.titleMedium,
@@ -215,6 +345,10 @@ fun MuralPostCard(
 			style = MaterialTheme.typography.bodySmall,
 			color = Color.Gray
 		)
+		
+		// Anexos de Imagem
+		PostAttachments(post.attachments)
+
 		Spacer(modifier = Modifier.height(8.dp))
 		Text(
 			text = "Público: ${post.target.scope}",
@@ -222,32 +356,40 @@ fun MuralPostCard(
 		)
 		Spacer(modifier = Modifier.height(24.dp))
 		Row (
-			modifier = Modifier.clickable{
-				like.
+			modifier = Modifier.clickable {
+				if (likeState !is LikeState.Loading) {
+					likeViewModel.postLike(post.id)
+				}
 			},
 			horizontalArrangement = Arrangement.Start,
 			verticalAlignment = Alignment.CenterVertically
 		) {
 			Icon (
-				imageVector = if(isLiked) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
-				contentDescription = "Posts",
+				imageVector = if(isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+				contentDescription = "Like",
 				tint = Color.Red,
 				modifier = Modifier.size(24.dp)
 			)
 			Spacer(modifier = Modifier.width(8.dp))
 			Text(
-				text = "${post.likesCount}",
+				text = "$likesCount",
 				style = MaterialTheme.typography.headlineSmall,
 				fontWeight = FontWeight.Bold
+			)
+			
+			if (likeState is LikeState.Loading) {
+				Spacer(modifier = Modifier.width(8.dp))
+				CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+			}
+		}
+		
+		if (likeState is LikeState.Error) {
+			Text(
+				text = (likeState as LikeState.Error).message,
+				color = Color.Red,
+				style = MaterialTheme.typography.labelSmall,
+				modifier = Modifier.padding(top = 8.dp)
 			)
 		}
 	}
 }
-
-//@Preview(showBackground = true, showSystemUi = true)
-//@Composable
-//fun MuralScreenPreview() {
-//	ComunicacaoEscolarTheme {
-//		MuralScreen()
-//	}
-//}

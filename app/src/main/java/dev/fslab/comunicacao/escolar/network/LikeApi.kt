@@ -15,7 +15,7 @@ import retrofit2.http.Part
 import retrofit2.http.Path
 interface LikeApi {
 
-    @POST("posts/{id}/lie")
+    @POST("posts/{id}/like")
     suspend fun postLike(@Path("id") id: String): LikeResponse
 
 }
