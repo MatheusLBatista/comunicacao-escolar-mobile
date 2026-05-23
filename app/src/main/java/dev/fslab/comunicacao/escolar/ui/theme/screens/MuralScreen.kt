@@ -4,6 +4,8 @@ import android.app.Activity
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -40,7 +44,6 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -69,11 +72,14 @@ import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarDuration
+import androidx.compose.ui.Alignment
 import kotlinx.coroutines.delay
 import androidx.navigation.NavController
+import dev.fslab.comunicacao.escolar.model.User
 import dev.fslab.comunicacao.escolar.navigation.Screen
 import dev.fslab.comunicacao.escolar.navigation.navigateSafely
-
+import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeState
+import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeViewModel
 @Composable
 fun MuralScreen(
 	schoolId: String = "",
@@ -168,7 +174,7 @@ fun MuralScreen(
 					LazyColumn {
 						itemsIndexed(posts!!.data.docs) { index,
 							post ->
-							MuralPostCard(post)
+							MuralPostCard(post, LikeViewModel(), currentUser!!)
 							Spacer(modifier = Modifier.height(16.dp))
 						}
 					}
@@ -179,8 +185,20 @@ fun MuralScreen(
 }
 
 @Composable
-fun MuralPostCard(post: Docs) {
+fun MuralPostCard(
+	post: Docs,
+	likeViewModel: LikeViewModel = viewModel(),
+	currentUser: User
+) {
 	val colors = LocalComunicacaoEscolarColors.current
+
+	val likeState by likeViewModel.likeState.collectAsState()
+	val like by likeViewModel.like.collectAsState()
+	var isLiked: Boolean = false
+	if(!post.userLiked!!.isEmpty()) {
+		isLiked = post.userLiked.contains(currentUser.id)
+	}
+
 	Column(modifier = Modifier
 		.fillMaxWidth()
 		.background(colors.background, RoundedCornerShape(12.dp))
@@ -202,6 +220,27 @@ fun MuralPostCard(post: Docs) {
 			text = "Público: ${post.target.scope}",
 			style = MaterialTheme.typography.labelSmall
 		)
+		Spacer(modifier = Modifier.height(24.dp))
+		Row (
+			modifier = Modifier.clickable{
+				like.
+			},
+			horizontalArrangement = Arrangement.Start,
+			verticalAlignment = Alignment.CenterVertically
+		) {
+			Icon (
+				imageVector = if(isLiked) Icons.Outlined.Favorite else Icons.Outlined.FavoriteBorder,
+				contentDescription = "Posts",
+				tint = Color.Red,
+				modifier = Modifier.size(24.dp)
+			)
+			Spacer(modifier = Modifier.width(8.dp))
+			Text(
+				text = "${post.likesCount}",
+				style = MaterialTheme.typography.headlineSmall,
+				fontWeight = FontWeight.Bold
+			)
+		}
 	}
 }
 

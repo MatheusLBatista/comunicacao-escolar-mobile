@@ -20,7 +20,9 @@ data class  Docs (
     @SerializedName("attachments") val attachments: List<String> = emptyList(),
     @SerializedName("active") val active: Boolean = true,
     @SerializedName("created_at") val createdAt: String? = null,
-    @SerializedName("updated_at") val updatedAt: String? = null
+    @SerializedName("updated_at") val updatedAt: String? = null,
+    @SerializedName("likes_count") val likesCount: Int? = 0,
+    @SerializedName("user_liked") val userLiked: List<String>? = emptyList()
 )
 
 

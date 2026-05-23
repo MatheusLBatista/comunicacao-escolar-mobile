@@ -147,7 +147,7 @@ fun AdminDashboardScreen(
     }
 
     BackHandler(enabled = subScreenStack.isNotEmpty()) {
-        subScreenStack.removeLast()
+        subScreenStack.removeAt(subScreenStack.lastIndex)
     }
     BackHandler(enabled = subScreenStack.isEmpty() && currentRoute != Screen.AdminHome.route) {
         currentRoute = Screen.AdminHome.route
@@ -259,7 +259,7 @@ fun AdminDashboardScreen(
                         TurmasScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() },
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) },
                             onTurmaClick = { subScreenStack.add(AdminSubScreen.TurmaDetail(it)) }
                         )
 
@@ -268,14 +268,14 @@ fun AdminDashboardScreen(
                             turma = screen.turma,
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) }
                         )
 
                     is AdminSubScreen.Usuarios ->
                         UsuariosScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() },
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) },
                             onProfessorClick = { subScreenStack.add(AdminSubScreen.ProfessorDetail(it)) },
                             onResponsavelClick = { subScreenStack.add(AdminSubScreen.ResponsavelDetail(it)) }
                         )
@@ -285,7 +285,7 @@ fun AdminDashboardScreen(
                             professor = screen.professor,
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() },
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) },
                             onTurmaClick = { subScreenStack.add(AdminSubScreen.TurmaDetail(it)) }
                         )
 
@@ -294,42 +294,42 @@ fun AdminDashboardScreen(
                             responsavel = screen.responsavel,
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) }
                         )
 
                     is AdminSubScreen.VincularUsuario ->
                         VincularUsuarioScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) }
                         )
 
                     is AdminSubScreen.Alunos ->
                         AlunosScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) }
                         )
 
                     is AdminSubScreen.Templates ->
                         TemplatesScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() },
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) },
                             onTemplateClick = { subScreenStack.add(AdminSubScreen.TemplateDetail(it)) }
                         )
 
                     is AdminSubScreen.TemplateDetail ->
                         TemplateDetailScreen(
                             template = screen.template,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) }
                         )
 
                     is AdminSubScreen.AuditLogs ->
                         AuditLogsScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) }
                         )
                 }
             }
