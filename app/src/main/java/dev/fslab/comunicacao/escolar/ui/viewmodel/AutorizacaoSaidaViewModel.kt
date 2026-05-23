@@ -13,7 +13,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 import java.util.UUID
@@ -111,7 +110,7 @@ class AutorizacaoSaidaViewModel : ViewModel() {
         _showNovaAutorizacaoSheet.value = false
     }
 
-    fun criarAutorizacao(nome: String, relacao: String, horarioHour: Int, horarioMinute: Int) {
+    fun criarAutorizacao(nome: String, documento: String, relacao: String, validFromMs: Long, validUntilMs: Long) {
         viewModelScope.launch {
             _criando.value = true
             _criarErro.value = null
@@ -140,15 +139,8 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                 return@launch
             }
 
-            val validFrom = isoFormatter.format(Calendar.getInstance().time)
-
-            val validUntilCal = Calendar.getInstance().apply {
-                set(Calendar.HOUR_OF_DAY, horarioHour)
-                set(Calendar.MINUTE, horarioMinute)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
-            val validUntil = isoFormatter.format(validUntilCal.time)
+            val validFrom = isoFormatter.format(java.util.Date(validFromMs))
+            val validUntil = isoFormatter.format(java.util.Date(validUntilMs))
 
             val request = CreatePickupAuthorizationRequest(
                 schoolId = schoolId,
@@ -156,7 +148,7 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                 authorizedBy = savedUser.id,
                 authorizedPerson = CreateAuthorizedPerson(
                     name = nome.trim(),
-                    document = "",
+                    document = documento.trim(),
                     relationship = relacao.trim()
                 ),
                 qrCode = "PA-" + UUID.randomUUID().toString().take(8).uppercase(),

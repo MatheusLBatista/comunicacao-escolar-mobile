@@ -1,6 +1,6 @@
 package dev.fslab.comunicacao.escolar.ui.screens.responsavel
 
-import android.app.TimePickerDialog
+import android.app.DatePickerDialog
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,12 +22,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.outlined.AccessTime
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -43,7 +44,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -64,7 +65,10 @@ import dev.fslab.comunicacao.escolar.model.AutorizacaoSaida
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AutorizacaoSaidaUiState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AutorizacaoSaidaViewModel
+import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun AutorizacaoSaidaScreen(
@@ -111,9 +115,7 @@ fun AutorizacaoSaidaScreen(
             when (val state = uiState) {
                 is AutorizacaoSaidaUiState.Loading -> {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 24.dp),
+                        modifier = Modifier.fillMaxSize().padding(bottom = 24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -126,9 +128,7 @@ fun AutorizacaoSaidaScreen(
 
                 is AutorizacaoSaidaUiState.Error -> {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 24.dp),
+                        modifier = Modifier.fillMaxSize().padding(bottom = 24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -149,9 +149,7 @@ fun AutorizacaoSaidaScreen(
 
                 is AutorizacaoSaidaUiState.Empty -> {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 24.dp),
+                        modifier = Modifier.fillMaxSize().padding(bottom = 24.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -191,10 +189,7 @@ fun AutorizacaoSaidaScreen(
             containerColor = colors.textPrimary,
             contentColor = Color.White
         ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = "Nova autorização"
-            )
+            Icon(imageVector = Icons.Default.Add, contentDescription = "Nova autorização")
         }
     }
 
@@ -203,8 +198,8 @@ fun AutorizacaoSaidaScreen(
             criando = criando,
             erro = criarErro,
             onDismiss = { viewModel.fecharNovaAutorizacao() },
-            onCriar = { nome, relacao, hora, minuto ->
-                viewModel.criarAutorizacao(nome, relacao, hora, minuto)
+            onCriar = { nome, documento, relacao, fromMs, untilMs ->
+                viewModel.criarAutorizacao(nome, documento, relacao, fromMs, untilMs)
             }
         )
     }
@@ -216,18 +211,42 @@ private fun NovaAutorizacaoSheet(
     criando: Boolean,
     erro: String?,
     onDismiss: () -> Unit,
-    onCriar: (nome: String, relacao: String, hora: Int, minuto: Int) -> Unit
+    onCriar: (nome: String, documento: String, relacao: String, fromMs: Long, untilMs: Long) -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR")) }
 
-    val now = remember { Calendar.getInstance() }
     var nome by remember { mutableStateOf("") }
+    var documento by remember { mutableStateOf("") }
     var relacao by remember { mutableStateOf("") }
-    var hora by remember { mutableIntStateOf(now.get(Calendar.HOUR_OF_DAY)) }
-    var minuto by remember { mutableIntStateOf(now.get(Calendar.MINUTE)) }
-    val timeText = remember(hora, minuto) { String.format("%02d:%02d", hora, minuto) }
+    var validFromMs by remember { mutableStateOf(Calendar.getInstance().timeInMillis) }
+    var validUntilMs by remember {
+        mutableStateOf(
+            Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 30) }.timeInMillis
+        )
+    }
+
+    val validFromText = remember(validFromMs) { dateFormatter.format(Date(validFromMs)) }
+    val validUntilText = remember(validUntilMs) { dateFormatter.format(Date(validUntilMs)) }
+
+    fun showDatePicker(initialMs: Long, onSelected: (Long) -> Unit) {
+        val cal = Calendar.getInstance().apply { timeInMillis = initialMs }
+        DatePickerDialog(
+            context,
+            { _, year, month, day ->
+                val selected = Calendar.getInstance().apply {
+                    set(year, month, day, 0, 0, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }
+                onSelected(selected.timeInMillis)
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -261,10 +280,7 @@ private fun NovaAutorizacaoSheet(
                         color = colors.textSecondary
                     )
                 }
-                IconButton(
-                    onClick = onDismiss,
-                    enabled = !criando
-                ) {
+                IconButton(onClick = onDismiss, enabled = !criando) {
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = "Fechar",
@@ -275,78 +291,68 @@ private fun NovaAutorizacaoSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
+            // Nome
             OutlinedTextField(
                 value = nome,
                 onValueChange = { nome = it },
-                label = {
-                    Text(
-                        text = "QUEM VAI BUSCAR",
-                        fontSize = 11.sp,
-                        letterSpacing = 0.8.sp
-                    )
-                },
+                label = { Text("QUEM VAI BUSCAR", fontSize = 11.sp, letterSpacing = 0.8.sp) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = colors.focusedIndicator,
-                    unfocusedBorderColor = colors.inputBorder,
-                    focusedTextColor = colors.textInput,
-                    unfocusedTextColor = colors.textInput,
-                    cursorColor = colors.focusedIndicator,
-                    focusedContainerColor = colors.surface,
-                    unfocusedContainerColor = colors.surface,
-                    focusedLabelColor = colors.textSecondary,
-                    unfocusedLabelColor = colors.textSecondary
-                )
+                colors = fieldColors(colors)
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Documento (CPF)
+            OutlinedTextField(
+                value = documento,
+                onValueChange = { raw ->
+                    val digits = raw.filter { it.isDigit() }.take(11)
+                    documento = buildString {
+                        digits.forEachIndexed { i, c ->
+                            append(c)
+                            if (i == 2 || i == 5) append('.')
+                            if (i == 8) append('-')
+                        }
+                    }
+                },
+                label = { Text("DOCUMENTO (CPF)", fontSize = 11.sp, letterSpacing = 0.8.sp) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                colors = fieldColors(colors)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Relação
+            OutlinedTextField(
+                value = relacao,
+                onValueChange = { relacao = it },
+                label = { Text("RELAÇÃO", fontSize = 11.sp, letterSpacing = 0.8.sp) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp),
+                colors = fieldColors(colors)
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Datas
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                OutlinedTextField(
-                    value = relacao,
-                    onValueChange = { relacao = it },
-                    label = {
-                        Text(
-                            text = "RELAÇÃO",
-                            fontSize = 11.sp,
-                            letterSpacing = 0.8.sp
-                        )
-                    },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = colors.focusedIndicator,
-                        unfocusedBorderColor = colors.inputBorder,
-                        focusedTextColor = colors.textInput,
-                        unfocusedTextColor = colors.textInput,
-                        cursorColor = colors.focusedIndicator,
-                        focusedContainerColor = colors.surface,
-                        unfocusedContainerColor = colors.surface,
-                        focusedLabelColor = colors.textSecondary,
-                        unfocusedLabelColor = colors.textSecondary
-                    )
-                )
-
                 Box(modifier = Modifier.weight(1f)) {
                     OutlinedTextField(
-                        value = timeText,
+                        value = validFromText,
                         onValueChange = {},
-                        label = {
-                            Text(
-                                text = "HORÁRIO",
-                                fontSize = 11.sp,
-                                letterSpacing = 0.8.sp
-                            )
-                        },
+                        label = { Text("DE", fontSize = 11.sp, letterSpacing = 0.8.sp) },
                         trailingIcon = {
                             Icon(
-                                imageVector = Icons.Outlined.AccessTime,
+                                imageVector = Icons.Outlined.CalendarMonth,
                                 contentDescription = null,
                                 tint = colors.textSecondary,
                                 modifier = Modifier.size(18.dp)
@@ -356,17 +362,7 @@ private fun NovaAutorizacaoSheet(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.focusedIndicator,
-                            unfocusedBorderColor = colors.inputBorder,
-                            focusedTextColor = colors.textInput,
-                            unfocusedTextColor = colors.textInput,
-                            cursorColor = colors.focusedIndicator,
-                            focusedContainerColor = colors.surface,
-                            unfocusedContainerColor = colors.surface,
-                            focusedLabelColor = colors.textSecondary,
-                            unfocusedLabelColor = colors.textSecondary
-                        )
+                        colors = fieldColors(colors)
                     )
                     Box(
                         modifier = Modifier
@@ -374,31 +370,49 @@ private fun NovaAutorizacaoSheet(
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null
-                            ) {
-                                TimePickerDialog(
-                                    context,
-                                    { _, h, m -> hora = h; minuto = m },
-                                    hora,
-                                    minuto,
-                                    true
-                                ).show()
-                            }
+                            ) { showDatePicker(validFromMs) { validFromMs = it } }
+                    )
+                }
+
+                Box(modifier = Modifier.weight(1f)) {
+                    OutlinedTextField(
+                        value = validUntilText,
+                        onValueChange = {},
+                        label = { Text("ATÉ", fontSize = 11.sp, letterSpacing = 0.8.sp) },
+                        trailingIcon = {
+                            Icon(
+                                imageVector = Icons.Outlined.CalendarMonth,
+                                contentDescription = null,
+                                tint = colors.textSecondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        readOnly = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = fieldColors(colors)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { showDatePicker(validUntilMs) { validUntilMs = it } }
                     )
                 }
             }
 
             if (erro != null) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = erro,
-                    fontSize = 13.sp,
-                    color = colors.errorText
-                )
+                Text(text = erro, fontSize = 13.sp, color = colors.errorText)
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            val isValid = nome.isNotBlank() && relacao.isNotBlank()
+            val isValid = nome.isNotBlank() && documento.isNotBlank() &&
+                    relacao.isNotBlank() && validUntilMs > validFromMs
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -408,7 +422,7 @@ private fun NovaAutorizacaoSheet(
                         enabled = isValid && !criando,
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
-                    ) { onCriar(nome, relacao, hora, minuto) }
+                    ) { onCriar(nome, documento, relacao, validFromMs, validUntilMs) }
                     .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -430,6 +444,20 @@ private fun NovaAutorizacaoSheet(
         }
     }
 }
+
+@Composable
+private fun fieldColors(colors: dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarColors) =
+    OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = colors.focusedIndicator,
+        unfocusedBorderColor = colors.inputBorder,
+        focusedTextColor = colors.textInput,
+        unfocusedTextColor = colors.textInput,
+        cursorColor = colors.focusedIndicator,
+        focusedContainerColor = colors.surface,
+        unfocusedContainerColor = colors.surface,
+        focusedLabelColor = colors.textSecondary,
+        unfocusedLabelColor = colors.textSecondary
+    )
 
 @Composable
 private fun AutorizacaoCard(
@@ -463,9 +491,7 @@ private fun AutorizacaoCard(
                             .crossfade(true)
                             .build(),
                         contentDescription = autorizacao.studentName,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape),
+                        modifier = Modifier.size(44.dp).clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
                 } else {
@@ -487,11 +513,7 @@ private fun AutorizacaoCard(
                     fontWeight = FontWeight.SemiBold,
                     color = colors.textPrimary
                 )
-                Text(
-                    text = autorizacao.status,
-                    fontSize = 13.sp,
-                    color = colors.textSecondary
-                )
+                Text(text = autorizacao.status, fontSize = 13.sp, color = colors.textSecondary)
             }
         }
 
@@ -512,16 +534,12 @@ private fun AutorizacaoCard(
                 else
                     autorizacao.autorizadoPor
             )
-            InfoRow(
-                label = "Válido até:",
-                value = autorizacao.validAte
-            )
+            InfoRow(label = "Válido até:", value = autorizacao.validAte)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
         val interactionSource = remember { MutableInteractionSource() }
-
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -543,11 +561,7 @@ private fun AutorizacaoCard(
                     color = colors.textSecondary
                 )
             } else {
-                Text(
-                    text = "Cancelar autorização",
-                    fontSize = 14.sp,
-                    color = colors.textSecondary
-                )
+                Text(text = "Cancelar autorização", fontSize = 14.sp, color = colors.textSecondary)
             }
         }
     }
@@ -557,17 +571,8 @@ private fun AutorizacaoCard(
 private fun InfoRow(label: String, value: String) {
     val colors = LocalComunicacaoEscolarColors.current
     Row {
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            color = colors.textSecondary
-        )
+        Text(text = label, fontSize = 13.sp, color = colors.textSecondary)
         Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            text = value,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = colors.textPrimary
-        )
+        Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
     }
 }
