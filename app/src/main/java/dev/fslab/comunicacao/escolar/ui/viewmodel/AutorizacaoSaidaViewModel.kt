@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaida
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaidaDoc
+import dev.fslab.comunicacao.escolar.model.CreateAuthorizedPerson
+import dev.fslab.comunicacao.escolar.model.CreatePickupAuthorizationRequest
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import dev.fslab.comunicacao.escolar.network.TokenManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,8 +13,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
+import java.util.UUID
 
 sealed class AutorizacaoSaidaUiState {
     object Loading : AutorizacaoSaidaUiState()
@@ -28,6 +32,17 @@ class AutorizacaoSaidaViewModel : ViewModel() {
 
     private val _cancelando = MutableStateFlow<String?>(null)
     val cancelando: StateFlow<String?> = _cancelando.asStateFlow()
+
+    private val _showNovaAutorizacaoSheet = MutableStateFlow(false)
+    val showNovaAutorizacaoSheet: StateFlow<Boolean> = _showNovaAutorizacaoSheet.asStateFlow()
+
+    private val _criando = MutableStateFlow(false)
+    val criando: StateFlow<Boolean> = _criando.asStateFlow()
+
+    private val _criarErro = MutableStateFlow<String?>(null)
+    val criarErro: StateFlow<String?> = _criarErro.asStateFlow()
+
+    private val _rawDocs = MutableStateFlow<List<AutorizacaoSaidaDoc>>(emptyList())
 
     private val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
@@ -54,7 +69,9 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                     _uiState.value = AutorizacaoSaidaUiState.Error(response.getErrorMessage())
                     return@launch
                 }
-                val list = response.data?.docs.orEmpty().map { it.toUi() }
+                val docs = response.data?.docs.orEmpty()
+                _rawDocs.value = docs
+                val list = docs.map { it.toUi() }
                 _uiState.value = if (list.isEmpty()) AutorizacaoSaidaUiState.Empty else AutorizacaoSaidaUiState.Content(list)
             } catch (e: retrofit2.HttpException) {
                 _uiState.value = AutorizacaoSaidaUiState.Error("Erro ao carregar autorizações (${e.code()}).")
@@ -81,6 +98,90 @@ class AutorizacaoSaidaViewModel : ViewModel() {
             } finally {
                 _cancelando.value = null
                 loadAutorizacoes()
+            }
+        }
+    }
+
+    fun abrirNovaAutorizacao() {
+        _criarErro.value = null
+        _showNovaAutorizacaoSheet.value = true
+    }
+
+    fun fecharNovaAutorizacao() {
+        _showNovaAutorizacaoSheet.value = false
+    }
+
+    fun criarAutorizacao(nome: String, relacao: String, horarioHour: Int, horarioMinute: Int) {
+        viewModelScope.launch {
+            _criando.value = true
+            _criarErro.value = null
+
+            val token = TokenManager.getAccessToken() ?: run {
+                _criarErro.value = "Sessão expirada."
+                _criando.value = false
+                return@launch
+            }
+
+            val savedUser = TokenManager.getSavedUser() ?: run {
+                _criarErro.value = "Usuário não encontrado."
+                _criando.value = false
+                return@launch
+            }
+
+            val schoolId = savedUser.schoolId ?: run {
+                _criarErro.value = "Escola não vinculada."
+                _criando.value = false
+                return@launch
+            }
+
+            val studentId = _rawDocs.value.firstOrNull()?.student?.id ?: run {
+                _criarErro.value = "Nenhum aluno encontrado."
+                _criando.value = false
+                return@launch
+            }
+
+            val validFrom = isoFormatter.format(Calendar.getInstance().time)
+
+            val validUntilCal = Calendar.getInstance().apply {
+                set(Calendar.HOUR_OF_DAY, horarioHour)
+                set(Calendar.MINUTE, horarioMinute)
+                set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
+            }
+            val validUntil = isoFormatter.format(validUntilCal.time)
+
+            val request = CreatePickupAuthorizationRequest(
+                schoolId = schoolId,
+                studentId = studentId,
+                authorizedBy = savedUser.id,
+                authorizedPerson = CreateAuthorizedPerson(
+                    name = nome.trim(),
+                    document = "",
+                    relationship = relacao.trim()
+                ),
+                qrCode = "PA-" + UUID.randomUUID().toString().take(8).uppercase(),
+                validFrom = validFrom,
+                validUntil = validUntil
+            )
+
+            try {
+                val response = RetrofitClient.autorizacaoSaidaApi.criarAutorizacao("Bearer $token", request)
+                if (response.error) {
+                    _criarErro.value = response.getErrorMessage()
+                } else {
+                    _showNovaAutorizacaoSheet.value = false
+                    loadAutorizacoes()
+                }
+            } catch (e: retrofit2.HttpException) {
+                _criarErro.value = "Erro ao criar autorização (${e.code()})."
+            } catch (e: java.net.UnknownHostException) {
+                _criarErro.value = "Sem conexão com a internet."
+            } catch (e: java.net.SocketTimeoutException) {
+                _criarErro.value = "Tempo de conexão esgotado."
+            } catch (e: Exception) {
+                _criarErro.value = "Erro ao criar autorização."
+            } finally {
+                _criando.value = false
             }
         }
     }

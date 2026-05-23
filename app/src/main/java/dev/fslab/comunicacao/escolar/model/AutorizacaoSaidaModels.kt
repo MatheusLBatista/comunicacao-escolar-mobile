@@ -68,3 +68,30 @@ data class CancelarAutorizacaoResponse(
 ) {
     fun getErrorMessage(): String = errors.firstOrNull() ?: message
 }
+
+data class CreatePickupAuthorizationRequest(
+    @SerializedName("school_id") val schoolId: String,
+    @SerializedName("student_id") val studentId: String,
+    @SerializedName("authorized_by") val authorizedBy: String,
+    @SerializedName("authorized_person") val authorizedPerson: CreateAuthorizedPerson,
+    @SerializedName("qr_code") val qrCode: String,
+    @SerializedName("valid_from") val validFrom: String,
+    @SerializedName("valid_until") val validUntil: String,
+    @SerializedName("used") val used: Boolean = false,
+    @SerializedName("active") val active: Boolean = true
+)
+
+data class CreateAuthorizedPerson(
+    @SerializedName("name") val name: String,
+    @SerializedName("document") val document: String,
+    @SerializedName("relationship") val relationship: String,
+    @SerializedName("photo_url") val photoUrl: String? = null
+)
+
+data class CreatePickupAuthorizationResponse(
+    @SerializedName("error") val error: Boolean = false,
+    @SerializedName("message") val message: String = "",
+    @SerializedName("errors") val errors: List<String> = emptyList()
+) {
+    fun getErrorMessage(): String = errors.firstOrNull() ?: message
+}
