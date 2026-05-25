@@ -53,14 +53,17 @@ class AutorizacaoSaidaViewModel : ViewModel() {
     private val _alunos = MutableStateFlow<List<ApiAssociatedStudent>>(emptyList())
     val alunos: StateFlow<List<ApiAssociatedStudent>> = _alunos.asStateFlow()
 
+    private val _alunoFiltro = MutableStateFlow<String?>(null)
+    val alunoFiltro: StateFlow<String?> = _alunoFiltro.asStateFlow()
+
     private val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
     private val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
 
     init {
-        loadAutorizacoes()
         loadAlunos()
+        loadAutorizacoes()
     }
 
     private fun loadAlunos() {
@@ -69,6 +72,11 @@ class AutorizacaoSaidaViewModel : ViewModel() {
             val type = object : TypeToken<List<ApiAssociatedStudent>>() {}.type
             _alunos.value = Gson().fromJson(json, type)
         } catch (_: Exception) {}
+    }
+
+    fun filtrarPorAluno(studentId: String?) {
+        _alunoFiltro.value = studentId
+        loadAutorizacoes()
     }
 
     fun loadAutorizacoes() {
@@ -82,14 +90,18 @@ class AutorizacaoSaidaViewModel : ViewModel() {
             }
 
             try {
-                val response = RetrofitClient.autorizacaoSaidaApi.getAutorizacoes("Bearer $token")
+                val response = RetrofitClient.autorizacaoSaidaApi.getAutorizacoes(
+                    token = "Bearer $token",
+                    active = true,
+                    studentId = _alunoFiltro.value
+                )
                 if (response.error) {
                     _uiState.value = AutorizacaoSaidaUiState.Error(response.getErrorMessage())
                     return@launch
                 }
                 val docs = response.data?.docs.orEmpty()
                 _rawDocs.value = docs
-                val list = docs.filter { it.active }.map { it.toUi() }
+                val list = docs.map { it.toUi() }
                 _uiState.value = if (list.isEmpty()) AutorizacaoSaidaUiState.Empty else AutorizacaoSaidaUiState.Content(list)
             } catch (e: retrofit2.HttpException) {
                 _uiState.value = AutorizacaoSaidaUiState.Error("Erro ao carregar autorizações (${e.code()}).")

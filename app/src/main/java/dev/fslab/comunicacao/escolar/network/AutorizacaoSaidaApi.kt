@@ -14,12 +14,15 @@ import retrofit2.http.Header
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface AutorizacaoSaidaApi {
 
     @GET("pickup-authorizations")
     suspend fun getAutorizacoes(
-        @Header("Authorization") token: String
+        @Header("Authorization") token: String,
+        @Query("active") active: Boolean = true,
+        @Query("student_id") studentId: String? = null
     ): AutorizacoesSaidaResponse
 
     @GET("pickup-authorizations/{id}")

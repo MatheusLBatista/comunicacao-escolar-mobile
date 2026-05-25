@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -96,6 +97,7 @@ fun AutorizacaoSaidaScreen(
     val criarErro by viewModel.criarErro.collectAsState()
     val qrCodeId by viewModel.qrCodeId.collectAsState()
     val alunos by viewModel.alunos.collectAsState()
+    val alunoFiltro by viewModel.alunoFiltro.collectAsState()
 
     Box(
         modifier = Modifier
@@ -125,6 +127,31 @@ fun AutorizacaoSaidaScreen(
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.size(48.dp))
+            }
+
+            if (alunos.size > 1) {
+                LazyRow(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        FiltroChip(
+                            label = "Todos",
+                            selecionado = alunoFiltro == null,
+                            onClick = { viewModel.filtrarPorAluno(null) },
+                            colors = colors
+                        )
+                    }
+                    items(alunos) { aluno ->
+                        FiltroChip(
+                            label = aluno.fullName.trim().split(" ").firstOrNull() ?: aluno.fullName,
+                            selecionado = alunoFiltro == aluno.id,
+                            onClick = { viewModel.filtrarPorAluno(aluno.id) },
+                            colors = colors
+                        )
+                    }
+                }
             }
 
             when (val state = uiState) {
@@ -783,5 +810,33 @@ private fun InfoRow(label: String, value: String) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(text = label, fontSize = 11.sp, letterSpacing = 0.3.sp, color = colors.textSecondary)
         Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colors.textPrimary)
+    }
+}
+
+@Composable
+private fun FiltroChip(
+    label: String,
+    selecionado: Boolean,
+    onClick: () -> Unit,
+    colors: dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarColors
+) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (selecionado) colors.textPrimary else colors.background)
+            .border(1.dp, if (selecionado) colors.textPrimary else colors.inputBorder, RoundedCornerShape(20.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            fontWeight = if (selecionado) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (selecionado) Color.White else colors.textSecondary
+        )
     }
 }
