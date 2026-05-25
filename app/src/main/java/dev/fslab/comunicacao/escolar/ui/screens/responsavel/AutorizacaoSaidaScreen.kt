@@ -1,6 +1,8 @@
 package dev.fslab.comunicacao.escolar.ui.screens.responsavel
 
 import android.app.DatePickerDialog
+import android.graphics.Bitmap
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,15 +22,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,6 +45,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -51,6 +57,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -58,9 +65,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaida
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AutorizacaoSaidaUiState
@@ -81,6 +93,7 @@ fun AutorizacaoSaidaScreen(
     val showSheet by viewModel.showNovaAutorizacaoSheet.collectAsState()
     val criando by viewModel.criando.collectAsState()
     val criarErro by viewModel.criarErro.collectAsState()
+    val qrCodeId by viewModel.qrCodeId.collectAsState()
 
     Box(
         modifier = Modifier
@@ -172,7 +185,8 @@ fun AutorizacaoSaidaScreen(
                             AutorizacaoCard(
                                 autorizacao = autorizacao,
                                 cancelando = cancelando == autorizacao.id,
-                                onCancelar = { viewModel.cancelarAutorizacao(autorizacao.id) }
+                                onCancelar = { viewModel.cancelarAutorizacao(autorizacao.id) },
+                                onVerQrCode = { viewModel.mostrarQrCode(autorizacao.id) }
                             )
                         }
                         item { Spacer(modifier = Modifier.height(80.dp)) }
@@ -201,6 +215,13 @@ fun AutorizacaoSaidaScreen(
             onCriar = { nome, documento, relacao, fromMs, untilMs ->
                 viewModel.criarAutorizacao(nome, documento, relacao, fromMs, untilMs)
             }
+        )
+    }
+
+    if (qrCodeId != null) {
+        QrCodeDialog(
+            authorizationId = qrCodeId!!,
+            onDismiss = { viewModel.dispensarQrCode() }
         )
     }
 }
@@ -445,6 +466,110 @@ private fun NovaAutorizacaoSheet(
     }
 }
 
+private fun generateQrBitmap(content: String, sizePx: Int = 600): Bitmap {
+    val hints = mapOf<EncodeHintType, Any>(
+        EncodeHintType.MARGIN to 1,
+        EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M
+    )
+    val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, sizePx, sizePx, hints)
+    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.RGB_565)
+    for (x in 0 until sizePx) {
+        for (y in 0 until sizePx) {
+            bitmap.setPixel(x, y, if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+        }
+    }
+    return bitmap
+}
+
+@Composable
+private fun QrCodeDialog(
+    authorizationId: String,
+    onDismiss: () -> Unit
+) {
+    val colors = LocalComunicacaoEscolarColors.current
+    val qrBitmap = remember(authorizationId) { generateQrBitmap(authorizationId) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(20.dp))
+                .background(colors.background)
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "QR Code de Autorização",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary
+                )
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Fechar",
+                        tint = colors.textSecondary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "Apresente este QR Code na portaria para autorizar a saída",
+                fontSize = 13.sp,
+                color = colors.textSecondary,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(240.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    bitmap = qrBitmap.asImageBitmap(),
+                    contentDescription = "QR Code",
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(colors.buttonContainer)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onDismiss
+                    )
+                    .padding(vertical = 14.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Entendido",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.buttonText
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun fieldColors(colors: dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarColors) =
     OutlinedTextFieldDefaults.colors(
@@ -463,10 +588,37 @@ private fun fieldColors(colors: dev.fslab.comunicacao.escolar.ui.theme.Comunicac
 private fun AutorizacaoCard(
     autorizacao: AutorizacaoSaida,
     cancelando: Boolean,
-    onCancelar: () -> Unit
+    onCancelar: () -> Unit,
+    onVerQrCode: () -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val context = LocalContext.current
+    var showConfirm by remember { mutableStateOf(false) }
+
+    if (showConfirm) {
+        AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            title = { Text("Cancelar autorização", fontSize = 16.sp, fontWeight = FontWeight.SemiBold) },
+            text = {
+                Text(
+                    "Tem certeza que deseja cancelar esta autorização? Ela não poderá ser usada após o cancelamento.",
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showConfirm = false; onCancelar() }) {
+                    Text("Confirmar", color = colors.errorText, fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirm = false }) {
+                    Text("Manter", color = colors.textSecondary)
+                }
+            }
+        )
+    }
+
+    val isActive = autorizacao.status == "Aguardando saída"
 
     Column(
         modifier = Modifier
@@ -474,6 +626,13 @@ private fun AutorizacaoCard(
             .clip(RoundedCornerShape(16.dp))
             .border(1.dp, colors.inputBorder, RoundedCornerShape(16.dp))
             .background(colors.background)
+            .then(
+                if (isActive) Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onVerQrCode
+                ) else Modifier
+            )
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -506,14 +665,18 @@ private fun AutorizacaoCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = autorizacao.studentName,
-                    fontSize = 16.sp,
+                    fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.textPrimary
                 )
-                Text(text = autorizacao.status, fontSize = 13.sp, color = colors.textSecondary)
+                Text(
+                    text = autorizacao.status,
+                    fontSize = 13.sp,
+                    color = colors.textSecondary
+                )
             }
         }
 
@@ -525,33 +688,32 @@ private fun AutorizacaoCard(
                 .clip(RoundedCornerShape(8.dp))
                 .background(colors.lightGray)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             InfoRow(
-                label = "Pessoa autorizada:",
+                label = "Pessoa autorizada",
                 value = if (autorizacao.relacao.isNotBlank())
                     "${autorizacao.autorizadoPor} · ${autorizacao.relacao}"
                 else
                     autorizacao.autorizadoPor
             )
-            InfoRow(label = "Válido até:", value = autorizacao.validAte)
+            InfoRow(label = "Válido até", value = autorizacao.validAte)
         }
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        val interactionSource = remember { MutableInteractionSource() }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .border(1.dp, colors.inputBorder, RoundedCornerShape(8.dp))
                 .clickable(
-                    interactionSource = interactionSource,
+                    interactionSource = remember { MutableInteractionSource() },
                     indication = null,
                     enabled = !cancelando,
-                    onClick = onCancelar
+                    onClick = { showConfirm = true }
                 )
-                .padding(vertical = 12.dp),
+                .padding(vertical = 13.dp),
             contentAlignment = Alignment.Center
         ) {
             if (cancelando) {
@@ -561,7 +723,11 @@ private fun AutorizacaoCard(
                     color = colors.textSecondary
                 )
             } else {
-                Text(text = "Cancelar autorização", fontSize = 14.sp, color = colors.textSecondary)
+                Text(
+                    text = "Cancelar autorização",
+                    fontSize = 14.sp,
+                    color = colors.textSecondary
+                )
             }
         }
     }
@@ -570,9 +736,8 @@ private fun AutorizacaoCard(
 @Composable
 private fun InfoRow(label: String, value: String) {
     val colors = LocalComunicacaoEscolarColors.current
-    Row {
-        Text(text = label, fontSize = 13.sp, color = colors.textSecondary)
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.textPrimary)
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(text = label, fontSize = 11.sp, letterSpacing = 0.3.sp, color = colors.textSecondary)
+        Text(text = value, fontSize = 13.sp, fontWeight = FontWeight.Medium, color = colors.textPrimary)
     }
 }

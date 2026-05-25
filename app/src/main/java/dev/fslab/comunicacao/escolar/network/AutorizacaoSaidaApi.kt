@@ -1,9 +1,12 @@
 package dev.fslab.comunicacao.escolar.network
 
+import dev.fslab.comunicacao.escolar.model.AutorizacaoSaidaByIdResponse
 import dev.fslab.comunicacao.escolar.model.AutorizacoesSaidaResponse
 import dev.fslab.comunicacao.escolar.model.CancelarAutorizacaoResponse
 import dev.fslab.comunicacao.escolar.model.CreatePickupAuthorizationRequest
 import dev.fslab.comunicacao.escolar.model.CreatePickupAuthorizationResponse
+import dev.fslab.comunicacao.escolar.model.CreatePickupLogRequest
+import dev.fslab.comunicacao.escolar.model.CreatePickupLogResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -18,6 +21,12 @@ interface AutorizacaoSaidaApi {
         @Header("Authorization") token: String
     ): AutorizacoesSaidaResponse
 
+    @GET("pickup-authorizations/{id}")
+    suspend fun getAutorizacaoById(
+        @Header("Authorization") token: String,
+        @Path("id") id: String
+    ): AutorizacaoSaidaByIdResponse
+
     @POST("pickup-authorizations")
     suspend fun criarAutorizacao(
         @Header("Authorization") token: String,
@@ -29,4 +38,10 @@ interface AutorizacaoSaidaApi {
         @Header("Authorization") token: String,
         @Path("id") id: String
     ): CancelarAutorizacaoResponse
+
+    @POST("pickup-logs")
+    suspend fun criarPickupLog(
+        @Header("Authorization") token: String,
+        @Body request: CreatePickupLogRequest
+    ): CreatePickupLogResponse
 }

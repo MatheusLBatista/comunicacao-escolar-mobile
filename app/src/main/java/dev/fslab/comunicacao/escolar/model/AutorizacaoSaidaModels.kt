@@ -91,6 +91,45 @@ data class CreateAuthorizedPerson(
 data class CreatePickupAuthorizationResponse(
     @SerializedName("error") val error: Boolean = false,
     @SerializedName("message") val message: String = "",
+    @SerializedName("errors") val errors: List<String> = emptyList(),
+    @SerializedName("data") val data: CreatedAuthorizationData? = null
+) {
+    fun getErrorMessage(): String = errors.firstOrNull() ?: message
+}
+
+data class CreatedAuthorizationData(
+    @SerializedName("_id") val id: String = ""
+)
+
+data class AutorizacaoSaidaByIdResponse(
+    @SerializedName("error") val error: Boolean = false,
+    @SerializedName("message") val message: String = "",
+    @SerializedName("errors") val errors: List<String> = emptyList(),
+    @SerializedName("data") val data: AutorizacaoSaidaDoc? = null
+) {
+    fun getErrorMessage(): String = errors.firstOrNull() ?: message
+}
+
+data class CreatePickupLogRequest(
+    @SerializedName("school_id") val schoolId: String,
+    @SerializedName("student_id") val studentId: String,
+    @SerializedName("authorization_id") val authorizationId: String,
+    @SerializedName("method") val method: String = "qr_code",
+    @SerializedName("picked_up_by") val pickedUpBy: PickedUpBy,
+    @SerializedName("verified_by") val verifiedBy: String,
+    @SerializedName("departure_time") val departureTime: String,
+    @SerializedName("notes") val notes: String = ""
+)
+
+data class PickedUpBy(
+    @SerializedName("user_id") val userId: String? = null,
+    @SerializedName("name") val name: String,
+    @SerializedName("document") val document: String
+)
+
+data class CreatePickupLogResponse(
+    @SerializedName("error") val error: Boolean = false,
+    @SerializedName("message") val message: String = "",
     @SerializedName("errors") val errors: List<String> = emptyList()
 ) {
     fun getErrorMessage(): String = errors.firstOrNull() ?: message

@@ -41,6 +41,9 @@ class AutorizacaoSaidaViewModel : ViewModel() {
     private val _criarErro = MutableStateFlow<String?>(null)
     val criarErro: StateFlow<String?> = _criarErro.asStateFlow()
 
+    private val _qrCodeId = MutableStateFlow<String?>(null)
+    val qrCodeId: StateFlow<String?> = _qrCodeId.asStateFlow()
+
     private val _rawDocs = MutableStateFlow<List<AutorizacaoSaidaDoc>>(emptyList())
 
     private val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
@@ -70,7 +73,7 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                 }
                 val docs = response.data?.docs.orEmpty()
                 _rawDocs.value = docs
-                val list = docs.map { it.toUi() }
+                val list = docs.filter { it.active }.map { it.toUi() }
                 _uiState.value = if (list.isEmpty()) AutorizacaoSaidaUiState.Empty else AutorizacaoSaidaUiState.Content(list)
             } catch (e: retrofit2.HttpException) {
                 _uiState.value = AutorizacaoSaidaUiState.Error("Erro ao carregar autorizações (${e.code()}).")
@@ -108,6 +111,14 @@ class AutorizacaoSaidaViewModel : ViewModel() {
 
     fun fecharNovaAutorizacao() {
         _showNovaAutorizacaoSheet.value = false
+    }
+
+    fun mostrarQrCode(id: String) {
+        _qrCodeId.value = id
+    }
+
+    fun dispensarQrCode() {
+        _qrCodeId.value = null
     }
 
     fun criarAutorizacao(nome: String, documento: String, relacao: String, validFromMs: Long, validUntilMs: Long) {
@@ -151,7 +162,7 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                     document = documento.trim(),
                     relationship = relacao.trim()
                 ),
-                qrCode = "PA-" + UUID.randomUUID().toString().take(8).uppercase(),
+                qrCode = UUID.randomUUID().toString(),
                 validFrom = validFrom,
                 validUntil = validUntil
             )
@@ -162,6 +173,7 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                     _criarErro.value = response.getErrorMessage()
                 } else {
                     _showNovaAutorizacaoSheet.value = false
+                    _qrCodeId.value = response.data?.id
                     loadAutorizacoes()
                 }
             } catch (e: retrofit2.HttpException) {
