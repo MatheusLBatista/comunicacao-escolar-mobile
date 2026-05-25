@@ -61,6 +61,10 @@ data class AutorizacaoAuthorizedBy(
     @SerializedName("email") val email: String = ""
 )
 
+data class PatchAutorizacaoRequest(
+    @SerializedName("active") val active: Boolean
+)
+
 data class CancelarAutorizacaoResponse(
     @SerializedName("error") val error: Boolean = false,
     @SerializedName("message") val message: String = "",

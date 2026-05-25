@@ -2,10 +2,14 @@ package dev.fslab.comunicacao.escolar.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import dev.fslab.comunicacao.escolar.model.ApiAssociatedStudent
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaida
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaidaDoc
 import dev.fslab.comunicacao.escolar.model.CreateAuthorizedPerson
 import dev.fslab.comunicacao.escolar.model.CreatePickupAuthorizationRequest
+import dev.fslab.comunicacao.escolar.model.PatchAutorizacaoRequest
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import dev.fslab.comunicacao.escolar.network.TokenManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -46,6 +50,9 @@ class AutorizacaoSaidaViewModel : ViewModel() {
 
     private val _rawDocs = MutableStateFlow<List<AutorizacaoSaidaDoc>>(emptyList())
 
+    private val _alunos = MutableStateFlow<List<ApiAssociatedStudent>>(emptyList())
+    val alunos: StateFlow<List<ApiAssociatedStudent>> = _alunos.asStateFlow()
+
     private val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
@@ -53,6 +60,15 @@ class AutorizacaoSaidaViewModel : ViewModel() {
 
     init {
         loadAutorizacoes()
+        loadAlunos()
+    }
+
+    private fun loadAlunos() {
+        val json = TokenManager.getStudentsJson() ?: return
+        try {
+            val type = object : TypeToken<List<ApiAssociatedStudent>>() {}.type
+            _alunos.value = Gson().fromJson(json, type)
+        } catch (_: Exception) {}
     }
 
     fun loadAutorizacoes() {
@@ -95,11 +111,17 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                 return@launch
             }
             try {
-                RetrofitClient.autorizacaoSaidaApi.cancelarAutorizacao("Bearer $token", id)
+                val response = RetrofitClient.autorizacaoSaidaApi.cancelarAutorizacao("Bearer $token", id, PatchAutorizacaoRequest(active = false))
+                if (response.isSuccessful) {
+                    val updated = _rawDocs.value.filter { it.id != id }
+                    _rawDocs.value = updated
+                    val list = updated.filter { it.active }.map { it.toUi() }
+                    _uiState.value = if (list.isEmpty()) AutorizacaoSaidaUiState.Empty
+                                     else AutorizacaoSaidaUiState.Content(list)
+                }
             } catch (_: Exception) {
             } finally {
                 _cancelando.value = null
-                loadAutorizacoes()
             }
         }
     }
@@ -121,7 +143,7 @@ class AutorizacaoSaidaViewModel : ViewModel() {
         _qrCodeId.value = null
     }
 
-    fun criarAutorizacao(nome: String, documento: String, relacao: String, validFromMs: Long, validUntilMs: Long) {
+    fun criarAutorizacao(nome: String, documento: String, relacao: String, validFromMs: Long, validUntilMs: Long, studentId: String) {
         viewModelScope.launch {
             _criando.value = true
             _criarErro.value = null
@@ -140,12 +162,6 @@ class AutorizacaoSaidaViewModel : ViewModel() {
 
             val schoolId = savedUser.schoolId ?: run {
                 _criarErro.value = "Escola não vinculada."
-                _criando.value = false
-                return@launch
-            }
-
-            val studentId = _rawDocs.value.firstOrNull()?.student?.id ?: run {
-                _criarErro.value = "Nenhum aluno encontrado."
                 _criando.value = false
                 return@launch
             }

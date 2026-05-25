@@ -180,9 +180,7 @@ fun AgendaScreen(user: User, accessToken: String) {
 }
 
 // Composables auxiliares
-/**
- * Estado vazio exibido quando o usuário não tem escola vinculada.
- */
+
 @Composable
 private fun SemEscolaVinculada(icon: ImageVector, nomeTela: String) {
     val colors = LocalComunicacaoEscolarColors.current

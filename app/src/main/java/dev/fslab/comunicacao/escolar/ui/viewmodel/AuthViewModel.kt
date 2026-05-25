@@ -106,6 +106,8 @@ class AuthViewModel : ViewModel() {
                             apiUser.accessToken, apiUser.refreshToken,
                             TokenManager.UserInfo(user.id, user.nome, user.email, roleToString(user.role), user.schoolId)
                         )
+                        val students = apiUser.memberships.flatMap { it.associatedStudents }.distinctBy { it.id }
+                        TokenManager.saveStudentsJson(gson.toJson(students))
                         _accessToken.value = apiUser.accessToken
                         _currentUser.value = user
                         _authState.value = AuthState.Success(user)
@@ -229,6 +231,8 @@ class AuthViewModel : ViewModel() {
                             apiUser.accessToken, apiUser.refreshToken,
                             TokenManager.UserInfo(user.id, user.nome, user.email, roleToString(user.role), user.schoolId)
                         )
+                        val students = apiUser.memberships.flatMap { it.associatedStudents }.distinctBy { it.id }
+                        TokenManager.saveStudentsJson(gson.toJson(students))
                         _accessToken.value = apiUser.accessToken
                         _currentUser.value = user
                         _authState.value = AuthState.Success(user)

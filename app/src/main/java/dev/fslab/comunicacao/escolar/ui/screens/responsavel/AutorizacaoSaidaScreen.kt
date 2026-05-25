@@ -73,6 +73,7 @@ import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import dev.fslab.comunicacao.escolar.model.ApiAssociatedStudent
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaida
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AutorizacaoSaidaUiState
@@ -94,6 +95,7 @@ fun AutorizacaoSaidaScreen(
     val criando by viewModel.criando.collectAsState()
     val criarErro by viewModel.criarErro.collectAsState()
     val qrCodeId by viewModel.qrCodeId.collectAsState()
+    val alunos by viewModel.alunos.collectAsState()
 
     Box(
         modifier = Modifier
@@ -209,11 +211,12 @@ fun AutorizacaoSaidaScreen(
 
     if (showSheet) {
         NovaAutorizacaoSheet(
+            alunos = alunos,
             criando = criando,
             erro = criarErro,
             onDismiss = { viewModel.fecharNovaAutorizacao() },
-            onCriar = { nome, documento, relacao, fromMs, untilMs ->
-                viewModel.criarAutorizacao(nome, documento, relacao, fromMs, untilMs)
+            onCriar = { nome, documento, relacao, fromMs, untilMs, studentId ->
+                viewModel.criarAutorizacao(nome, documento, relacao, fromMs, untilMs, studentId)
             }
         )
     }
@@ -229,16 +232,18 @@ fun AutorizacaoSaidaScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun NovaAutorizacaoSheet(
+    alunos: List<ApiAssociatedStudent>,
     criando: Boolean,
     erro: String?,
     onDismiss: () -> Unit,
-    onCriar: (nome: String, documento: String, relacao: String, fromMs: Long, untilMs: Long) -> Unit
+    onCriar: (nome: String, documento: String, relacao: String, fromMs: Long, untilMs: Long, studentId: String) -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR")) }
 
+    var alunoSelecionado by remember { mutableStateOf(alunos.firstOrNull()) }
     var nome by remember { mutableStateOf("") }
     var documento by remember { mutableStateOf("") }
     var relacao by remember { mutableStateOf("") }
@@ -311,6 +316,45 @@ private fun NovaAutorizacaoSheet(
             }
 
             Spacer(modifier = Modifier.height(20.dp))
+
+            if (alunos.size > 1) {
+                Text(
+                    text = "ALUNO",
+                    fontSize = 11.sp,
+                    letterSpacing = 0.8.sp,
+                    color = colors.textSecondary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    alunos.forEach { aluno ->
+                        val selecionado = alunoSelecionado?.id == aluno.id
+                        val firstName = aluno.fullName.trim().split(" ").firstOrNull() ?: aluno.fullName
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .border(
+                                    1.dp,
+                                    if (selecionado) colors.focusedIndicator else colors.inputBorder,
+                                    RoundedCornerShape(10.dp)
+                                )
+                                .background(if (selecionado) colors.surface else colors.background)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { alunoSelecionado = aluno }
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = firstName,
+                                fontSize = 14.sp,
+                                fontWeight = if (selecionado) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (selecionado) colors.textPrimary else colors.textSecondary
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // Nome
             OutlinedTextField(
@@ -432,8 +476,8 @@ private fun NovaAutorizacaoSheet(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            val isValid = nome.isNotBlank() && documento.isNotBlank() &&
-                    relacao.isNotBlank() && validUntilMs > validFromMs
+            val isValid = alunoSelecionado != null && nome.isNotBlank() &&
+                    documento.isNotBlank() && relacao.isNotBlank() && validUntilMs > validFromMs
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -443,7 +487,7 @@ private fun NovaAutorizacaoSheet(
                         enabled = isValid && !criando,
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
-                    ) { onCriar(nome, documento, relacao, validFromMs, validUntilMs) }
+                    ) { alunoSelecionado?.id?.let { onCriar(nome, documento, relacao, validFromMs, validUntilMs, it) } }
                     .padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
