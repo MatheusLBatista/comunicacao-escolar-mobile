@@ -37,6 +37,7 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Face
+import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material3.Icon
@@ -95,6 +96,7 @@ sealed class AdminSubScreen {
     object AuditLogs : AdminSubScreen()
     data class ConversaDetail(val conversaId: String, val titulo: String, val avatarUrl: String? = null) : AdminSubScreen()
     object NovaConversa : AdminSubScreen()
+    object Portaria : AdminSubScreen()
 }
 
 private sealed class AdminNavKey {
@@ -374,6 +376,12 @@ fun AdminDashboardScreen(
                                 subScreenStack.add(AdminSubScreen.ConversaDetail(id, titulo, avatarUrl))
                             }
                         )
+
+                    is AdminSubScreen.Portaria ->
+                        PortariaQrScanScreen(
+                            user = user,
+                            onBack = { subScreenStack.removeLast() }
+                        )
                 }
             }
         }
@@ -436,7 +444,8 @@ private fun AdminHomeScreen(
                 QuickAccessItem(icon = Icons.Outlined.Face, title = "Alunos", subtitle = "Ver todos os alunos da escola", onClick = { onNavigate(AdminSubScreen.Alunos) })
                 QuickAccessItem(icon = Icons.Outlined.School, title = "Turmas", subtitle = "Criar e editar turmas", onClick = { onNavigate(AdminSubScreen.Turmas) })
                 QuickAccessItem(icon = Icons.Outlined.Description, title = "Templates de Comunicado", subtitle = "Gerenciar modelos de diário", onClick = { onNavigate(AdminSubScreen.Templates) })
-                QuickAccessItem(icon = Icons.Outlined.History, title = "Logs de Auditoria", subtitle = "Rastrear ações do sistema", onClick = { onNavigate(AdminSubScreen.AuditLogs) }, showDivider = false)
+                QuickAccessItem(icon = Icons.Outlined.History, title = "Logs de Auditoria", subtitle = "Rastrear ações do sistema", onClick = { onNavigate(AdminSubScreen.AuditLogs) })
+                QuickAccessItem(icon = Icons.Outlined.QrCodeScanner, title = "Portaria", subtitle = "Escanear QR Code de autorização", onClick = { onNavigate(AdminSubScreen.Portaria) }, showDivider = false)
             }
         }
         }

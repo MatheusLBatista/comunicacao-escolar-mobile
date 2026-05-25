@@ -16,6 +16,7 @@ object TokenManager {
     private const val KEY_USER_NAME = "user_name"
     private const val KEY_USER_ROLE = "user_role"
     private const val KEY_SCHOOL_ID = "school_id"
+    private const val KEY_STUDENTS = "students_json"
 
     @Volatile private var accessToken: String? = null
     @Volatile private var refreshToken: String? = null
@@ -24,6 +25,7 @@ object TokenManager {
     @Volatile private var userName: String? = null
     @Volatile private var userRole: String? = null
     @Volatile private var schoolId: String? = null
+    @Volatile private var studentsJson: String? = null
     private var prefs: SharedPreferences? = null
 
     var onSessionExpired: (() -> Unit)? = null
@@ -49,6 +51,7 @@ object TokenManager {
         userName = prefs?.getString(KEY_USER_NAME, null)
         userRole = prefs?.getString(KEY_USER_ROLE, null)
         schoolId = prefs?.getString(KEY_SCHOOL_ID, null)
+        studentsJson = prefs?.getString(KEY_STUDENTS, null)
         Log.d(TAG, "TokenManager init. Autenticado: ${isAuthenticated()}")
     }
 
@@ -87,6 +90,15 @@ object TokenManager {
     }
 
     @Synchronized
+    fun saveStudentsJson(json: String) {
+        studentsJson = json
+        prefs?.edit()?.putString(KEY_STUDENTS, json)?.apply()
+    }
+
+    @Synchronized
+    fun getStudentsJson(): String? = studentsJson
+
+    @Synchronized
     fun getAccessToken(): String? = accessToken
 
     @Synchronized
@@ -110,9 +122,11 @@ object TokenManager {
         userName = null
         userRole = null
         schoolId = null
+        studentsJson = null
         prefs?.edit()
             ?.remove(KEY_ACCESS)?.remove(KEY_REFRESH)?.remove(KEY_EMAIL)
             ?.remove(KEY_USER_ID)?.remove(KEY_USER_NAME)?.remove(KEY_USER_ROLE)?.remove(KEY_SCHOOL_ID)
+            ?.remove(KEY_STUDENTS)
             ?.apply()
         Log.d(TAG, "Tokens limpos")
     }

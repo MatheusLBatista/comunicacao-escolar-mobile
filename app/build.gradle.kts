@@ -102,6 +102,9 @@ dependencies {
     // Drag-to-reorder para LazyColumn
     implementation("sh.calvin.reorderable:reorderable:2.1.1")
 
+    // QR Code generation
+    implementation("com.google.zxing:core:3.5.3")
+
     // Testes
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

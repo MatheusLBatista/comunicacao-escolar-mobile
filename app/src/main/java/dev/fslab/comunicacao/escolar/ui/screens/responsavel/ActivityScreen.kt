@@ -58,6 +58,12 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
     val colors = LocalComunicacaoEscolarColors.current
     val uiState by viewModel.uiState.collectAsState()
     var selectedLog by remember { mutableStateOf<DailyLog?>(null) }
+    var showAutorizacoes by remember { mutableStateOf(false) }
+
+    if (showAutorizacoes) {
+        AutorizacaoSaidaScreen(onBack = { showAutorizacoes = false })
+        return
+    }
 
     if (selectedLog != null) {
         dev.fslab.comunicacao.escolar.ui.screens.responsavel.DailyLogDetailScreen(
@@ -85,6 +91,7 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
         )
 
         when (uiState) {
+
             is DailyLogsUiState.Loading -> {
                 Box(
                     modifier = Modifier
@@ -146,7 +153,7 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
-                        QuickAccessSection()
+                        QuickAccessSection(onVerAutorizacoes = { showAutorizacoes = true })
                         Spacer(modifier = Modifier.height(16.dp))
                     }
                     groups.forEachIndexed { index, group ->
@@ -177,7 +184,7 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
 }
 
 @Composable
-private fun QuickAccessSection() {
+private fun QuickAccessSection(onVerAutorizacoes: () -> Unit) {
     val colors = LocalComunicacaoEscolarColors.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -192,7 +199,7 @@ private fun QuickAccessSection() {
         QuickAccessCard(
             title = "Autorizações de Saída",
             subtitle = "1 aguardando liberação",
-            onClick = {}
+            onClick = onVerAutorizacoes
         )
     }
 }
