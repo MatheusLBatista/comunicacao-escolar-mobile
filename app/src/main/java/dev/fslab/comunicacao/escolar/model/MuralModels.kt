@@ -45,3 +45,18 @@ data class MuralResponse (
     @SerializedName("message") val message: String? = "",
     @SerializedName("data") val data: Dados
 )
+
+data class AttachmentResponse(
+    val data: ByteArray
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+        other as AttachmentResponse
+        return data.contentEquals(other.data)
+    }
+
+    override fun hashCode(): Int {
+        return data.contentHashCode()
+    }
+}

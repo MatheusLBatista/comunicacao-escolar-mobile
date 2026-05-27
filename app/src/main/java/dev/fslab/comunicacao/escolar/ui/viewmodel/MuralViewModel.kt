@@ -31,38 +31,68 @@ class MuralViewModel : ViewModel() {
     private val _posts = MutableStateFlow<MuralResponse?>(null)
     val posts: StateFlow<MuralResponse?> = _posts.asStateFlow()
 
-    fun getPosts(schoolId: String) {
-        Log.d(TAG, "Estamos começando uma requisição")
+    private var hasNextPage = true
+    private var isPaginationLoading = false
+
+    fun getPosts(schoolId: String, loadMore: Boolean = false) {
+        if (loadMore && (!hasNextPage || isPaginationLoading)) return
 
         viewModelScope.launch {
-            _muralState.value = MuralState.Loading
-            try {
-                val response = RetrofitClient.muralApi.getPosts(schoolId)
-                _posts.value = response
-                _muralState.value = MuralState.Success(response)
-                Log.d(TAG, "Posts carregados com sucesso: ${response.data.docs.size} posts")
-            } catch (e: HttpException) {
-                val errorMessage = when (e.code()) {
-                    404 -> "Post não encontrado."
-                    401 -> "Não autorizado. Faça login novamente."
-                    403 -> "Acesso negado ao mural."
-                    500 -> "Erro no servidor. Tente novamente mais tarde."
-                    498 -> "Sua sessão de login expirou. Faça login novamente."
-                    else -> "Erro ao carregar posts (${e.code()})"
-                }
-                _muralState.value = MuralState.Error(errorMessage)
-                Log.e(TAG, "Erro HTTP ao carregar posts: ${e.code()}", e)
-            } catch (e: java.net.UnknownHostException) {
-                _muralState.value = MuralState.Error("Sem conexão com a internet")
-                Log.e(TAG,"Erro de conexão", e)
-            } catch (e: java.net.SocketTimeoutException) {
-                _muralState.value = MuralState.Error("Tempo de conexão esgotado")
-                Log.e(TAG, "Timeout ao carregar posts", e)
-            } catch (e: Exception) {
-                val errorMsg = e.localizedMessage ?: "Erro ao carregar posts. Tente novamnete."
-                _muralState.value = MuralState.Error(errorMsg)
-                Log.e(TAG, "Erro ao carregar posts", e)
+            if (loadMore) {
+                isPaginationLoading = true
+            } else {
+                _muralState.value = MuralState.Loading
             }
+
+            try {
+                // Para loadMore (posts antigos), buscamos posts criados ANTES do post mais antigo (último da lista)
+                val beforeDate = if (loadMore) {
+                    _posts.value?.data?.docs?.lastOrNull()?.createdAt
+                } else null
+
+                val response = RetrofitClient.muralApi.getPosts(schoolId, beforeDate)
+                
+                if (loadMore) {
+                    val currentDocs = _posts.value?.data?.docs ?: emptyList()
+                    val newDocs = response.data.docs
+                    
+                    // Adicionamos os novos (mais antigos) ao final da lista atual
+                    val updatedDocs = (currentDocs + newDocs).distinctBy { it.id }
+                    val updatedResponse = response.copy(
+                        data = response.data.copy(docs = updatedDocs)
+                    )
+                    _posts.value = updatedResponse
+                } else {
+                    // Refresh ou carga inicial: substitui tudo
+                    _posts.value = response
+                    _muralState.value = MuralState.Success(response)
+                }
+
+                hasNextPage = response.data.hasNextPage
+                Log.d(TAG, "Posts carregados. Total: ${_posts.value?.data?.docs?.size}")
+
+            } catch (e: Exception) {
+                if (!loadMore) {
+                    _muralState.value = MuralState.Error(e.localizedMessage ?: "Erro ao carregar")
+                }
+                Log.e(TAG, "Erro ao carregar posts", e)
+            } finally {
+                isPaginationLoading = false
+                if (!loadMore && _muralState.value is MuralState.Loading) {
+                    // Fallback para garantir que saia do estado de loading caso não tenha entrado em Success/Error
+                    _posts.value?.let { _muralState.value = MuralState.Success(it) }
+                }
+            }
+        }
+    }
+
+    suspend fun getAttachment(id: String): ByteArray? {
+        return try {
+            val responseBody = RetrofitClient.muralApi.getAttachment(id)
+            responseBody.bytes()
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro ao buscar anexo: ${e.message}")
+            null
         }
     }
 

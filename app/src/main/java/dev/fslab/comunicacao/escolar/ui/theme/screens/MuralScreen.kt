@@ -31,6 +31,7 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -86,7 +87,16 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import dev.fslab.comunicacao.escolar.model.ApiUser
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
+import dev.fslab.comunicacao.escolar.util.DateUtils
 
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+
+import androidx.compose.foundation.lazy.rememberLazyListState
+
+import androidx.compose.runtime.derivedStateOf
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MuralScreen(
 	schoolId: String = "",
@@ -94,14 +104,7 @@ fun MuralScreen(
 	authViewModel: AuthViewModel = viewModel(),
 	navController: NavController? = null
 ) {
-
-	val background = Color(0xFFF4F4F5)
-	val textPrimary = Color(0xFF000000)
-	val textSecondary = Color(0xFF40484C)
-	val likeColor = Color(0xFF40484C)
-
 	val colors = LocalComunicacaoEscolarColors.current
-
 	val muralState by muralViewModel.muralState.collectAsState()
 	val posts by muralViewModel.posts.collectAsState()
 	val currentUser by authViewModel.currentUser.collectAsState()
@@ -109,21 +112,45 @@ fun MuralScreen(
 	val context = LocalContext.current
 	val view = LocalView.current
 
-	val snackbarHostState = remember { SnackbarHostState() }
-	var isLiked by remember { mutableStateOf(false) }
-	var likeCount by remember { mutableIntStateOf(24) }
-	val muralImageResId = remember {
-		context.resources.getIdentifier("mural_ciencias", "drawable", context.packageName)
+	val listState = rememberLazyListState()
+	var isRefreshing by remember { mutableStateOf(false) }
+
+	// Detecta quando o usuário chegou no FINAL da lista para carregar mais antigos
+	val isAtBottom by remember {
+		derivedStateOf {
+			val layoutInfo = listState.layoutInfo
+			val visibleItemsInfo = layoutInfo.visibleItemsInfo
+			if (layoutInfo.totalItemsCount == 0) {
+				false
+			} else {
+				val lastVisibleItem = visibleItemsInfo.lastOrNull()
+				(lastVisibleItem?.index ?: 0) >= layoutInfo.totalItemsCount - 1
+			}
+		}
 	}
 
 	LaunchedEffect(Unit) {
 		muralViewModel.clearError()
 	}
 
-
 	LaunchedEffect(currentUser?.schoolId) {
-		currentUser?.schoolId?.let  {
-			schoolId -> muralViewModel.getPosts(schoolId)
+		currentUser?.schoolId?.let { id ->
+			muralViewModel.getPosts(id)
+		}
+	}
+
+	// Dispara busca de posts MAIS ANTIGOS ao chegar no final da lista
+	LaunchedEffect(isAtBottom) {
+		if (isAtBottom && muralState is MuralState.Success) {
+			currentUser?.schoolId?.let { id ->
+				muralViewModel.getPosts(id, loadMore = true)
+			}
+		}
+	}
+
+	LaunchedEffect(muralState) {
+		if (muralState !is MuralState.Loading) {
+			isRefreshing = false
 		}
 	}
 
@@ -160,29 +187,47 @@ fun MuralScreen(
 
 		Spacer(modifier = Modifier.height(22.dp))
 
-		when(muralState) {
-			MuralState.Idle -> {
-				Text("Carregando posts...")
-			}
-			MuralState.Loading -> {
-				CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
-			}
-			is MuralState.Error -> {
-				Text(
-					text = (muralState as MuralState.Error).message,
-					color = Color.Red,
-					modifier = Modifier.padding(16.dp)
-				)
-			}
-			is MuralState.Success -> {
-				if(posts!!.data.docs.isEmpty()) {
-					Text("Nenhum post encontrado")
-				} else {
-					LazyColumn {
-						itemsIndexed(posts!!.data.docs) { index,
-							post ->
-							MuralPostCard(post, currentUser = currentUser!!)
-							Spacer(modifier = Modifier.height(16.dp))
+		Box(modifier = Modifier.fillMaxSize()) {
+			when (muralState) {
+				MuralState.Idle -> {
+					Text("Carregando posts...", modifier = Modifier.align(Alignment.Center))
+				}
+				MuralState.Loading -> {
+					if (!isRefreshing) {
+						CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+					}
+				}
+				is MuralState.Error -> {
+					Text(
+						text = (muralState as MuralState.Error).message,
+						color = Color.Red,
+						modifier = Modifier.padding(16.dp).align(Alignment.Center)
+					)
+				}
+				is MuralState.Success -> {
+					val docs = posts?.data?.docs ?: emptyList()
+					if (docs.isEmpty()) {
+						Text("Nenhum post encontrado", modifier = Modifier.align(Alignment.Center))
+					} else {
+						PullToRefreshBox(
+							isRefreshing = isRefreshing,
+							onRefresh = {
+								isRefreshing = true
+								currentUser?.schoolId?.let { id ->
+									muralViewModel.getPosts(id)
+								}
+							},
+							modifier = Modifier.fillMaxSize()
+						) {
+							LazyColumn(
+								state = listState,
+								modifier = Modifier.fillMaxSize()
+							) {
+								itemsIndexed(docs) { index, post ->
+									MuralPostCard(post, currentUser = currentUser!!)
+									Spacer(modifier = Modifier.height(16.dp))
+								}
+							}
 						}
 					}
 				}
@@ -192,7 +237,10 @@ fun MuralScreen(
 }
 
 @Composable
-fun PostAttachments(attachments: List<String>) {
+fun PostAttachments(
+    attachments: List<String>,
+    muralViewModel: MuralViewModel = viewModel()
+) {
 	if (attachments.isEmpty()) return
 
 	val context = LocalContext.current
@@ -203,10 +251,15 @@ fun PostAttachments(attachments: List<String>) {
 			.padding(vertical = 8.dp),
 		verticalArrangement = Arrangement.spacedBy(8.dp)
 	) {
-		attachments.forEach { url ->
-			// Corrige localhost para 10.0.2.2 caso esteja rodando no emulador
-//			val formattedUrl = url.replace("localhost", "10.0.2.2")
-			
+		attachments.forEach { attachmentId ->
+			var imageData by remember(attachmentId) { mutableStateOf<ByteArray?>(null) }
+			var isLoading by remember(attachmentId) { mutableStateOf(true) }
+
+			LaunchedEffect(attachmentId) {
+				imageData = muralViewModel.getAttachment(attachmentId)
+				isLoading = false
+			}
+
 			Box(
 				modifier = Modifier
 					.fillMaxWidth()
@@ -215,29 +268,29 @@ fun PostAttachments(attachments: List<String>) {
 					.background(Color.LightGray.copy(alpha = 0.3f)),
 				contentAlignment = Alignment.Center
 			) {
-				SubcomposeAsyncImage(
-					model = ImageRequest.Builder(context)
-						.data(url)
-						.crossfade(true)
-						.build(),
-					contentDescription = "Imagem do post",
-					contentScale = ContentScale.Crop,
-					modifier = Modifier.fillMaxSize(),
-					loading = {
-						CircularProgressIndicator(
-							modifier = Modifier.size(24.dp),
-							strokeWidth = 2.dp,
-							color = MaterialTheme.colorScheme.primary
-						)
-					},
-					error = {
-						Icon(
-							painter = painterResource(id = android.R.drawable.ic_menu_report_image),
-							contentDescription = "Erro ao carregar imagem",
-							tint = Color.Gray
-						)
-					}
-				)
+				if (isLoading) {
+					CircularProgressIndicator(
+						modifier = Modifier.size(24.dp),
+						strokeWidth = 2.dp,
+						color = MaterialTheme.colorScheme.primary
+					)
+				} else if (imageData != null) {
+					AsyncImage(
+						model = ImageRequest.Builder(context)
+							.data(imageData)
+							.crossfade(true)
+							.build(),
+						contentDescription = "Imagem do post",
+						contentScale = ContentScale.Crop,
+						modifier = Modifier.fillMaxSize()
+					)
+				} else {
+					Icon(
+						painter = painterResource(id = android.R.drawable.ic_menu_report_image),
+						contentDescription = "Erro ao carregar imagem",
+						tint = Color.Gray
+					)
+				}
 			}
 		}
 	}
@@ -247,6 +300,7 @@ fun PostAttachments(attachments: List<String>) {
 fun MuralPostCard(
 	post: Docs,
 	likeViewModel: LikeViewModel = viewModel(key = post.id),
+	muralViewModel: MuralViewModel = viewModel(),
 	currentUser: User
 ) {
 	val colors = LocalComunicacaoEscolarColors.current
@@ -326,12 +380,22 @@ fun MuralPostCard(
 			
 			Spacer(modifier = Modifier.width(8.dp))
 			
-			Text(
-				text = author?.fullName ?: "Carregando...",
-				style = MaterialTheme.typography.labelLarge,
-				fontWeight = FontWeight.Medium,
-				color = colors.textPrimary
-			)
+			Column {
+				Text(
+					text = author?.fullName ?: "Carregando...",
+					style = MaterialTheme.typography.labelLarge,
+					fontWeight = FontWeight.Medium,
+					color = colors.textPrimary
+				)
+				val timeAgo = DateUtils.getTimeAgo(post.createdAt)
+				if (timeAgo.isNotEmpty()) {
+					Text(
+						text = timeAgo,
+						style = MaterialTheme.typography.labelSmall,
+						color = Color.Gray
+					)
+				}
+			}
 		}
 
 		Text(
@@ -347,14 +411,14 @@ fun MuralPostCard(
 		)
 		
 		// Anexos de Imagem
-		PostAttachments(post.attachments)
+		PostAttachments(post.attachments, muralViewModel)
 
+//		Spacer(modifier = Modifier.height(8.dp))
+//		Text(
+//			text = "Público: ${post.target.scope}",
+//			style = MaterialTheme.typography.labelSmall
+//		)
 		Spacer(modifier = Modifier.height(8.dp))
-		Text(
-			text = "Público: ${post.target.scope}",
-			style = MaterialTheme.typography.labelSmall
-		)
-		Spacer(modifier = Modifier.height(24.dp))
 		Row (
 			modifier = Modifier.clickable {
 				if (likeState !is LikeState.Loading) {
