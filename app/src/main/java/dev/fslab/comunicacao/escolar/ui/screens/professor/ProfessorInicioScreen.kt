@@ -26,17 +26,23 @@ import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -44,44 +50,22 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import dev.fslab.comunicacao.escolar.model.User
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
-
-data class ProfessorActivityItem(
-    val actorName: String,
-    val action: String,
-    val studentName: String,
-    val dateTime: String,
-    val timeAgo: String
-)
-
-private val mockActivityItems = listOf(
-    ProfessorActivityItem(
-        actorName = "Roberto Alves",
-        action = "criou uma autorização de saída",
-        studentName = "Fernanda Alves",
-        dateTime = "hoje às 15h",
-        timeAgo = "1h atrás"
-    ),
-    ProfessorActivityItem(
-        actorName = "Patrícia Gomes",
-        action = "leu o diário de",
-        studentName = "Ruan Gomes",
-        dateTime = "14/04/2026",
-        timeAgo = "2h atrás"
-    ),
-    ProfessorActivityItem(
-        actorName = "Carlos Andrade",
-        action = "criou uma autorização de saída",
-        studentName = "Leo Andrade",
-        dateTime = "hoje às 14h30",
-        timeAgo = "3h atrás"
-    )
-)
+import dev.fslab.comunicacao.escolar.ui.viewmodel.AtividadeRecente
+import dev.fslab.comunicacao.escolar.ui.viewmodel.ProfessorInicioUiState
+import dev.fslab.comunicacao.escolar.ui.viewmodel.ProfessorInicioViewModel
 
 @Composable
-fun ProfessorInicioScreen(user: User) {
+fun ProfessorInicioScreen(
+    user: User,
+    viewModel: ProfessorInicioViewModel = viewModel()
+) {
     val colors = LocalComunicacaoEscolarColors.current
+    val uiState by viewModel.uiState.collectAsState()
 
     LazyColumn(
         modifier = Modifier
@@ -118,9 +102,63 @@ fun ProfessorInicioScreen(user: User) {
             )
         }
 
-        items(mockActivityItems) { item ->
-            AtividadeRecenteItem(item = item)
-            Spacer(modifier = Modifier.height(16.dp))
+        when (val state = uiState) {
+            is ProfessorInicioUiState.Loading -> item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = colors.primary,
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
+
+            is ProfessorInicioUiState.Error -> item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = state.message,
+                        fontSize = 14.sp,
+                        color = colors.textSecondary,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = { viewModel.load() }) {
+                        Icon(
+                            imageVector = Icons.Outlined.Refresh,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Tentar novamente", fontSize = 13.sp)
+                    }
+                }
+            }
+
+            is ProfessorInicioUiState.Empty -> item {
+                Text(
+                    text = "Nenhuma atividade recente",
+                    fontSize = 14.sp,
+                    color = colors.textSecondary,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
+
+            is ProfessorInicioUiState.Content -> {
+                items(state.atividades) { item ->
+                    AtividadeRecenteItem(item = item)
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
         }
 
         item { Spacer(modifier = Modifier.height(8.dp)) }
@@ -237,8 +275,9 @@ private fun QuickAccessCard(
 }
 
 @Composable
-private fun AtividadeRecenteItem(item: ProfessorActivityItem) {
+private fun AtividadeRecenteItem(item: AtividadeRecente) {
     val colors = LocalComunicacaoEscolarColors.current
+    val context = LocalContext.current
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -251,12 +290,26 @@ private fun AtividadeRecenteItem(item: ProfessorActivityItem) {
                 .background(colors.lightGray),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Outlined.Person,
-                contentDescription = null,
-                tint = colors.iconGray,
-                modifier = Modifier.size(22.dp)
-            )
+            if (item.avatarUrl != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(item.avatarUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = item.actorName,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.Person,
+                    contentDescription = null,
+                    tint = colors.iconGray,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(12.dp))
@@ -269,7 +322,7 @@ private fun AtividadeRecenteItem(item: ProfessorActivityItem) {
                     }
                     append(" ")
                     withStyle(SpanStyle(color = colors.textPrimary)) {
-                        append(item.action)
+                        append("criou uma autorização de saída")
                     }
                 },
                 fontSize = 14.sp,
@@ -279,7 +332,7 @@ private fun AtividadeRecenteItem(item: ProfessorActivityItem) {
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = "${item.studentName} · ${item.dateTime}",
+                text = "${item.studentName} · ${item.dateDisplay}",
                 fontSize = 13.sp,
                 color = colors.textSecondary
             )
