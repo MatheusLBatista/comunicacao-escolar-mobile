@@ -39,7 +39,8 @@ data class AutorizacaoSaidaDoc(
     @SerializedName("valid_until") val validUntil: String = "",
     @SerializedName("used") val used: Boolean = false,
     @SerializedName("active") val active: Boolean = true,
-    @SerializedName("qr_code") val qrCode: String = ""
+    @SerializedName("qr_code") val qrCode: String = "",
+    @SerializedName("created_at") val createdAt: String = ""
 )
 
 data class AutorizacaoSaidaStudent(
@@ -58,7 +59,8 @@ data class AutorizacaoAuthorizedPerson(
 data class AutorizacaoAuthorizedBy(
     @SerializedName("_id") val id: String = "",
     @SerializedName("full_name") val fullName: String = "",
-    @SerializedName("email") val email: String = ""
+    @SerializedName("email") val email: String = "",
+    @SerializedName("avatar_url") val avatarUrl: String? = null
 )
 
 data class PatchAutorizacaoRequest(

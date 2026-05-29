@@ -21,7 +21,7 @@ interface AutorizacaoSaidaApi {
     @GET("pickup-authorizations")
     suspend fun getAutorizacoes(
         @Header("Authorization") token: String,
-        @Query("active") active: Boolean = true,
+        @Query("active") active: Boolean? = null,
         @Query("student_id") studentId: String? = null
     ): AutorizacoesSaidaResponse
 
