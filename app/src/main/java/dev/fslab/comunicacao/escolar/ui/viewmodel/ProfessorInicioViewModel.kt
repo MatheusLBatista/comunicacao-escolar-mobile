@@ -58,7 +58,7 @@ class ProfessorInicioViewModel : ViewModel() {
                 val response = RetrofitClient.autorizacaoSaidaApi.getAutorizacoes(
                     token = "Bearer $token"
                 )
-                val docs = response.data?.docs.orEmpty().take(5)
+                val docs = response.data?.docs.orEmpty().take(4)
                 if (docs.isEmpty()) {
                     _uiState.value = ProfessorInicioUiState.Empty
                 } else {
