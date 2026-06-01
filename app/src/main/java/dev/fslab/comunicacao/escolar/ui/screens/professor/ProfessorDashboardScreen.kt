@@ -35,6 +35,7 @@ import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
 
 private const val ROUTE_INICIO = "professor_inicio"
+private const val ROUTE_DIARIO = "professor_diario"
 private const val ROUTE_CONVERSAS = "professor_conversas"
 private const val ROUTE_MURAL = "professor_mural"
 private const val ROUTE_AGENDA = "professor_agenda"
@@ -83,7 +84,11 @@ fun ProfessorDashboardScreen(
             label = "professor_tab"
         ) { route ->
             when (route) {
-                ROUTE_INICIO    -> ProfessorInicioScreen(user = user)
+                ROUTE_INICIO    -> ProfessorInicioScreen(
+                    user = user,
+                    onNavigateToDiario = { currentRoute = ROUTE_DIARIO }
+                )
+                ROUTE_DIARIO    -> DiarioDeBordoScreen()
                 ROUTE_CONVERSAS -> ProfessorPlaceholderScreen(nome = "Conversas")
                 ROUTE_MURAL     -> ProfessorPlaceholderScreen(nome = "Mural")
                 ROUTE_AGENDA    -> ProfessorPlaceholderScreen(nome = "Agenda")
