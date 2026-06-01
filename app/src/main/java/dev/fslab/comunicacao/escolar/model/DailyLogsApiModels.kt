@@ -71,3 +71,19 @@ data class DailyLogTemplateField(
     @SerializedName("type") val type: String = "",
     @SerializedName("options") val options: List<String> = emptyList()
 )
+
+data class CreateDailyLogRequest(
+    @SerializedName("school_id") val schoolId: String,
+    @SerializedName("student_id") val studentId: String,
+    @SerializedName("teacher_id") val teacherId: String,
+    @SerializedName("dailylogtemplate_id") val dailyLogTemplateId: String,
+    @SerializedName("date") val date: String,
+    @SerializedName("is_present") val isPresent: Boolean,
+    @SerializedName("entries") val entries: List<DailyLogEntryRequest>,
+    @SerializedName("observation") val observation: String = ""
+)
+
+data class DailyLogEntryRequest(
+    @SerializedName("field_key") val fieldKey: String,
+    @SerializedName("value") val value: String
+)
