@@ -94,9 +94,13 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 
 import androidx.compose.foundation.lazy.rememberLazyListState
 
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.layout.IntrinsicSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -249,102 +253,210 @@ fun PostAttachments(
 	if (attachments.isEmpty()) return
 
 	val context = LocalContext.current
-	var expandedImageUrl by remember { mutableStateOf<ByteArray?>(null) }
+	var showLightbox by remember { mutableStateOf(false) }
+	var initialPageIndex by remember { mutableIntStateOf(0) }
 	
+	// Estado para armazenar as imagens já carregadas
+	val imagesMap = remember { mutableMapOf<Int, ByteArray?>() }
+
 	Column(
 		modifier = Modifier
 			.fillMaxWidth()
 			.padding(vertical = 8.dp),
-		verticalArrangement = Arrangement.spacedBy(8.dp)
+		verticalArrangement = Arrangement.spacedBy(4.dp)
 	) {
-		attachments.forEach { attachmentId ->
-			var imageData by remember(attachmentId) { mutableStateOf<ByteArray?>(null) }
-			var isLoading by remember(attachmentId) { mutableStateOf(true) }
+		val visibleCount = attachments.size.coerceAtMost(4)
+		val hasMore = attachments.size > 4
 
-			LaunchedEffect(attachmentId) {
-				imageData = muralViewModel.getAttachment(attachmentId)
-				isLoading = false
+		// Layout de Grade Dinâmico
+		when (visibleCount) {
+			1 -> {
+				AttachmentItem(attachments[0], 200.dp, muralViewModel) {
+					initialPageIndex = 0
+					showLightbox = true
+				}
 			}
-
-			Box(
-				modifier = Modifier
-					.fillMaxWidth()
-					.height(200.dp)
-					.clip(RoundedCornerShape(8.dp))
-					.background(Color.LightGray.copy(alpha = 0.3f))
-					.clickable(enabled = imageData != null) {
-						expandedImageUrl = imageData
-					},
-				contentAlignment = Alignment.Center
-			) {
-				if (isLoading) {
-					CircularProgressIndicator(
-						modifier = Modifier.size(24.dp),
-						strokeWidth = 2.dp,
-						color = MaterialTheme.colorScheme.primary
-					)
-				} else if (imageData != null) {
-					AsyncImage(
-						model = ImageRequest.Builder(context)
-							.data(imageData)
-							.crossfade(true)
-							.build(),
-						contentDescription = "Imagem do post",
-						contentScale = ContentScale.Crop,
-						modifier = Modifier.fillMaxSize()
-					)
-				} else {
-					Icon(
-						painter = painterResource(id = android.R.drawable.ic_menu_report_image),
-						contentDescription = "Erro ao carregar imagem",
-						tint = Color.Gray
-					)
+			2 -> {
+				Row(modifier = Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+					Box(modifier = Modifier.weight(1f)) {
+						AttachmentItem(attachments[0], 150.dp, muralViewModel) { initialPageIndex = 0; showLightbox = true }
+					}
+					Box(modifier = Modifier.weight(1f)) {
+						AttachmentItem(attachments[1], 150.dp, muralViewModel) { initialPageIndex = 1; showLightbox = true }
+					}
+				}
+			}
+			3 -> {
+				Row(modifier = Modifier.fillMaxWidth().height(200.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+					Box(modifier = Modifier.weight(1.5f)) {
+						AttachmentItem(attachments[0], 200.dp, muralViewModel) { initialPageIndex = 0; showLightbox = true }
+					}
+					Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+						Box(modifier = Modifier.weight(1f)) {
+							AttachmentItem(attachments[1], 98.dp, muralViewModel) { initialPageIndex = 1; showLightbox = true }
+						}
+						Box(modifier = Modifier.weight(1f)) {
+							AttachmentItem(attachments[2], 98.dp, muralViewModel) { initialPageIndex = 2; showLightbox = true }
+						}
+					}
+				}
+			}
+			else -> { // 4 ou mais
+				Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+					Row(modifier = Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+						Box(modifier = Modifier.weight(1f)) {
+							AttachmentItem(attachments[0], 120.dp, muralViewModel) { initialPageIndex = 0; showLightbox = true }
+						}
+						Box(modifier = Modifier.weight(1f)) {
+							AttachmentItem(attachments[1], 120.dp, muralViewModel) { initialPageIndex = 1; showLightbox = true }
+						}
+					}
+					Row(modifier = Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+						Box(modifier = Modifier.weight(1f)) {
+							AttachmentItem(attachments[2], 120.dp, muralViewModel) { initialPageIndex = 2; showLightbox = true }
+						}
+						Box(modifier = Modifier.weight(1f)) {
+							AttachmentOverlayItem(attachments[3], 120.dp, attachments.size - 4, muralViewModel) { 
+								initialPageIndex = 3
+								showLightbox = true 
+							}
+						}
+					}
 				}
 			}
 		}
 	}
 
-	// Dialog para imagem expandida (Lightbox)
-	if (expandedImageUrl != null) {
+	// Lightbox com HorizontalPager (Carrossel)
+	if (showLightbox) {
+		val pagerState = rememberPagerState(initialPage = initialPageIndex, pageCount = { attachments.size })
+		
 		Dialog(
-			onDismissRequest = { expandedImageUrl = null },
-			properties = DialogProperties(
-				usePlatformDefaultWidth = false // Permite ocupar a tela inteira
-			)
+			onDismissRequest = { showLightbox = false },
+			properties = DialogProperties(usePlatformDefaultWidth = false)
 		) {
 			Box(
 				modifier = Modifier
 					.fillMaxSize()
-					.background(Color.Black.copy(alpha = 0.9f))
-					.clickable { expandedImageUrl = null },
-				contentAlignment = Alignment.Center
+					.background(Color.Black.copy(alpha = 0.95f))
 			) {
-				AsyncImage(
-					model = ImageRequest.Builder(context)
-						.data(expandedImageUrl)
-						.crossfade(true)
-						.build(),
-					contentDescription = "Imagem expandida",
-					modifier = Modifier
-						.fillMaxWidth()
-						.clip(RoundedCornerShape(12.dp))
-						.padding(16.dp),
-					contentScale = ContentScale.Fit
-				)
-				
-				// Botão fechar (opcional, já que clicar fora ou na imagem já fecha)
+				HorizontalPager(
+					state = pagerState,
+					modifier = Modifier.fillMaxSize(),
+					pageSpacing = 16.dp
+				) { pageIndex ->
+					var imageData by remember(pageIndex) { mutableStateOf<ByteArray?>(null) }
+					var isLoading by remember(pageIndex) { mutableStateOf(true) }
+
+					LaunchedEffect(pageIndex) {
+						imageData = muralViewModel.getAttachment(attachments[pageIndex])
+						isLoading = false
+					}
+
+					Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+						if (isLoading) {
+							CircularProgressIndicator(color = Color.White)
+						} else if (imageData != null) {
+							AsyncImage(
+								model = ImageRequest.Builder(context).data(imageData).build(),
+								contentDescription = "Imagem expandida",
+								modifier = Modifier.fillMaxSize().clickable { showLightbox = false },
+								contentScale = ContentScale.Fit
+							)
+						}
+					}
+				}
+
+				// Indicador de página (ex: 1/5)
 				Text(
-					text = "Fechar",
+					text = "${pagerState.currentPage + 1} / ${attachments.size}",
 					color = Color.White,
-					modifier = Modifier
-						.align(Alignment.TopEnd)
-						.padding(32.dp)
-						.clickable { expandedImageUrl = null },
-					style = MaterialTheme.typography.labelLarge
+					modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 40.dp),
+					style = MaterialTheme.typography.bodyMedium
 				)
+
+				// Botão Fechar
+				IconButton(
+					onClick = { showLightbox = false },
+					modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
+				) {
+					Icon(
+						painter = painterResource(id = android.R.drawable.ic_menu_close_clear_cancel),
+						contentDescription = "Fechar",
+						tint = Color.White
+					)
+				}
 			}
 		}
 	}
+}
+
+@Composable
+fun AttachmentItem(
+    attachmentId: String,
+    height: androidx.compose.ui.unit.Dp,
+    muralViewModel: MuralViewModel,
+    onClick: () -> Unit
+) {
+    val context = LocalContext.current
+    var imageData by remember(attachmentId) { mutableStateOf<ByteArray?>(null) }
+    var isLoading by remember(attachmentId) { mutableStateOf(true) }
+
+    LaunchedEffect(attachmentId) {
+        imageData = muralViewModel.getAttachment(attachmentId)
+        isLoading = false
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .clip(RoundedCornerShape(8.dp))
+            .background(Color.LightGray.copy(alpha = 0.3f))
+            .clickable(enabled = !isLoading && imageData != null) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        if (isLoading) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+        } else if (imageData != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(context).data(imageData).build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    }
+}
+
+@Composable
+fun AttachmentOverlayItem(
+    attachmentId: String,
+    height: androidx.compose.ui.unit.Dp,
+    remainingCount: Int,
+    muralViewModel: MuralViewModel,
+    onClick: () -> Unit
+) {
+    Box(contentAlignment = Alignment.Center) {
+        AttachmentItem(attachmentId, height, muralViewModel, onClick)
+        if (remainingCount > 0) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable { onClick() },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "+$remainingCount",
+                    color = Color.White,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
 }
 
 @Composable
