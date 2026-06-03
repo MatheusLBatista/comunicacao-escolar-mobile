@@ -140,10 +140,11 @@ fun MuralScreen(
 	}
 
 	// Dispara busca de posts MAIS ANTIGOS ao chegar no final da lista
-	LaunchedEffect(isAtBottom) {
+	// ou se os itens carregados não preencherem a altura da tela.
+	LaunchedEffect(isAtBottom, posts?.data?.docs?.size) {
 		if (isAtBottom && muralState is MuralState.Success) {
 			val currentCount = posts?.data?.docs?.size ?: 0
-			Log.d("MuralScreen", "Usuário chegou ao fim da tela. Posts visíveis: $currentCount. Disparando carregamento de mais posts...")
+			Log.d("MuralScreen", "Fim da tela detectado (ou tela não preenchida). Posts na lista: $currentCount. Disparando carregamento de mais posts...")
 			currentUser?.schoolId?.let { id ->
 				muralViewModel.getPosts(id, loadMore = true)
 			}
