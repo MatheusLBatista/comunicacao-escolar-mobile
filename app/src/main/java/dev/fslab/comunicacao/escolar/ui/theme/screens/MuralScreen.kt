@@ -142,6 +142,8 @@ fun MuralScreen(
 	// Dispara busca de posts MAIS ANTIGOS ao chegar no final da lista
 	LaunchedEffect(isAtBottom) {
 		if (isAtBottom && muralState is MuralState.Success) {
+			val currentCount = posts?.data?.docs?.size ?: 0
+			Log.d("MuralScreen", "Usuário chegou ao fim da tela. Posts visíveis: $currentCount. Disparando carregamento de mais posts...")
 			currentUser?.schoolId?.let { id ->
 				muralViewModel.getPosts(id, loadMore = true)
 			}

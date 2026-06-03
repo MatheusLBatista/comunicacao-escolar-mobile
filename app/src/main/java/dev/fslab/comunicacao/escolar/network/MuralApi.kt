@@ -17,7 +17,7 @@ interface MuralApi {
     @GET("schools/{id}/posts")
     suspend fun getPosts(
         @Path("id") id: String,
-        @Query("created_at[lt]") before: String? = null
+        @Query("created_at") before: String? = null
     ): MuralResponse
     @GET("attachments/{id}")
     suspend fun getAttachment(@Path("id") id: String): ResponseBody

@@ -38,18 +38,19 @@ class MuralViewModel : ViewModel() {
         if (loadMore && (!hasNextPage || isPaginationLoading)) return
 
         viewModelScope.launch {
+            val beforeDate = if (loadMore) {
+                _posts.value?.data?.docs?.lastOrNull()?.createdAt
+            } else null
+
             if (loadMore) {
+                val currentCount = _posts.value?.data?.docs?.size ?: 0
+                Log.d(TAG, "Chegou ao fim da tela. Fazendo nova requisição para API (loadMore=true). posts atuais: $currentCount, buscando posts anteriores a: $beforeDate")
                 isPaginationLoading = true
             } else {
                 _muralState.value = MuralState.Loading
             }
 
             try {
-                // Para loadMore (posts antigos), buscamos posts criados ANTES do post mais antigo (último da lista)
-                val beforeDate = if (loadMore) {
-                    _posts.value?.data?.docs?.lastOrNull()?.createdAt
-                } else null
-
                 val response = RetrofitClient.muralApi.getPosts(schoolId, beforeDate)
                 
                 if (loadMore) {
@@ -62,14 +63,16 @@ class MuralViewModel : ViewModel() {
                         data = response.data.copy(docs = updatedDocs)
                     )
                     _posts.value = updatedResponse
+                    Log.d(TAG, "Novos posts adicionados. Qtd recebida: ${newDocs.size}. Total agora: ${updatedDocs.size}")
                 } else {
                     // Refresh ou carga inicial: substitui tudo
                     _posts.value = response
                     _muralState.value = MuralState.Success(response)
+                    Log.d(TAG, "Carga inicial/Refresh concluída. Total: ${response.data.docs.size}")
                 }
 
                 hasNextPage = response.data.hasNextPage
-                Log.d(TAG, "Posts carregados. Total: ${_posts.value?.data?.docs?.size}")
+                Log.d(TAG, "Status da paginação: Próxima página disponível: $hasNextPage")
 
             } catch (e: Exception) {
                 if (!loadMore) {
