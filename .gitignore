@@ -52,9 +52,9 @@ gradle-app.setting
 # Java heap dump
 *.hprof
 
+### macOS ###
+**/.DS_Store
+
 ### IntelliJ IDEA / Android Studio ###
 .idea/
 SKILL.md
-
-# User-specific files
-referencias/

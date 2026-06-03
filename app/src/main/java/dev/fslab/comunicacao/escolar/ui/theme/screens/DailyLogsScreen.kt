@@ -131,12 +131,12 @@ fun DailyLogsScreen() {
 
     val logs = mapOf(
         "24/03/2026" to listOf(
-            DailyLog(1, "Leo", "2:30 PM", "Check-in realizado com sucesso. Comeu bem no almoço...", "24/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_leo),
-            DailyLog(2, "Neo", "10:15 AM", "Café da manhã: maça, salgadinho...", "24/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_neo)
+            DailyLog("1", "Leo", "2:30 PM", "Check-in realizado com sucesso. Comeu bem no almoço...", "24/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_leo, timestamp = 0L),
+            DailyLog("2", "Neo", "10:15 AM", "Café da manhã: maça, salgadinho...", "24/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_neo, timestamp = 0L)
         ),
         "23/03/2026" to listOf(
-            DailyLog(3, "Neo", "4:00 PM", "O tempo da soneca foi mais curto do que o habitual, mas ele brincou...", "23/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_neo),
-            DailyLog(4, "Leo", "2:30 PM", "Estava bastante agitado hoje, então comeu e dormiu muito bem...", "23/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_leo)
+            DailyLog("3", "Neo", "4:00 PM", "O tempo da soneca foi mais curto do que o habitual, mas ele brincou...", "23/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_neo, timestamp = 0L),
+            DailyLog("4", "Leo", "2:30 PM", "Estava bastante agitado hoje, então comeu e dormiu muito bem...", "23/03/2026", dev.fslab.comunicacao.escolar.R.drawable.avatar_leo, timestamp = 0L)
         )
     )
 

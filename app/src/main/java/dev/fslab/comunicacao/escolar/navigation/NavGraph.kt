@@ -1,5 +1,7 @@
 package dev.fslab.comunicacao.escolar.navigation
 
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -7,10 +9,12 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import dev.fslab.comunicacao.escolar.network.TokenManager
 import dev.fslab.comunicacao.escolar.ui.screens.auth.CadastroScreen
 import dev.fslab.comunicacao.escolar.ui.screens.auth.LoginScreen
 import dev.fslab.comunicacao.escolar.ui.screens.common.HomeScreen
@@ -60,6 +64,18 @@ fun NavGraph(
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
     val startDestination = if (currentUser != null) Screen.Home.route else Screen.Login.route
+
+    DisposableEffect(navController) {
+        TokenManager.onSessionExpired = {
+            Handler(Looper.getMainLooper()).post {
+                authViewModel.logout()
+                navController.navigate(Screen.Login.route) {
+                    popUpTo(0) { inclusive = true }
+                }
+            }
+        }
+        onDispose { TokenManager.onSessionExpired = null }
+    }
 
     NavHost(
         navController = navController,

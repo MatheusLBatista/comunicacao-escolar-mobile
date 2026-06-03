@@ -8,7 +8,9 @@ import dev.fslab.comunicacao.escolar.model.ApiSchoolUser
 import dev.fslab.comunicacao.escolar.model.ApiStudentInput
 import dev.fslab.comunicacao.escolar.model.CreateClassRequest
 import dev.fslab.comunicacao.escolar.model.CreateTemplateRequest
+import dev.fslab.comunicacao.escolar.model.UpdateTemplateRequest
 import dev.fslab.comunicacao.escolar.model.LinkToSchoolRequest
+import dev.fslab.comunicacao.escolar.model.MoveStudentClassRequest
 import dev.fslab.comunicacao.escolar.model.PaginatedData
 import dev.fslab.comunicacao.escolar.model.UpdateClassRequest
 import retrofit2.http.Body
@@ -62,6 +64,17 @@ interface AdminApi {
         @Body request: CreateTemplateRequest
     ): ApiResponse<ApiDailyLogTemplate>
 
+    @PATCH("daily-log-templates/{id}")
+    suspend fun updateTemplate(
+        @Path("id") id: String,
+        @Body request: UpdateTemplateRequest
+    ): ApiResponse<ApiDailyLogTemplate>
+
+    @DELETE("daily-log-templates/{id}")
+    suspend fun deleteTemplate(
+        @Path("id") id: String
+    ): ApiResponse<Any>
+
     // Audit Logs
 
     @GET("schools/{schoolId}/audit-logs")
@@ -76,7 +89,7 @@ interface AdminApi {
     suspend fun linkToSchool(
         @Path("schoolId") schoolId: String,
         @Body request: LinkToSchoolRequest
-    ): ApiResponse<Any>
+    ): ApiResponse<ApiSchoolUser>
 
     // Filhos (alunos vinculados a responsável)
 
@@ -87,10 +100,30 @@ interface AdminApi {
         @Body request: ApiStudentInput
     ): ApiResponse<Any>
 
+    @PATCH("schools/{schoolId}/members/{parentId}/students/{studentId}")
+    suspend fun moveStudentToClass(
+        @Path("schoolId") schoolId: String,
+        @Path("parentId") parentId: String,
+        @Path("studentId") studentId: String,
+        @Body request: MoveStudentClassRequest
+    ): ApiResponse<Any>
+
     @DELETE("schools/{schoolId}/members/{userId}/students/{studentId}")
     suspend fun removeStudentFromParent(
         @Path("schoolId") schoolId: String,
         @Path("userId") userId: String,
         @Path("studentId") studentId: String
+    ): ApiResponse<Any>
+
+    @DELETE("schools/{schoolId}/members/{userId}")
+    suspend fun deactivateMembership(
+        @Path("schoolId") schoolId: String,
+        @Path("userId") userId: String
+    ): ApiResponse<Any>
+
+    @POST("schools/{schoolId}/members/{userId}/restore")
+    suspend fun activateMembership(
+        @Path("schoolId") schoolId: String,
+        @Path("userId") userId: String
     ): ApiResponse<Any>
 }

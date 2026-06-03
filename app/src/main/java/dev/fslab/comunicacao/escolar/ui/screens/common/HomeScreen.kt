@@ -9,6 +9,7 @@ import dev.fslab.comunicacao.escolar.model.UserRole
 import dev.fslab.comunicacao.escolar.navigation.Screen
 import dev.fslab.comunicacao.escolar.navigation.navigateSafely
 import dev.fslab.comunicacao.escolar.ui.screens.admin.AdminDashboardScreen
+import dev.fslab.comunicacao.escolar.ui.screens.professor.ProfessorDashboardScreen
 import dev.fslab.comunicacao.escolar.ui.screens.responsavel.ResponsavelDashboardScreen
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
@@ -56,22 +57,13 @@ fun HomeScreen(
                 }
             }
         )
-        UserRole.PROFESSOR -> {
-            ResponsavelDashboardScreen(
-                user = user,
-                accessToken = token,
-                authViewModel = authViewModel,
-                themeViewModel = themeViewModel,
-                onLogout = { authViewModel.logout() },
-                navController = navController,
-                onNavigateToLogin = {
-                    navController.navigateSafely(Screen.Login.route) {
-                        popUpTo(Screen.Home.route) {inclusive = true}
-                    }
-                }
-
-            )
-        }
+        UserRole.PROFESSOR -> ProfessorDashboardScreen(
+            user = user,
+            accessToken = token,
+            authViewModel = authViewModel,
+            themeViewModel = themeViewModel,
+            onLogout = { authViewModel.logout() }
+        )
         UserRole.ADMIN -> AdminDashboardScreen(
             user = user,
             accessToken = token,

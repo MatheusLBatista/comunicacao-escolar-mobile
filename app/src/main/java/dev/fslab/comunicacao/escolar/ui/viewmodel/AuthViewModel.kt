@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.fslab.comunicacao.escolar.model.*
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
+import dev.fslab.comunicacao.escolar.network.SocketManager
 import dev.fslab.comunicacao.escolar.network.TokenManager
 import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -105,6 +106,8 @@ class AuthViewModel : ViewModel() {
                             apiUser.accessToken, apiUser.refreshToken,
                             TokenManager.UserInfo(user.id, user.nome, user.email, roleToString(user.role), user.schoolId)
                         )
+                        val students = apiUser.memberships.flatMap { it.associatedStudents }.distinctBy { it.id }
+                        TokenManager.saveStudentsJson(gson.toJson(students))
                         _accessToken.value = apiUser.accessToken
                         _currentUser.value = user
                         _authState.value = AuthState.Success(user)
@@ -119,7 +122,7 @@ class AuthViewModel : ViewModel() {
                 val errorMessage = when (e.code()) {
                     400 -> "E-mail ou senha inválidos"
                     401 -> "E-mail ou senha incorretos"
-                    403 -> "Usuário inativo ou sem acesso ao aplicativo"
+                    403 -> "Conta não vinculada a nenhuma escola. Entre em contato com o administrador."
                     404 -> "Usuário não encontrado"
                     500 -> "Erro no servidor. Tente novamente mais tarde."
                     else -> "Erro de conexão: ${e.message()}"
@@ -151,7 +154,8 @@ class AuthViewModel : ViewModel() {
                 }
             } catch (e: retrofit2.HttpException) {
                 val errorMessage = when (e.code()) {
-                    409 -> "Este e-mail já está cadastrado"
+                    403 -> "E-mail não cadastrado no sistema. Entre em contato com o administrador da escola."
+                    409 -> "Esta conta já está ativa. Faça login."
                     400 -> "Dados inválidos. Verifique os campos."
                     500 -> "Erro no servidor. Tente novamente mais tarde."
                     else -> "Erro de conexão: ${e.message()}"
@@ -170,6 +174,7 @@ class AuthViewModel : ViewModel() {
     fun logout() {
         val currentToken = TokenManager.getAccessToken()
 
+        SocketManager.disconnect()
         TokenManager.clearTokens()
         _accessToken.value = null
         _currentUser.value = null
@@ -226,6 +231,8 @@ class AuthViewModel : ViewModel() {
                             apiUser.accessToken, apiUser.refreshToken,
                             TokenManager.UserInfo(user.id, user.nome, user.email, roleToString(user.role), user.schoolId)
                         )
+                        val students = apiUser.memberships.flatMap { it.associatedStudents }.distinctBy { it.id }
+                        TokenManager.saveStudentsJson(gson.toJson(students))
                         _accessToken.value = apiUser.accessToken
                         _currentUser.value = user
                         _authState.value = AuthState.Success(user)
@@ -238,6 +245,7 @@ class AuthViewModel : ViewModel() {
             } catch (e: retrofit2.HttpException) {
                 val errorMessage = when (e.code()) {
                     401 -> "Token do Google inválido ou expirado. Tente novamente."
+                    403 -> "E-mail não cadastrado no sistema. Entre em contato com o administrador da escola."
                     500 -> "Google Sign-In não configurado no servidor."
                     else -> "Erro ao fazer login com Google (${e.code()})."
                 }

@@ -3,12 +3,6 @@ package dev.fslab.comunicacao.escolar.network
 import okhttp3.Interceptor
 import okhttp3.Response
 
-/**
- * AuthInterceptor - Injeta o Bearer token em requisições autenticadas
- *
- * Pula a injeção para endpoints públicos (login, register, recover, refresh)
- * e para requisições que já possuem header Authorization.
- */
 class AuthInterceptor : Interceptor {
 
     companion object {
