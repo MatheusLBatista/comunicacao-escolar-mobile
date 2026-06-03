@@ -94,6 +94,8 @@ import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 
 import androidx.compose.foundation.lazy.rememberLazyListState
 
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.derivedStateOf
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -247,6 +249,7 @@ fun PostAttachments(
 	if (attachments.isEmpty()) return
 
 	val context = LocalContext.current
+	var expandedImageUrl by remember { mutableStateOf<ByteArray?>(null) }
 	
 	Column(
 		modifier = Modifier
@@ -268,7 +271,10 @@ fun PostAttachments(
 					.fillMaxWidth()
 					.height(200.dp)
 					.clip(RoundedCornerShape(8.dp))
-					.background(Color.LightGray.copy(alpha = 0.3f)),
+					.background(Color.LightGray.copy(alpha = 0.3f))
+					.clickable(enabled = imageData != null) {
+						expandedImageUrl = imageData
+					},
 				contentAlignment = Alignment.Center
 			) {
 				if (isLoading) {
@@ -294,6 +300,48 @@ fun PostAttachments(
 						tint = Color.Gray
 					)
 				}
+			}
+		}
+	}
+
+	// Dialog para imagem expandida (Lightbox)
+	if (expandedImageUrl != null) {
+		Dialog(
+			onDismissRequest = { expandedImageUrl = null },
+			properties = DialogProperties(
+				usePlatformDefaultWidth = false // Permite ocupar a tela inteira
+			)
+		) {
+			Box(
+				modifier = Modifier
+					.fillMaxSize()
+					.background(Color.Black.copy(alpha = 0.9f))
+					.clickable { expandedImageUrl = null },
+				contentAlignment = Alignment.Center
+			) {
+				AsyncImage(
+					model = ImageRequest.Builder(context)
+						.data(expandedImageUrl)
+						.crossfade(true)
+						.build(),
+					contentDescription = "Imagem expandida",
+					modifier = Modifier
+						.fillMaxWidth()
+						.clip(RoundedCornerShape(12.dp))
+						.padding(16.dp),
+					contentScale = ContentScale.Fit
+				)
+				
+				// Botão fechar (opcional, já que clicar fora ou na imagem já fecha)
+				Text(
+					text = "Fechar",
+					color = Color.White,
+					modifier = Modifier
+						.align(Alignment.TopEnd)
+						.padding(32.dp)
+						.clickable { expandedImageUrl = null },
+					style = MaterialTheme.typography.labelLarge
+				)
 			}
 		}
 	}
