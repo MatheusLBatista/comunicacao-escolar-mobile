@@ -51,6 +51,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
+import androidx.credentials.exceptions.NoCredentialException
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import dev.fslab.comunicacao.escolar.network.GoogleSignInConfig
@@ -306,6 +307,9 @@ fun LoginScreen(
                                 GoogleIdTokenCredential.createFrom(result.credential.data)
                             authViewModel.loginWithGoogle(googleCredential.idToken)
                         } catch (_: GetCredentialCancellationException) {
+                            // Usuário cancelou — sem ação
+                        } catch (_: NoCredentialException) {
+                            // Sem credenciais salvas — sem ação (o seletor do Google já cuida de oferecer contas se configurado)
                         } catch (_: GetCredentialException) {
                             authViewModel.setError("Falha ao iniciar login com Google. Tente novamente.")
                         }

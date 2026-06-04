@@ -56,6 +56,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -100,7 +101,7 @@ fun UsuariosScreen(
     val apiResponsaveis by adminViewModel.responsaveis.collectAsState()
     val allTurmas by adminViewModel.turmas.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
-    var tabIndex by remember { mutableStateOf(0) }
+    var tabIndex by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(schoolId) {
         if (schoolId.isNotBlank()) adminViewModel.loadUsuarios(schoolId)
@@ -275,7 +276,7 @@ internal fun UsuarioListItem(nome: String, subtitle: String, onClick: () -> Unit
 }
 
 @Composable
-internal fun UserAvatar(nome: String, size: Int = 40, modifier: Modifier = Modifier) {
+internal fun UserAvatar(nome: String, modifier: Modifier = Modifier, size: Int = 40) {
     val colors = LocalComunicacaoEscolarColors.current
     val initials = nome.split(" ")
         .take(2)

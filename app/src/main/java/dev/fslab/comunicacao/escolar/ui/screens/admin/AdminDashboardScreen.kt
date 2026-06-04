@@ -155,7 +155,7 @@ fun AdminDashboardScreen(
     }
 
     BackHandler(enabled = subScreenStack.isNotEmpty()) {
-        subScreenStack.removeLast()
+        subScreenStack.removeAt(subScreenStack.lastIndex)
     }
     BackHandler(enabled = subScreenStack.isEmpty() && currentRoute != Screen.AdminHome.route) {
         currentRoute = Screen.AdminHome.route
@@ -268,7 +268,7 @@ fun AdminDashboardScreen(
                         TurmasScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() },
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) },
                             onTurmaClick = { subScreenStack.add(AdminSubScreen.TurmaDetail(it)) }
                         )
 
@@ -286,7 +286,7 @@ fun AdminDashboardScreen(
                         UsuariosScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() },
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) },
                             onProfessorClick = { subScreenStack.add(AdminSubScreen.ProfessorDetail(it)) },
                             onResponsavelClick = { subScreenStack.add(AdminSubScreen.ResponsavelDetail(it)) },
                             onVincularClick = { subScreenStack.add(AdminSubScreen.VincularUsuario) }
@@ -297,7 +297,7 @@ fun AdminDashboardScreen(
                             professor = screen.professor,
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() },
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) },
                             onTurmaClick = { subScreenStack.add(AdminSubScreen.TurmaDetail(it)) }
                         )
 
@@ -314,7 +314,7 @@ fun AdminDashboardScreen(
                         VincularUsuarioScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) }
                         )
 
                     is AdminSubScreen.Alunos ->
@@ -353,7 +353,7 @@ fun AdminDashboardScreen(
                         AuditLogsScreen(
                             schoolId = schoolId,
                             adminViewModel = adminViewModel,
-                            onBack = { subScreenStack.removeLast() }
+                            onBack = { subScreenStack.removeAt(subScreenStack.lastIndex) }
                         )
 
                     is AdminSubScreen.ConversaDetail ->

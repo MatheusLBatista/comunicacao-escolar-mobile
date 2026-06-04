@@ -5,6 +5,28 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
+# Keep MainActivity and related classes
+-keep class dev.fslab.comunicacao.escolar.MainActivity { *; }
+-keep class dev.fslab.comunicacao.escolar.ComunicacaoEscolarApp { *; }
+
+# Keep all Activities, Services, BroadcastReceivers, and ContentProviders
+-keep class * extends android.app.Activity
+-keep class * extends android.app.Service
+-keep class * extends android.content.BroadcastReceiver
+-keep class * extends android.content.ContentProvider
+
+# Keep view constructors for inflation
+-keepclasseswithmembers class * {
+    public <init>(android.content.Context, android.util.AttributeSet);
+}
+
+# Keep Kotlin related classes
+-keep class kotlin.** { *; }
+-keep class kotlinx.** { *; }
+
+# Keep Compose
+-keep class androidx.compose.** { *; }
+
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface
 # class:

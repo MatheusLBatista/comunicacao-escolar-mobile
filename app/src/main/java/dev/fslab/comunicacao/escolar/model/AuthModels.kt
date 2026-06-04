@@ -1,6 +1,10 @@
 package dev.fslab.comunicacao.escolar.model
 
 import com.google.gson.annotations.SerializedName
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
+import com.google.gson.JsonDeserializationContext
+import java.lang.reflect.Type
 
 data class LoginRequest(
     @SerializedName("email") val email: String,
@@ -66,6 +70,33 @@ data class ApiAssociatedStudent(
     @SerializedName("full_name") val fullName: String = "",
     @SerializedName("class_id") val classId: String? = null
 )
+
+// Deserializador customizado para ApiAssociatedStudent
+// Suporta tanto objetos quanto strings (IDs simples)
+class ApiAssociatedStudentDeserializer : JsonDeserializer<ApiAssociatedStudent> {
+    override fun deserialize(
+        json: JsonElement,
+        typeOfT: Type,
+        context: JsonDeserializationContext
+    ): ApiAssociatedStudent {
+        return when {
+            json.isJsonPrimitive && json.asJsonPrimitive.isString -> {
+                // Se for uma string, é apenas o ID
+                ApiAssociatedStudent(id = json.asString)
+            }
+            json.isJsonObject -> {
+                // Se for um objeto, faz o parse normal
+                val obj = json.asJsonObject
+                ApiAssociatedStudent(
+                    id = obj.get("_id")?.asString ?: "",
+                    fullName = obj.get("full_name")?.asString ?: "",
+                    classId = obj.get("class_id")?.asString
+                )
+            }
+            else -> ApiAssociatedStudent()
+        }
+    }
+}
 
 fun ApiLoginUser.toUser(): User {
     val activeMembership = memberships.firstOrNull()

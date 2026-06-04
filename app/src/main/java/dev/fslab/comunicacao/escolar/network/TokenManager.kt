@@ -33,6 +33,25 @@ object TokenManager {
 
     @Synchronized
     fun init(context: Context) {
+        try {
+            initInternal(context)
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro fatal ao inicializar TokenManager (possível corrupção de chaves): ${e.message}")
+            try {
+                // Se falhou, as chaves no Keystore podem estar corrompidas ou dessincronizadas.
+                // A única solução é limpar as preferências e tentar novamente.
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
+                initInternal(context)
+                Log.w(TAG, "TokenManager reinicializado após limpeza de dados corrompidos")
+            } catch (e2: Exception) {
+                Log.e(TAG, "Falha crítica ao tentar recuperar TokenManager: ${e2.message}")
+                // Fallback final: usar SharedPreferences comum se o sistema de criptografia estiver quebrado no dispositivo
+                prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            }
+        }
+    }
+
+    private fun initInternal(context: Context) {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
