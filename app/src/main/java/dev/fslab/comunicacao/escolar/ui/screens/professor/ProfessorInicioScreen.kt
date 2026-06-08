@@ -62,6 +62,7 @@ import dev.fslab.comunicacao.escolar.ui.viewmodel.ProfessorInicioViewModel
 @Composable
 fun ProfessorInicioScreen(
     user: User,
+    onNavigateToDiario: () -> Unit = {},
     viewModel: ProfessorInicioViewModel = viewModel()
 ) {
     val colors = LocalComunicacaoEscolarColors.current
@@ -88,7 +89,7 @@ fun ProfessorInicioScreen(
         }
 
         item {
-            AcessoRapidoSection()
+            AcessoRapidoSection(onNavigateToDiario = onNavigateToDiario)
             Spacer(modifier = Modifier.height(28.dp))
         }
 
@@ -166,7 +167,7 @@ fun ProfessorInicioScreen(
 }
 
 @Composable
-private fun AcessoRapidoSection() {
+private fun AcessoRapidoSection(onNavigateToDiario: () -> Unit = {}) {
     val colors = LocalComunicacaoEscolarColors.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -189,7 +190,7 @@ private fun AcessoRapidoSection() {
                 icon = Icons.AutoMirrored.Outlined.MenuBook,
                 title = "Diário de Bordo",
                 subtitle = "1 pendente para hoje",
-                onClick = {}
+                onClick = onNavigateToDiario
             )
             QuickAccessCard(
                 icon = Icons.Outlined.Group,
