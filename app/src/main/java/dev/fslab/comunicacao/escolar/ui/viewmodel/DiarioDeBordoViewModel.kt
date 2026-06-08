@@ -10,6 +10,7 @@ import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import dev.fslab.comunicacao.escolar.network.TokenManager
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -188,31 +189,33 @@ class DiarioDeBordoViewModel : ViewModel() {
             val now = nowIso()
             try {
                 val currentState = _uiState.value as? DiarioDeBordoUiState.Content ?: return@launch
-                val deferreds = currentState.students.map { student ->
-                    async {
-                        val request = CreateDailyLogRequest(
-                            schoolId = schoolId,
-                            studentId = student.studentId,
-                            teacherId = teacherId,
-                            dailyLogTemplateId = templateId,
-                            date = now,
-                            isPresent = student.isPresent,
-                            entries = if (student.isPresent) {
-                                student.fieldValues
-                                    .filter { it.value.isNotBlank() }
-                                    .map { (key, value) -> DailyLogEntryRequest(key, value) }
-                            } else emptyList(),
-                            observation = student.observation
-                        )
-                        val logId = student.existingLogId
-                        if (logId != null) {
-                            RetrofitClient.dailyLogsApi.updateDailyLog(logId, request)
-                        } else {
-                            RetrofitClient.dailyLogsApi.createDailyLog(request)
+                coroutineScope {
+                    val deferreds = currentState.students.map { student ->
+                        async {
+                            val request = CreateDailyLogRequest(
+                                schoolId = schoolId,
+                                studentId = student.studentId,
+                                teacherId = teacherId,
+                                dailyLogTemplateId = templateId,
+                                date = now,
+                                isPresent = student.isPresent,
+                                entries = if (student.isPresent) {
+                                    student.fieldValues
+                                        .filter { it.value.isNotBlank() }
+                                        .map { (key, value) -> DailyLogEntryRequest(key, value) }
+                                } else emptyList(),
+                                observation = student.observation
+                            )
+                            val logId = student.existingLogId
+                            if (logId != null) {
+                                RetrofitClient.dailyLogsApi.updateDailyLog(logId, request)
+                            } else {
+                                RetrofitClient.dailyLogsApi.createDailyLog(request)
+                            }
                         }
                     }
+                    deferreds.awaitAll()
                 }
-                deferreds.awaitAll()
                 val updated = _uiState.value as? DiarioDeBordoUiState.Content ?: currentState
                 _uiState.value = updated.copy(submitState = SubmitState.Success)
             } catch (_: Exception) {

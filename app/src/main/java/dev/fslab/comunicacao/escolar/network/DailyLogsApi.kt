@@ -1,8 +1,8 @@
 package dev.fslab.comunicacao.escolar.network
 
+import com.google.gson.JsonElement
 import dev.fslab.comunicacao.escolar.model.ApiResponse
 import dev.fslab.comunicacao.escolar.model.CreateDailyLogRequest
-import dev.fslab.comunicacao.escolar.model.DailyLogDoc
 import dev.fslab.comunicacao.escolar.model.DailyLogsData
 import dev.fslab.comunicacao.escolar.model.DailyLogsResponse
 import retrofit2.http.Body
@@ -28,11 +28,11 @@ interface DailyLogsApi {
     @POST("daily-logs")
     suspend fun createDailyLog(
         @Body request: CreateDailyLogRequest
-    ): ApiResponse<DailyLogDoc>
+    ): ApiResponse<JsonElement>
 
     @PUT("daily-logs/{id}")
     suspend fun updateDailyLog(
         @Path("id") id: String,
         @Body request: CreateDailyLogRequest
-    ): ApiResponse<DailyLogDoc>
+    ): ApiResponse<JsonElement>
 }
