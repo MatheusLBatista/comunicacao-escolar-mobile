@@ -110,7 +110,6 @@ fun DiarioDeBordoScreen(
                 onSelectClass = { viewModel.selectClass(it) },
                 onTogglePresence = { viewModel.togglePresence(it) },
                 onUpdateField = { studentId, key, value -> viewModel.updateField(studentId, key, value) },
-                onUpdateObservation = { studentId, text -> viewModel.updateObservation(studentId, text) },
                 onSubmit = { viewModel.submit() }
             )
         }
@@ -168,7 +167,6 @@ private fun DiarioContent(
     onSelectClass: (String) -> Unit,
     onTogglePresence: (String) -> Unit,
     onUpdateField: (String, String, String) -> Unit,
-    onUpdateObservation: (String, String) -> Unit,
     onSubmit: () -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
@@ -237,8 +235,7 @@ private fun DiarioContent(
                         student = student,
                         templateFields = state.templateFields,
                         onTogglePresence = { onTogglePresence(student.studentId) },
-                        onUpdateField = { key, value -> onUpdateField(student.studentId, key, value) },
-                        onUpdateObservation = { text -> onUpdateObservation(student.studentId, text) }
+                        onUpdateField = { key, value -> onUpdateField(student.studentId, key, value) }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -331,8 +328,7 @@ private fun StudentCard(
     student: StudentDailyLogState,
     templateFields: List<ApiTemplateField>,
     onTogglePresence: () -> Unit,
-    onUpdateField: (String, String) -> Unit,
-    onUpdateObservation: (String) -> Unit
+    onUpdateField: (String, String) -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val context = LocalContext.current
@@ -406,42 +402,14 @@ private fun StudentCard(
                 enter = expandVertically(),
                 exit = shrinkVertically()
             ) {
-                Column {
-                    if (templateFields.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        FieldDropdownRow(
+                if (templateFields.isNotEmpty()) {
+                    Column(modifier = Modifier.padding(top = 12.dp)) {
+                        TemplateFieldsSection(
                             fields = templateFields,
                             fieldValues = student.fieldValues,
-                            onSelect = onUpdateField
+                            onUpdateField = onUpdateField
                         )
                     }
-                    Spacer(modifier = Modifier.height(10.dp))
-                    OutlinedTextField(
-                        value = student.observation,
-                        onValueChange = onUpdateObservation,
-                        placeholder = {
-                            Text(
-                                text = "Adicione uma observação individual...",
-                                fontSize = 13.sp,
-                                color = colors.textSecondary
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        minLines = 2,
-                        maxLines = 4,
-                        shape = RoundedCornerShape(12.dp),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
-                            color = colors.textPrimary,
-                            fontSize = 13.sp
-                        ),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.focusedIndicator,
-                            unfocusedBorderColor = colors.inputBorder,
-                            focusedContainerColor = colors.background,
-                            unfocusedContainerColor = colors.background,
-                            cursorColor = colors.focusedIndicator
-                        )
-                    )
                 }
             }
         }
@@ -477,29 +445,88 @@ private fun PresenceToggle(isPresent: Boolean, onToggle: () -> Unit) {
     }
 }
 
+private fun groupTemplateFields(fields: List<ApiTemplateField>): List<List<ApiTemplateField>> {
+    val result = mutableListOf<List<ApiTemplateField>>()
+    var i = 0
+    while (i < fields.size) {
+        val field = fields[i]
+        if (isCompactTemplateField(field)) {
+            val next = fields.getOrNull(i + 1)
+            if (next != null && isCompactTemplateField(next)) {
+                result.add(listOf(field, next))
+                i += 2
+            } else {
+                result.add(listOf(field))
+                i++
+            }
+        } else {
+            result.add(listOf(field))
+            i++
+        }
+    }
+    return result
+}
+
+private fun isCompactTemplateField(field: ApiTemplateField): Boolean =
+    (field.type == "select" && field.options.isNotEmpty()) || field.type == "boolean"
+
 @Composable
-private fun FieldDropdownRow(
+private fun TemplateFieldsSection(
     fields: List<ApiTemplateField>,
     fieldValues: Map<String, String>,
-    onSelect: (String, String) -> Unit
+    onUpdateField: (String, String) -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        fields.forEach { field ->
-            FieldDropdown(
-                field = field,
-                selectedValue = fieldValues[field.key] ?: "",
-                onSelect = { value -> onSelect(field.key, value) },
-                modifier = Modifier.weight(1f)
-            )
+    val groups = remember(fields) { groupTemplateFields(fields) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        groups.forEach { group ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                group.forEach { field ->
+                    TemplateField(
+                        field = field,
+                        value = fieldValues[field.key] ?: "",
+                        onUpdateField = { v -> onUpdateField(field.key, v) },
+                        modifier = if (group.size > 1) Modifier.weight(1f) else Modifier.fillMaxWidth()
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun FieldDropdown(
+private fun TemplateField(
+    field: ApiTemplateField,
+    value: String,
+    onUpdateField: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    when {
+        field.type == "select" && field.options.isNotEmpty() -> SelectFieldDropdown(
+            field = field,
+            selectedValue = value,
+            onSelect = onUpdateField,
+            modifier = modifier
+        )
+        field.type == "boolean" -> BooleanFieldToggle(
+            field = field,
+            selectedValue = value,
+            onSelect = onUpdateField,
+            modifier = modifier
+        )
+        else -> TextTemplateField(
+            field = field,
+            value = value,
+            onValueChange = onUpdateField,
+            modifier = modifier
+        )
+    }
+}
+
+@Composable
+private fun SelectFieldDropdown(
     field: ApiTemplateField,
     selectedValue: String,
     onSelect: (String) -> Unit,
@@ -561,4 +588,87 @@ private fun FieldDropdown(
             }
         }
     }
+}
+
+@Composable
+private fun BooleanFieldToggle(
+    field: ApiTemplateField,
+    selectedValue: String,
+    onSelect: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = LocalComunicacaoEscolarColors.current
+    val options = if (field.options.size >= 2) field.options.take(2) else listOf("Sim", "Não")
+
+    Column(modifier = modifier) {
+        Text(
+            text = field.label,
+            fontSize = 11.sp,
+            color = colors.textSecondary
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            options.forEach { option ->
+                val isSelected = selectedValue == option
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isSelected) colors.primary else Color.Transparent)
+                        .border(
+                            width = 1.dp,
+                            color = if (isSelected) Color.Transparent else colors.inputBorder,
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onSelect(option) }
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = option,
+                        fontSize = 12.sp,
+                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (isSelected) Color.White else colors.textPrimary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TextTemplateField(
+    field: ApiTemplateField,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colors = LocalComunicacaoEscolarColors.current
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(text = field.label, fontSize = 12.sp) },
+        modifier = modifier,
+        singleLine = true,
+        shape = RoundedCornerShape(8.dp),
+        textStyle = MaterialTheme.typography.bodyMedium.copy(
+            color = colors.textPrimary,
+            fontSize = 13.sp
+        ),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = colors.focusedIndicator,
+            unfocusedBorderColor = colors.inputBorder,
+            focusedContainerColor = colors.background,
+            unfocusedContainerColor = colors.background,
+            cursorColor = colors.focusedIndicator,
+            focusedLabelColor = colors.focusedIndicator,
+            unfocusedLabelColor = colors.textSecondary
+        )
+    )
 }

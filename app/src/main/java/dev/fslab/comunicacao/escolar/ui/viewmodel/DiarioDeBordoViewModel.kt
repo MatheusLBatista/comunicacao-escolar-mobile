@@ -177,11 +177,17 @@ class DiarioDeBordoViewModel : ViewModel() {
 
     fun submit() {
         val state = _uiState.value as? DiarioDeBordoUiState.Content ?: return
+        if (templateId.isBlank()) {
+            _uiState.value = state.copy(
+                submitState = SubmitState.Error("Nenhum template de diário configurado para esta escola.")
+            )
+            return
+        }
         viewModelScope.launch {
             _uiState.value = state.copy(submitState = SubmitState.Submitting)
             val now = nowIso()
             try {
-                val currentState = _uiState.value as DiarioDeBordoUiState.Content
+                val currentState = _uiState.value as? DiarioDeBordoUiState.Content ?: return@launch
                 val deferreds = currentState.students.map { student ->
                     async {
                         val request = CreateDailyLogRequest(
