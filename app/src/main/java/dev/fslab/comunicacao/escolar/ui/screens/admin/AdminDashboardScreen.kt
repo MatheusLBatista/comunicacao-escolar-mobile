@@ -74,6 +74,7 @@ import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.screens.conversas.ConversaDetailScreen
 import dev.fslab.comunicacao.escolar.ui.screens.conversas.ConversaListScreen
 import dev.fslab.comunicacao.escolar.ui.screens.conversas.NovaConversaScreen
+import dev.fslab.comunicacao.escolar.ui.screens.responsavel.AgendaScreen
 import dev.fslab.comunicacao.escolar.ui.screens.responsavel.PerfilScreen
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AdminViewModel
@@ -241,17 +242,7 @@ fun AdminDashboardScreen(
                         },
                         nome = "Mural"
                     )
-                    Screen.Agenda.route -> AdminPlaceholderTela(
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Outlined.DateRange,
-                                contentDescription = null,
-                                tint = colors.textSecondary.copy(alpha = 0.35f),
-                                modifier = Modifier.size(72.dp)
-                            )
-                        },
-                        nome = "Agenda"
-                    )
+                    Screen.Agenda.route -> AgendaScreen(user = user, accessToken = accessToken)
                     Screen.Perfil.route -> PerfilScreen(
                         user = user,
                         authViewModel = authViewModel,
