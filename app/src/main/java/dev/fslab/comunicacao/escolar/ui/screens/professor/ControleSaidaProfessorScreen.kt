@@ -262,8 +262,11 @@ private fun RegistradasTabContent(
         is ProfRegistradasState.Error -> TabErrorContent(state.message, onRetry)
         is ProfRegistradasState.Empty -> TabEmptyContent("Nenhuma saída registrada")
         is ProfRegistradasState.Content -> LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(top = 16.dp, bottom = 80.dp)
         ) {
             items(state.items, key = { it.id }) { item ->
                 PickupLogCard(item = item)
@@ -555,13 +558,15 @@ private fun PickupLogCard(item: PickupLogItem) {
     val colors = LocalComunicacaoEscolarColors.current
     val context = LocalContext.current
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, colors.inputBorder, RoundedCornerShape(16.dp))
+            .background(colors.background)
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
                     .size(44.dp)
@@ -591,41 +596,40 @@ private fun PickupLogCard(item: PickupLogItem) {
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = item.studentName,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary
-                    )
-                    if (item.time.isNotBlank()) {
-                        Text(text = item.time, fontSize = 12.sp, color = colors.textSecondary)
-                    }
-                }
-                Spacer(modifier = Modifier.height(2.dp))
-                val subtitle = buildString {
-                    append(item.pickedUpName)
-                    if (item.relationship.isNotBlank()) append(" · ${item.relationship}")
-                }
-                if (subtitle.isNotBlank()) {
-                    Text(text = subtitle, fontSize = 13.sp, color = colors.textSecondary)
-                }
+            Column {
+                Text(
+                    text = item.studentName.ifBlank { "Aluno" },
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary
+                )
                 if (item.isManual) {
-                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Registrado manualmente pelo professor",
-                        fontSize = 11.sp,
+                        text = "Saída manual",
+                        fontSize = 12.sp,
                         color = colors.textSecondary
                     )
                 }
             }
         }
-        HorizontalDivider(color = colors.inputBorder, thickness = 1.dp)
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(colors.lightGray)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            val quemBuscou = buildString {
+                append(item.pickedUpName)
+                if (item.relationship.isNotBlank()) append(" · ${item.relationship}")
+            }
+            InfoRow(label = "Quem buscou", value = quemBuscou.ifBlank { "—" })
+            InfoRow(label = "Horário de saída", value = item.time.ifBlank { "--:--" })
+        }
     }
 }
 
