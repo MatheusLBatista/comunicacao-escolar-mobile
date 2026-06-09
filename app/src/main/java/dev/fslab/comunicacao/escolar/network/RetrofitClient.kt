@@ -15,6 +15,7 @@ object RetrofitClient {
 
     private val gson = GsonBuilder()
         .setLenient()
+        .serializeNulls()
         .registerTypeAdapter(ApiAssociatedStudent::class.java, ApiAssociatedStudentDeserializer())
         .create()
 

@@ -64,8 +64,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -836,6 +840,7 @@ private fun SheetStep2(
     val colors = LocalComunicacaoEscolarColors.current
     val context = LocalContext.current
     var quemBuscou by remember { mutableStateOf("") }
+    var documento by remember { mutableStateOf("") }
     var relacao by remember { mutableStateOf("") }
 
     val classId = sheetState.selectedTurma?.id
@@ -850,7 +855,7 @@ private fun SheetStep2(
         else studentsForClass.filter { it.fullName.contains(sheetState.searchQuery, ignoreCase = true) }
     }
 
-    val isValid = sheetState.selectedStudent != null && quemBuscou.isNotBlank()
+    val isValid = sheetState.selectedStudent != null && quemBuscou.isNotBlank() && documento.isNotBlank()
 
     Column(
         modifier = Modifier
@@ -1013,6 +1018,36 @@ private fun SheetStep2(
         Spacer(modifier = Modifier.height(12.dp))
 
         Text(
+            text = "DOCUMENTO (CPF)",
+            fontSize = 11.sp,
+            letterSpacing = 0.8.sp,
+            fontWeight = FontWeight.Medium,
+            color = colors.textSecondary,
+            modifier = Modifier.padding(bottom = 6.dp)
+        )
+        OutlinedTextField(
+            value = documento,
+            onValueChange = { input -> documento = input.filter { it.isDigit() }.take(11) },
+            placeholder = { Text("000.000.000-00", fontSize = 13.sp, color = colors.textSecondary) },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(10.dp),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            visualTransformation = CpfVisualTransformation(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colors.focusedIndicator,
+                unfocusedBorderColor = colors.inputBorder,
+                focusedContainerColor = colors.surface,
+                unfocusedContainerColor = colors.surface,
+                cursorColor = colors.focusedIndicator,
+                focusedTextColor = colors.textPrimary,
+                unfocusedTextColor = colors.textPrimary
+            )
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
             text = "RELAÇÃO",
             fontSize = 11.sp,
             letterSpacing = 0.8.sp,
@@ -1054,7 +1089,7 @@ private fun SheetStep2(
                     enabled = isValid && !sheetState.registrando,
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
-                ) { viewModel.registrarSaidaManual(quemBuscou, relacao) }
+                ) { viewModel.registrarSaidaManual(quemBuscou, documento, relacao) }
                 .padding(vertical = 16.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -1069,5 +1104,34 @@ private fun SheetStep2(
                 )
             }
         }
+    }
+}
+
+private class CpfVisualTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val digits = text.text
+        val formatted = buildString {
+            digits.forEachIndexed { i, c ->
+                if (i == 3 || i == 6) append('.')
+                if (i == 9) append('-')
+                append(c)
+            }
+        }
+        val offsetMapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = when {
+                offset <= 3 -> offset
+                offset <= 6 -> offset + 1
+                offset <= 9 -> offset + 2
+                else -> offset + 3
+            }.coerceAtMost(formatted.length)
+
+            override fun transformedToOriginal(offset: Int): Int = when {
+                offset <= 3 -> offset
+                offset <= 7 -> offset - 1
+                offset <= 11 -> offset - 2
+                else -> offset - 3
+            }.coerceAtMost(digits.length)
+        }
+        return TransformedText(AnnotatedString(formatted), offsetMapping)
     }
 }

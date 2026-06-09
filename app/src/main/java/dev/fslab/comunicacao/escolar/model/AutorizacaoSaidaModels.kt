@@ -119,12 +119,12 @@ data class AutorizacaoSaidaByIdResponse(
 data class CreatePickupLogRequest(
     @SerializedName("school_id") val schoolId: String,
     @SerializedName("student_id") val studentId: String,
-    @SerializedName("authorization_id") val authorizationId: String = "",
+    @SerializedName("authorization_id") val authorizationId: String? = null,
     @SerializedName("method") val method: String = "qr_code",
     @SerializedName("picked_up_by") val pickedUpBy: PickedUpBy,
     @SerializedName("verified_by") val verifiedBy: String,
     @SerializedName("departure_time") val departureTime: String,
-    @SerializedName("notes") val notes: String = ""
+    @SerializedName("notes") val notes: String? = null
 )
 
 data class PickedUpBy(
@@ -148,7 +148,7 @@ data class PickupLogDoc(
     @SerializedName("picked_up_by") val pickedUpBy: PickedUpByResponse? = null,
     @SerializedName("method") val method: String = "",
     @SerializedName("departure_time") val departureTime: String = "",
-    @SerializedName("notes") val notes: String = ""
+    @SerializedName("notes") val notes: String? = null
 )
 
 data class PickupLogStudent(

@@ -166,13 +166,19 @@ class ControleSaidaProfessorViewModel : ViewModel() {
                 _registradasState.value = if (items.isEmpty()) ProfRegistradasState.Empty
                                          else ProfRegistradasState.Content(items)
             } catch (e: retrofit2.HttpException) {
-                _registradasState.value = ProfRegistradasState.Error("Erro ao carregar registros (${e.code()}).")
+                val detail = runCatching {
+                    val body = e.response()?.errorBody()?.string() ?: ""
+                    Regex(""""message"\s*:\s*"([^"]+)"""").find(body)?.groupValues?.get(1)
+                }.getOrNull()
+                _registradasState.value = ProfRegistradasState.Error(
+                    detail ?: "Erro ao carregar registros (${e.code()})."
+                )
             } catch (_: java.net.UnknownHostException) {
                 _registradasState.value = ProfRegistradasState.Error("Sem conexão com a internet.")
             } catch (_: java.net.SocketTimeoutException) {
                 _registradasState.value = ProfRegistradasState.Error("Tempo de conexão esgotado.")
-            } catch (_: Exception) {
-                _registradasState.value = ProfRegistradasState.Error("Erro ao carregar registros.")
+            } catch (e: Exception) {
+                _registradasState.value = ProfRegistradasState.Error("Erro ao carregar registros: ${e.message}")
             }
         }
     }
@@ -338,7 +344,7 @@ class ControleSaidaProfessorViewModel : ViewModel() {
         _sheetState.value = _sheetState.value.copy(searchQuery = query)
     }
 
-    fun registrarSaidaManual(quemBuscou: String, relacao: String) {
+    fun registrarSaidaManual(quemBuscou: String, documento: String, relacao: String) {
         val sheet = _sheetState.value
         val student = sheet.selectedStudent ?: return
         viewModelScope.launch {
@@ -351,15 +357,15 @@ class ControleSaidaProfessorViewModel : ViewModel() {
                 val request = CreatePickupLogRequest(
                     schoolId = schoolId,
                     studentId = student.id,
-                    authorizationId = "",
+                    authorizationId = null,
                     method = "manual",
                     pickedUpBy = PickedUpBy(
                         name = quemBuscou.trim(),
-                        document = "",
-                        relationship = relacao.trim().takeIf { it.isNotBlank() }
+                        document = documento.trim()
                     ),
                     verifiedBy = teacherId,
-                    departureTime = isoFormatter.format(Date())
+                    departureTime = isoFormatter.format(Date()),
+                    notes = relacao.trim().takeIf { it.isNotBlank() }
                 )
                 val response = RetrofitClient.autorizacaoSaidaApi.criarPickupLog("Bearer $token", request)
                 if (response.error) {
@@ -369,7 +375,15 @@ class ControleSaidaProfessorViewModel : ViewModel() {
                     loadRegistradas()
                 }
             } catch (e: retrofit2.HttpException) {
-                _sheetState.value = _sheetState.value.copy(registrando = false, erro = "Erro ao registrar saída (${e.code()}).")
+                val detail = runCatching {
+                    val body = e.response()?.errorBody()?.string() ?: ""
+                    val msg = Regex(""""message"\s*:\s*"([^"]+)"""").find(body)?.groupValues?.get(1)
+                    msg?.replaceFirstChar { it.uppercase() }
+                }.getOrNull()
+                _sheetState.value = _sheetState.value.copy(
+                    registrando = false,
+                    erro = detail ?: "Erro ao registrar saída (${e.code()})."
+                )
             } catch (_: Exception) {
                 _sheetState.value = _sheetState.value.copy(registrando = false, erro = "Erro ao registrar saída.")
             }
@@ -391,16 +405,17 @@ class ControleSaidaProfessorViewModel : ViewModel() {
     }
 
     private fun PickupLogDoc.toPickupLogItem(): PickupLogItem {
-        val time = runCatching { isoFormatter.parse(departureTime)?.let { timeFormatter.format(it) } }
-            .getOrNull() ?: departureTime.take(5).ifBlank { "--:--" }
+        val safeTime = departureTime.orEmpty()
+        val time = runCatching { isoFormatter.parse(safeTime)?.let { timeFormatter.format(it) } }
+            .getOrNull() ?: safeTime.take(5).ifBlank { "--:--" }
         return PickupLogItem(
-            id = id,
-            studentName = student?.fullName?.trim()?.split(" ")?.firstOrNull() ?: "Aluno",
+            id = id.orEmpty(),
+            studentName = student?.fullName?.trim()?.split(" ")?.firstOrNull().orEmpty(),
             studentAvatarUrl = student?.avatarUrl?.takeIf { it.isNotBlank() },
             pickedUpName = pickedUpBy?.name.orEmpty(),
-            relationship = pickedUpBy?.relationship.orEmpty(),
+            relationship = notes.orEmpty().ifBlank { pickedUpBy?.relationship.orEmpty() },
             time = time,
-            isManual = method == "manual"
+            isManual = method.orEmpty() == "manual"
         )
     }
 }
