@@ -44,14 +44,26 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(remoteMessage)
         Log.d("FCM", "Mensagem recebida de: ${remoteMessage.from}")
 
-        // Se a mensagem contiver dados
-        if (remoteMessage.data.isNotEmpty()) {
-            Log.d("FCM", "Dados da mensagem: ${remoteMessage.data}")
+        val data = remoteMessage.data
+        val type = data["type"]
+        val postId = data["postId"]
+
+        // Se for um novo post, notificamos o sistema interno
+        if (type == "announcement" && postId != null) {
+            scope.launch {
+                FCMEventManager.emitNewPost(postId)
+            }
         }
 
-        // Se a mensagem contiver uma notificação
+        // Se a mensagem contiver uma notificação, e NÃO for um post (ou quisermos mostrar sempre no sistema)
+        // No Android, se o app está em foreground, a notificação do sistema NÃO aparece automaticamente.
+        // Se quisermos que apareça, teríamos que criar uma notificação manualmente aqui.
+        // Como o usuário quer que seja "internamente sem aparecer na notificação", não fazemos nada se for post.
+        
         remoteMessage.notification?.let {
             Log.d("FCM", "Corpo da notificação: ${it.body}")
+            // Se não for um anúncio, ou se você quiser mostrar outras notificações mesmo em foreground:
+            // if (type != "announcement") { ... mostrar notificação manual ... }
         }
     }
 

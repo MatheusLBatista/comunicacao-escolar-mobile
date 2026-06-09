@@ -34,6 +34,43 @@ class MuralViewModel : ViewModel() {
     private var hasNextPage = true
     private var isPaginationLoading = false
 
+    init {
+        // Observa eventos de novos posts vindos do FCM
+        viewModelScope.launch {
+            dev.fslab.comunicacao.escolar.network.FCMEventManager.newPostEvent.collect { postId ->
+                Log.d(TAG, "Evento de novo post recebido via FCM: $postId. Buscando detalhes...")
+                fetchNewPost(postId)
+            }
+        }
+    }
+
+    private fun fetchNewPost(postId: String) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.muralApi.getPost(postId)
+                val newPost = response.data
+                
+                val currentResponse = _posts.value
+                if (currentResponse != null) {
+                    val currentDocs = currentResponse.data.docs.toMutableList()
+                    
+                    // Verifica se o post já não está na lista
+                    if (currentDocs.none { it.id == newPost.id }) {
+                        currentDocs.add(0, newPost) // Adiciona ao topo
+                        
+                        val updatedResponse = currentResponse.copy(
+                            data = currentResponse.data.copy(docs = currentDocs)
+                        )
+                        _posts.value = updatedResponse
+                        Log.d(TAG, "Novo post adicionado ao topo do mural via FCM.")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Erro ao buscar post individual após notificação FCM", e)
+            }
+        }
+    }
+
     fun getPosts(schoolId: String, loadMore: Boolean = false) {
         if (loadMore && (!hasNextPage || isPaginationLoading)) return
 
