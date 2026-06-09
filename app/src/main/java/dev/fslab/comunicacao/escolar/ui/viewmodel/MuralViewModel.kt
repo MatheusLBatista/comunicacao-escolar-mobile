@@ -31,6 +31,9 @@ class MuralViewModel : ViewModel() {
     private val _posts = MutableStateFlow<MuralResponse?>(null)
     val posts: StateFlow<MuralResponse?> = _posts.asStateFlow()
 
+    private val _authors = MutableStateFlow<Map<String, dev.fslab.comunicacao.escolar.model.ApiUser>>(emptyMap())
+    val authors: StateFlow<Map<String, dev.fslab.comunicacao.escolar.model.ApiUser>> = _authors.asStateFlow()
+
     private var hasNextPage = true
     private var isPaginationLoading = false
 
@@ -50,6 +53,9 @@ class MuralViewModel : ViewModel() {
                 val response = RetrofitClient.muralApi.getPost(postId)
                 val newPost = response.data
                 
+                // Aproveita para buscar o autor do novo post
+                fetchAuthor(newPost.authorId)
+
                 val currentResponse = _posts.value
                 if (currentResponse != null) {
                     val currentDocs = currentResponse.data.docs.toMutableList()
@@ -67,6 +73,25 @@ class MuralViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Erro ao buscar post individual após notificação FCM", e)
+            }
+        }
+    }
+
+    fun fetchAuthor(authorId: String) {
+        if (authorId.isEmpty() || _authors.value.containsKey(authorId)) return
+
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.userApi.getById(authorId)
+                if (response.isSuccess()) {
+                    response.data?.let { user ->
+                        val currentMap = _authors.value.toMutableMap()
+                        currentMap[authorId] = user
+                        _authors.value = currentMap
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Erro ao buscar autor $authorId", e)
             }
         }
     }
