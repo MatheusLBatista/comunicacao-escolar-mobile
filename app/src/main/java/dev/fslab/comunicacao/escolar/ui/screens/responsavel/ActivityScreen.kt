@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.fslab.comunicacao.escolar.model.DailyLog
+import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.DailyLogsUiState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.DailyLogsViewModel
@@ -77,20 +78,15 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
-            .padding(horizontal = 20.dp)
     ) {
-        Text(
-            text = "Atividades",
-            fontSize = 22.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = colors.textPrimary,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 28.dp, bottom = 24.dp)
-        )
+        AppHeader("Atividades")
 
-        when (uiState) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp)
+        ) {
+            when (uiState) {
 
             is DailyLogsUiState.Loading -> {
                 Box(
@@ -180,6 +176,7 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
                 }
             }
         }
+        } // Box
     }
 }
 

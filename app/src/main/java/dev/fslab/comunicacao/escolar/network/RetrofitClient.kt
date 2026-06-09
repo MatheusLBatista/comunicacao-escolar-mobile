@@ -11,7 +11,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    const val BASE_URL = "http://10.0.2.2:3000/"
+    const val BASE_URL = "http://localhost:3011/"
 
     private val gson = GsonBuilder()
         .setLenient()

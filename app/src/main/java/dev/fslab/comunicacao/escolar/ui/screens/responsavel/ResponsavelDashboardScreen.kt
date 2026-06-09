@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -45,8 +44,13 @@ import dev.fslab.comunicacao.escolar.ui.components.BottomNavItem
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
 import dev.fslab.comunicacao.escolar.ui.theme.screens.MuralScreen as MuralScreenReal
+import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import dev.fslab.comunicacao.escolar.ui.screens.conversas.ConversaDetailScreen
+import dev.fslab.comunicacao.escolar.ui.screens.conversas.ConversaListScreen
+import dev.fslab.comunicacao.escolar.ui.screens.conversas.NovaConversaScreen
+import dev.fslab.comunicacao.escolar.ui.viewmodel.ConversaViewModel
 
 private val responsavelNavItems = listOf(
     BottomNavItem(
@@ -153,15 +157,57 @@ fun AtividadesScreen(user: User, accessToken: String) {
 
 @Composable
 fun ConversasScreen(user: User, accessToken: String) {
-    val colors = LocalComunicacaoEscolarColors.current
     if (user.schoolId == null) {
         SemEscolaVinculada(
             icon = Icons.AutoMirrored.Outlined.Chat,
             nomeTela = "Conversas"
         )
-    } else {
-        PlaceholderTela(nome = "Conversas", colors = colors)
+        return
     }
+
+    val conversaViewModel: ConversaViewModel = viewModel()
+    var subScreen by remember { mutableStateOf<ConversasSubScreen?>(null) }
+
+    BackHandler(enabled = subScreen != null) {
+        subScreen = null
+    }
+
+    when (val screen = subScreen) {
+        null -> ConversaListScreen(
+            user = user,
+            accessToken = accessToken,
+            conversaViewModel = conversaViewModel,
+            onOpenConversa = { id, titulo, avatarUrl ->
+                subScreen = ConversasSubScreen.Detail(id, titulo, avatarUrl)
+            },
+            onNovaConversa = { subScreen = ConversasSubScreen.NovaConversa }
+        )
+        is ConversasSubScreen.Detail -> ConversaDetailScreen(
+            conversaId = screen.conversaId,
+            titulo = screen.titulo,
+            avatarUrl = screen.avatarUrl,
+            user = user,
+            conversaViewModel = conversaViewModel,
+            onBack = { subScreen = null }
+        )
+        is ConversasSubScreen.NovaConversa -> NovaConversaScreen(
+            user = user,
+            conversaViewModel = conversaViewModel,
+            onBack = { subScreen = null },
+            onConversaCreated = { id, titulo, avatarUrl ->
+                subScreen = ConversasSubScreen.Detail(id, titulo, avatarUrl)
+            }
+        )
+    }
+}
+
+private sealed class ConversasSubScreen {
+    data class Detail(
+        val conversaId: String,
+        val titulo: String,
+        val avatarUrl: String?
+    ) : ConversasSubScreen()
+    object NovaConversa : ConversasSubScreen()
 }
 
 
@@ -219,21 +265,4 @@ private fun SemEscolaVinculada(icon: ImageVector, nomeTela: String) {
     }
 }
 
-@Composable
-private fun PlaceholderTela(
-    nome: String,
-    colors: dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarColors
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(colors.background),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = nome,
-            style = MaterialTheme.typography.titleMedium,
-            color = colors.textPrimary
-        )
-    }
-}
+

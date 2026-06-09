@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -54,6 +55,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import dev.fslab.comunicacao.escolar.model.User
+import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AtividadeRecente
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ProfessorInicioUiState
@@ -68,26 +70,19 @@ fun ProfessorInicioScreen(
     val colors = LocalComunicacaoEscolarColors.current
     val uiState by viewModel.uiState.collectAsState()
 
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
-            .padding(horizontal = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(0.dp)
     ) {
-        item {
-            Text(
-                text = "Início",
-                fontSize = 22.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = colors.textPrimary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 28.dp, bottom = 24.dp)
-            )
-        }
-
+        AppHeader("Início")
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
         item {
             AcessoRapidoSection(onNavigateToDiario = onNavigateToDiario)
             Spacer(modifier = Modifier.height(28.dp))
@@ -163,6 +158,7 @@ fun ProfessorInicioScreen(
         }
 
         item { Spacer(modifier = Modifier.height(8.dp)) }
+        }
     }
 }
 

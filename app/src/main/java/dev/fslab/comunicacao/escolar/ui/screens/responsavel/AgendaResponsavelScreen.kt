@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -85,6 +86,7 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.fslab.comunicacao.escolar.model.Evento
 import dev.fslab.comunicacao.escolar.model.User
+import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AgendaViewModel
 import kotlinx.coroutines.launch
@@ -319,6 +321,8 @@ fun AgendaResponsavelScreen(
 
     Scaffold(
         containerColor = colors.background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = { AppHeader("Agenda") },
         floatingActionButton = {
             if (canCreate) {
                 FloatingActionButton(
@@ -337,22 +341,9 @@ fun AgendaResponsavelScreen(
             .fillMaxSize()
             .background(colors.background)
             .padding(innerPadding),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 88.dp),
+        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 88.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        item {
-            Text(
-                text = "Agenda",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = colors.textPrimary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 8.dp),
-                textAlign = TextAlign.Center
-            )
-        }
-
         item {
             Column(
                 modifier = Modifier

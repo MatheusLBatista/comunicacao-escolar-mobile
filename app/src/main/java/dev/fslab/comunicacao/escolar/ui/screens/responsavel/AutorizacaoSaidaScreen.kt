@@ -29,7 +29,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
@@ -76,6 +75,7 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import dev.fslab.comunicacao.escolar.model.ApiAssociatedStudent
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaida
+import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AutorizacaoSaidaUiState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AutorizacaoSaidaViewModel
@@ -105,29 +105,7 @@ fun AutorizacaoSaidaScreen(
             .background(colors.background)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Voltar",
-                        tint = colors.textPrimary
-                    )
-                }
-                Text(
-                    text = "Autorizações de Saída",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.textPrimary,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Center
-                )
-                Spacer(modifier = Modifier.size(48.dp))
-            }
+            AppHeader(title = "Autorizações de Saída", onBack = onBack)
 
             if (alunos.size > 1) {
                 LazyRow(
