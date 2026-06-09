@@ -63,6 +63,7 @@ import dev.fslab.comunicacao.escolar.ui.viewmodel.ProfessorInicioViewModel
 fun ProfessorInicioScreen(
     user: User,
     onNavigateToDiario: () -> Unit = {},
+    onNavigateToControleSaida: () -> Unit = {},
     viewModel: ProfessorInicioViewModel = viewModel()
 ) {
     val colors = LocalComunicacaoEscolarColors.current
@@ -89,7 +90,10 @@ fun ProfessorInicioScreen(
         }
 
         item {
-            AcessoRapidoSection(onNavigateToDiario = onNavigateToDiario)
+            AcessoRapidoSection(
+                onNavigateToDiario = onNavigateToDiario,
+                onNavigateToControleSaida = onNavigateToControleSaida
+            )
             Spacer(modifier = Modifier.height(28.dp))
         }
 
@@ -167,7 +171,10 @@ fun ProfessorInicioScreen(
 }
 
 @Composable
-private fun AcessoRapidoSection(onNavigateToDiario: () -> Unit = {}) {
+private fun AcessoRapidoSection(
+    onNavigateToDiario: () -> Unit = {},
+    onNavigateToControleSaida: () -> Unit = {}
+) {
     val colors = LocalComunicacaoEscolarColors.current
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -182,9 +189,9 @@ private fun AcessoRapidoSection(onNavigateToDiario: () -> Unit = {}) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             QuickAccessCard(
                 icon = Icons.AutoMirrored.Outlined.ExitToApp,
-                title = "Autorizações de Saída",
-                subtitle = "2 aguardando liberação",
-                onClick = {}
+                title = "Controle de Saída",
+                subtitle = "Autorizações e registros",
+                onClick = onNavigateToControleSaida
             )
             QuickAccessCard(
                 icon = Icons.AutoMirrored.Outlined.MenuBook,

@@ -40,6 +40,7 @@ private const val ROUTE_CONVERSAS = "professor_conversas"
 private const val ROUTE_MURAL = "professor_mural"
 private const val ROUTE_AGENDA = "professor_agenda"
 private const val ROUTE_PERFIL = "professor_perfil"
+private const val ROUTE_CONTROLE_SAIDA = "professor_controle_saida"
 
 private val professorNavItems = listOf(
     BottomNavItem(Icons.Outlined.Home, ROUTE_INICIO, "Início"),
@@ -86,9 +87,13 @@ fun ProfessorDashboardScreen(
             when (route) {
                 ROUTE_INICIO    -> ProfessorInicioScreen(
                     user = user,
-                    onNavigateToDiario = { currentRoute = ROUTE_DIARIO }
+                    onNavigateToDiario = { currentRoute = ROUTE_DIARIO },
+                    onNavigateToControleSaida = { currentRoute = ROUTE_CONTROLE_SAIDA }
                 )
                 ROUTE_DIARIO    -> DiarioDeBordoScreen()
+                ROUTE_CONTROLE_SAIDA -> ControleSaidaProfessorScreen(
+                    onBack = { currentRoute = ROUTE_INICIO }
+                )
                 ROUTE_CONVERSAS -> ProfessorPlaceholderScreen(nome = "Conversas")
                 ROUTE_MURAL     -> ProfessorPlaceholderScreen(nome = "Mural")
                 ROUTE_AGENDA    -> ProfessorPlaceholderScreen(nome = "Agenda")

@@ -119,7 +119,7 @@ data class AutorizacaoSaidaByIdResponse(
 data class CreatePickupLogRequest(
     @SerializedName("school_id") val schoolId: String,
     @SerializedName("student_id") val studentId: String,
-    @SerializedName("authorization_id") val authorizationId: String,
+    @SerializedName("authorization_id") val authorizationId: String = "",
     @SerializedName("method") val method: String = "qr_code",
     @SerializedName("picked_up_by") val pickedUpBy: PickedUpBy,
     @SerializedName("verified_by") val verifiedBy: String,
@@ -130,7 +130,8 @@ data class CreatePickupLogRequest(
 data class PickedUpBy(
     @SerializedName("user_id") val userId: String? = null,
     @SerializedName("name") val name: String,
-    @SerializedName("document") val document: String
+    @SerializedName("document") val document: String,
+    @SerializedName("relationship") val relationship: String? = null
 )
 
 data class CreatePickupLogResponse(
@@ -140,3 +141,52 @@ data class CreatePickupLogResponse(
 ) {
     fun getErrorMessage(): String = errors.firstOrNull() ?: message
 }
+
+data class PickupLogDoc(
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("student_id") val student: PickupLogStudent? = null,
+    @SerializedName("picked_up_by") val pickedUpBy: PickedUpByResponse? = null,
+    @SerializedName("method") val method: String = "",
+    @SerializedName("departure_time") val departureTime: String = "",
+    @SerializedName("notes") val notes: String = ""
+)
+
+data class PickupLogStudent(
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("full_name") val fullName: String = "",
+    @SerializedName("avatar_url") val avatarUrl: String? = null
+)
+
+data class PickedUpByResponse(
+    @SerializedName("name") val name: String = "",
+    @SerializedName("document") val document: String = "",
+    @SerializedName("relationship") val relationship: String? = null
+)
+
+data class PickupLogsResponse(
+    @SerializedName("error") val error: Boolean = false,
+    @SerializedName("code") val code: Int = 0,
+    @SerializedName("message") val message: String = "",
+    @SerializedName("data") val data: PickupLogsData? = null,
+    @SerializedName("errors") val errors: List<String> = emptyList()
+) {
+    fun getErrorMessage(): String = errors.firstOrNull() ?: message
+}
+
+data class PickupLogsData(
+    @SerializedName("docs") val docs: List<PickupLogDoc> = emptyList(),
+    @SerializedName("totalDocs") val totalDocs: Int = 0,
+    @SerializedName("limit") val limit: Int = 0,
+    @SerializedName("totalPages") val totalPages: Int = 0,
+    @SerializedName("page") val page: Int = 0
+)
+
+data class PickupLogItem(
+    val id: String,
+    val studentName: String,
+    val studentAvatarUrl: String?,
+    val pickedUpName: String,
+    val relationship: String,
+    val time: String,
+    val isManual: Boolean
+)
