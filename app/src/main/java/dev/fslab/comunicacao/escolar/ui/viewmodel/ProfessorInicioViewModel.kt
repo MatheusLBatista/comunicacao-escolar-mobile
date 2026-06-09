@@ -35,6 +35,7 @@ class ProfessorInicioViewModel : ViewModel() {
     private val _uiState = MutableStateFlow<ProfessorInicioUiState>(ProfessorInicioUiState.Loading)
     val uiState: StateFlow<ProfessorInicioUiState> = _uiState.asStateFlow()
 
+
     private val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
