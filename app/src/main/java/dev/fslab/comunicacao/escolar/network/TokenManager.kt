@@ -16,6 +16,7 @@ object TokenManager {
     private const val KEY_USER_NAME = "user_name"
     private const val KEY_USER_ROLE = "user_role"
     private const val KEY_SCHOOL_ID = "school_id"
+    private const val KEY_STUDENTS = "students_json"
 
     @Volatile private var accessToken: String? = null
     @Volatile private var refreshToken: String? = null
@@ -24,6 +25,7 @@ object TokenManager {
     @Volatile private var userName: String? = null
     @Volatile private var userRole: String? = null
     @Volatile private var schoolId: String? = null
+    @Volatile private var studentsJson: String? = null
     private var prefs: SharedPreferences? = null
 
     var onSessionExpired: (() -> Unit)? = null
@@ -31,6 +33,25 @@ object TokenManager {
 
     @Synchronized
     fun init(context: Context) {
+        try {
+            initInternal(context)
+        } catch (e: Exception) {
+            Log.e(TAG, "Erro fatal ao inicializar TokenManager (possível corrupção de chaves): ${e.message}")
+            try {
+                // Se falhou, as chaves no Keystore podem estar corrompidas ou dessincronizadas.
+                // A única solução é limpar as preferências e tentar novamente.
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
+                initInternal(context)
+                Log.w(TAG, "TokenManager reinicializado após limpeza de dados corrompidos")
+            } catch (e2: Exception) {
+                Log.e(TAG, "Falha crítica ao tentar recuperar TokenManager: ${e2.message}")
+                // Fallback final: usar SharedPreferences comum se o sistema de criptografia estiver quebrado no dispositivo
+                prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            }
+        }
+    }
+
+    private fun initInternal(context: Context) {
         val masterKey = MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
             .build()
@@ -49,6 +70,7 @@ object TokenManager {
         userName = prefs?.getString(KEY_USER_NAME, null)
         userRole = prefs?.getString(KEY_USER_ROLE, null)
         schoolId = prefs?.getString(KEY_SCHOOL_ID, null)
+        studentsJson = prefs?.getString(KEY_STUDENTS, null)
         Log.d(TAG, "TokenManager init. Autenticado: ${isAuthenticated()}")
     }
 
@@ -87,6 +109,15 @@ object TokenManager {
     }
 
     @Synchronized
+    fun saveStudentsJson(json: String) {
+        studentsJson = json
+        prefs?.edit()?.putString(KEY_STUDENTS, json)?.apply()
+    }
+
+    @Synchronized
+    fun getStudentsJson(): String? = studentsJson
+
+    @Synchronized
     fun getAccessToken(): String? = accessToken
 
     @Synchronized
@@ -110,9 +141,11 @@ object TokenManager {
         userName = null
         userRole = null
         schoolId = null
+        studentsJson = null
         prefs?.edit()
             ?.remove(KEY_ACCESS)?.remove(KEY_REFRESH)?.remove(KEY_EMAIL)
             ?.remove(KEY_USER_ID)?.remove(KEY_USER_NAME)?.remove(KEY_USER_ROLE)?.remove(KEY_SCHOOL_ID)
+            ?.remove(KEY_STUDENTS)
             ?.apply()
         Log.d(TAG, "Tokens limpos")
     }

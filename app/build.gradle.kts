@@ -25,6 +25,9 @@ android {
                 "proguard-rules.pro"
             )
         }
+        debug {
+            isMinifyEnabled = false
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -46,6 +49,10 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation("androidx.activity:activity-ktx:1.8.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
+    implementation("androidx.fragment:fragment-ktx:1.7.1")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
 
     // UI - Jetpack Compose + Material 3
     implementation(platform(libs.androidx.compose.bom))
@@ -101,6 +108,9 @@ dependencies {
 
     // Drag-to-reorder para LazyColumn
     implementation("sh.calvin.reorderable:reorderable:2.1.1")
+
+    // QR Code generation
+    implementation("com.google.zxing:core:3.5.3")
 
     // Testes
     testImplementation(libs.junit)

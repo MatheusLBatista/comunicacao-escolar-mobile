@@ -1,11 +1,8 @@
 package dev.fslab.comunicacao.escolar.model
 
 import com.google.gson.annotations.SerializedName
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.UUID
+import dev.fslab.comunicacao.escolar.util.DateUtils
 
 data class Turma(
     val id: String = UUID.randomUUID().toString(),
@@ -147,23 +144,7 @@ data class CreateTemplateFieldRequest(
     @SerializedName("options") val options: List<String> = emptyList()
 )
 
-private fun formatAuditDate(isoString: String?): String {
-    if (isoString.isNullOrBlank()) return ""
-    return try {
-        val instant = Instant.parse(isoString)
-        val zoned = instant.atZone(ZoneId.systemDefault())
-        val today = LocalDate.now(ZoneId.systemDefault())
-        val timeStr = zoned.format(DateTimeFormatter.ofPattern("HH:mm"))
-        when (zoned.toLocalDate()) {
-            today -> "Hoje, $timeStr"
-            today.minusDays(1) -> "Ontem, $timeStr"
-            else -> zoned.format(DateTimeFormatter.ofPattern("dd/MM, HH:mm"))
-        }
-    } catch (_: Exception) {
-        isoString
-    }
-}
-
+// API Audit Log
 data class ApiAuditLog(
     @SerializedName("_id") val id: String = "",
     @SerializedName("user_id") val userId: Any? = null,
@@ -206,7 +187,7 @@ data class ApiAuditLog(
         destino = resourceSummary.ifBlank { resourceType.replace("_", " ") },
         aluno = extractName(studentId),
         dispositivo = deviceInfo?.platform?.takeIf { it.isNotBlank() && it != "web" },
-        dataHora = formatAuditDate(createdAt)
+        dataHora = DateUtils.getAuditFormat(createdAt)
     )
 }
 

@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -19,6 +20,9 @@ import dev.fslab.comunicacao.escolar.ui.screens.auth.LoginScreen
 import dev.fslab.comunicacao.escolar.ui.screens.common.HomeScreen
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
+//import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralViewModel
+import dev.fslab.comunicacao.escolar.ui.theme.screens.MuralScreen
+import androidx.compose.runtime.getValue
 
 /**
  * Todas as rotas da aplicação definidas com type-safety.
@@ -58,7 +62,8 @@ fun NavGraph(
     themeViewModel: ThemeViewModel,
     authViewModel: AuthViewModel = viewModel()
 ) {
-    val startDestination = if (authViewModel.currentUser.value != null) Screen.Home.route else Screen.Login.route
+    val currentUser by authViewModel.currentUser.collectAsState()
+    val startDestination = if (currentUser != null) Screen.Home.route else Screen.Login.route
 
     DisposableEffect(navController) {
         TokenManager.onSessionExpired = {
@@ -135,5 +140,13 @@ fun NavGraph(
                 themeViewModel = themeViewModel
             )
         }
+        composable(Screen.Mural.route){
+            MuralScreen(
+                muralViewModel = viewModel(),
+                authViewModel = authViewModel,
+                navController = navController
+            )
+        }
+
     }
 }
