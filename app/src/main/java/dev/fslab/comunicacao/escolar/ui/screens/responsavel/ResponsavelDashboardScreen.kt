@@ -44,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.fslab.comunicacao.escolar.model.User
+import dev.fslab.comunicacao.escolar.model.UserRole
 import dev.fslab.comunicacao.escolar.navigation.Screen
 import dev.fslab.comunicacao.escolar.ui.components.BottomNavBar
 import dev.fslab.comunicacao.escolar.ui.components.BottomNavItem
@@ -237,7 +238,8 @@ fun AgendaScreen(user: User, accessToken: String) {
     if (user.schoolId == null) {
         SemEscolaVinculada(icon = Icons.Outlined.DateRange, nomeTela = "Agenda")
     } else {
-        AgendaResponsavelScreen(user = user, accessToken = accessToken)
+        val canCreate = user.role == UserRole.PROFESSOR || user.role == UserRole.ADMIN
+        AgendaResponsavelScreen(user = user, accessToken = accessToken, canCreate = canCreate)
     }
 }
 

@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.android)
 }
 
 android {
@@ -34,9 +33,10 @@ android {
     buildFeatures {
         compose = true
     }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
+}
+
+kotlin {
+    jvmToolchain(11)
 }
 
 dependencies {
@@ -98,7 +98,6 @@ dependencies {
     implementation("androidx.credentials:credentials:1.3.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
-    implementation(libs.core.ktx)
 
     // Drag-to-reorder para LazyColumn
     implementation("sh.calvin.reorderable:reorderable:2.1.1")
