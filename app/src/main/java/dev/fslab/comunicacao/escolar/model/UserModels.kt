@@ -6,6 +6,10 @@ data class UpdateUserRequest(
     @SerializedName("full_name") val fullName: String? = null
 )
 
+data class FcmTokenRequest(
+    @SerializedName("fcm_token") val fcmToken: String
+)
+
 data class UserResponse(
     @SerializedName("message") val message: String = "",
     @SerializedName("data") val data: ApiUser? = null,
