@@ -197,7 +197,7 @@ fun MuralScreen(
 							onRefresh = {
 								isRefreshing = true
 								currentUser?.schoolId?.let { id ->
-									muralViewModel.getPosts(id)
+									muralViewModel.getPosts(id, forceRefresh = true)
 								}
 							},
 							modifier = Modifier.fillMaxSize()

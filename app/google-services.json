@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "925660970199",
+    "project_id": "teste-notifica-eff26",
+    "storage_bucket": "teste-notifica-eff26.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:925660970199:android:a720dfe0d619fb968fc492",
+        "android_client_info": {
+          "package_name": "dev.fslab.comunicacao.escolar"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAdRbc_Nq0jP3QlbCuVyhH3pZAUhmlraaI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
