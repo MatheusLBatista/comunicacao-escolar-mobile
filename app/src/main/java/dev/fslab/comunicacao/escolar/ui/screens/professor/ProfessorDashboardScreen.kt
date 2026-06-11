@@ -17,6 +17,7 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,6 +64,9 @@ fun ProfessorDashboardScreen(
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     var currentRoute by rememberSaveable { mutableStateOf(ROUTE_INICIO) }
+    var pendingChatUserId by remember { mutableStateOf<String?>(null) }
+    var pendingChatNome by remember { mutableStateOf<String?>(null) }
+    var pendingChatAvatarUrl by remember { mutableStateOf<String?>(null) }
 
     BackHandler(enabled = currentRoute != ROUTE_INICIO) {
         currentRoute = ROUTE_INICIO
@@ -90,10 +94,27 @@ fun ProfessorDashboardScreen(
             when (route) {
                 ROUTE_INICIO    -> ProfessorInicioScreen(
                     user = user,
-                    onNavigateToDiario = { currentRoute = ROUTE_DIARIO }
+                    onNavigateToDiario = { currentRoute = ROUTE_DIARIO },
+                    onAbrirConversa = { userId, nome, avatarUrl ->
+                        pendingChatUserId = userId
+                        pendingChatNome = nome
+                        pendingChatAvatarUrl = avatarUrl
+                        currentRoute = ROUTE_CONVERSAS
+                    }
                 )
                 ROUTE_DIARIO    -> DiarioDeBordoScreen()
-                ROUTE_CONVERSAS -> ProfessorConversasScreen(user = user, accessToken = accessToken)
+                ROUTE_CONVERSAS -> ProfessorConversasScreen(
+                    user = user,
+                    accessToken = accessToken,
+                    targetUserId = pendingChatUserId,
+                    targetUserNome = pendingChatNome,
+                    targetUserAvatarUrl = pendingChatAvatarUrl,
+                    onPendingConsumed = {
+                        pendingChatUserId = null
+                        pendingChatNome = null
+                        pendingChatAvatarUrl = null
+                    }
+                )
                 ROUTE_MURAL     -> MuralScreenReal(authViewModel = authViewModel)
                 ROUTE_AGENDA    -> AgendaResponsavelScreen(
                     user = user,
@@ -112,9 +133,26 @@ fun ProfessorDashboardScreen(
 }
 
 @Composable
-private fun ProfessorConversasScreen(user: User, accessToken: String) {
+private fun ProfessorConversasScreen(
+    user: User,
+    accessToken: String,
+    targetUserId: String? = null,
+    targetUserNome: String? = null,
+    targetUserAvatarUrl: String? = null,
+    onPendingConsumed: () -> Unit = {}
+) {
     val conversaViewModel: ConversaViewModel = viewModel()
     var subScreen by remember { mutableStateOf<ProfessorConversasSubScreen?>(null) }
+
+    LaunchedEffect(targetUserId) {
+        val schoolId = user.schoolId ?: return@LaunchedEffect
+        if (targetUserId != null) {
+            onPendingConsumed()
+            conversaViewModel.findOrCreateConversation(schoolId, targetUserId) { conversaId ->
+                subScreen = ProfessorConversasSubScreen.Detail(conversaId, targetUserNome ?: "", targetUserAvatarUrl)
+            }
+        }
+    }
 
     BackHandler(enabled = subScreen != null) {
         subScreen = null
