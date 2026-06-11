@@ -4,10 +4,13 @@ import com.google.gson.annotations.SerializedName
 
 data class AutorizacaoSaida(
     val id: String,
+    val schoolId: String,
+    val studentId: String,
     val studentName: String,
     val studentAvatarUrl: String?,
     val status: String,
     val autorizadoPor: String,
+    val autorizadoDocumento: String,
     val relacao: String,
     val validAte: String
 )
@@ -30,8 +33,13 @@ data class AutorizacoesSaidaData(
     @SerializedName("page") val page: Int = 0
 )
 
+data class AutorizacaoSaidaSchool(
+    @SerializedName("_id") val id: String = ""
+)
+
 data class AutorizacaoSaidaDoc(
     @SerializedName("_id") val id: String = "",
+    @SerializedName("school_id") val school: AutorizacaoSaidaSchool? = null,
     @SerializedName("student_id") val student: AutorizacaoSaidaStudent? = null,
     @SerializedName("authorized_person") val authorizedPerson: AutorizacaoAuthorizedPerson? = null,
     @SerializedName("authorized_by") val authorizedBy: AutorizacaoAuthorizedBy? = null,
@@ -142,13 +150,19 @@ data class CreatePickupLogResponse(
     fun getErrorMessage(): String = errors.firstOrNull() ?: message
 }
 
+data class PickupLogAuthorization(
+    @SerializedName("_id") val id: String = ""
+)
+
 data class PickupLogDoc(
     @SerializedName("_id") val id: String = "",
     @SerializedName("student_id") val student: PickupLogStudent? = null,
-    @SerializedName("picked_up_by") val pickedUpBy: PickedUpByResponse? = null,
+    @SerializedName("picked_up_by") val pickedUpBy: PickupLogPickedUpByDoc? = null,
     @SerializedName("method") val method: String = "",
     @SerializedName("departure_time") val departureTime: String = "",
-    @SerializedName("notes") val notes: String? = null
+    @SerializedName("notes") val notes: String? = null,
+    @SerializedName("verified_by") val verifiedBy: PickupLogVerifiedBy? = null,
+    @SerializedName("authorization_id") val authorization: PickupLogAuthorization? = null
 )
 
 data class PickupLogStudent(
@@ -157,10 +171,15 @@ data class PickupLogStudent(
     @SerializedName("avatar_url") val avatarUrl: String? = null
 )
 
-data class PickedUpByResponse(
+data class PickupLogPickedUpByDoc(
     @SerializedName("name") val name: String = "",
     @SerializedName("document") val document: String = "",
     @SerializedName("relationship") val relationship: String? = null
+)
+
+data class PickupLogVerifiedBy(
+    @SerializedName("_id") val id: String = "",
+    @SerializedName("full_name") val fullName: String = ""
 )
 
 data class PickupLogsResponse(
@@ -189,4 +208,17 @@ data class PickupLogItem(
     val relationship: String,
     val time: String,
     val isManual: Boolean
+)
+
+data class PickupLogUi(
+    val id: String,
+    val authorizationId: String,
+    val studentName: String,
+    val pickedUpByName: String,
+    val departureTime: String,
+    val verifiedByName: String
+)
+
+data class PatchAutorizacaoUsedRequest(
+    @SerializedName("used") val used: Boolean
 )

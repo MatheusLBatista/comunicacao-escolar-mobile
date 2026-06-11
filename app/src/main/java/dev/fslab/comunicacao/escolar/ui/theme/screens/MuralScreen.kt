@@ -14,10 +14,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -28,8 +26,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.filled.Science
-import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.CircularProgressIndicator
@@ -48,38 +44,28 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import dev.fslab.comunicacao.escolar.R
-import dev.fslab.comunicacao.escolar.model.Docs
+import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.model.MuralResponse
 import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
-import dev.fslab.comunicacao.escolar.ui.theme.Poppins
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralViewModel
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.ui.Alignment
-import kotlinx.coroutines.delay
 import androidx.navigation.NavController
 import dev.fslab.comunicacao.escolar.model.User
-import dev.fslab.comunicacao.escolar.navigation.Screen
-import dev.fslab.comunicacao.escolar.navigation.navigateSafely
 import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeViewModel
 import coil.compose.AsyncImage
@@ -88,19 +74,15 @@ import coil.request.ImageRequest
 import dev.fslab.comunicacao.escolar.model.ApiUser
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import dev.fslab.comunicacao.escolar.util.DateUtils
+import dev.fslab.comunicacao.escolar.model.Docs
 
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
-
 import androidx.compose.foundation.lazy.rememberLazyListState
-
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.derivedStateOf
-import androidx.compose.foundation.layout.IntrinsicSize
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,13 +97,10 @@ fun MuralScreen(
 	val posts by muralViewModel.posts.collectAsState()
 	val currentUser by authViewModel.currentUser.collectAsState()
 
-	val context = LocalContext.current
 	val view = LocalView.current
-
 	val listState = rememberLazyListState()
 	var isRefreshing by remember { mutableStateOf(false) }
 
-	// Detecta quando o usuário chegou no FINAL da lista para carregar mais antigos
 	val isAtBottom by remember {
 		derivedStateOf {
 			val layoutInfo = listState.layoutInfo
@@ -145,12 +124,8 @@ fun MuralScreen(
 		}
 	}
 
-	// Dispara busca de posts MAIS ANTIGOS ao chegar no final da lista
-	// ou se os itens carregados não preencherem a altura da tela.
 	LaunchedEffect(isAtBottom, posts?.data?.docs?.size) {
 		if (isAtBottom && muralState is MuralState.Success) {
-			val currentCount = posts?.data?.docs?.size ?: 0
-			Log.d("MuralScreen", "Fim da tela detectado (ou tela não preenchida). Posts na lista: $currentCount. Disparando carregamento de mais posts...")
 			currentUser?.schoolId?.let { id ->
 				muralViewModel.getPosts(id, loadMore = true)
 			}
@@ -176,27 +151,10 @@ fun MuralScreen(
 		modifier = Modifier
 			.fillMaxSize()
 			.background(colors.background)
-			.statusBarsPadding()
-			.navigationBarsPadding()
-			.padding(horizontal = 24.dp)
 	) {
-		Text(
-			text = "Mural",
-			color = colors.textPrimary,
-			style = MaterialTheme.typography.headlineLarge.copy(
-				fontFamily = Poppins,
-				fontWeight = FontWeight.SemiBold,
-				fontSize = 18.sp
-			),
-			textAlign = TextAlign.Center,
-			modifier = Modifier
-				.fillMaxWidth()
-				.padding(top = 10.dp)
-		)
+		AppHeader("Mural")
 
-		Spacer(modifier = Modifier.height(22.dp))
-
-		Box(modifier = Modifier.fillMaxSize()) {
+		Box(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
 			when (muralState) {
 				MuralState.Idle -> {
 					Text("Carregando posts...", modifier = Modifier.align(Alignment.Center))
@@ -223,7 +181,7 @@ fun MuralScreen(
 							onRefresh = {
 								isRefreshing = true
 								currentUser?.schoolId?.let { id ->
-									muralViewModel.getPosts(id)
+									muralViewModel.getPosts(id, forceRefresh = true)
 								}
 							},
 							modifier = Modifier.fillMaxSize()
@@ -256,8 +214,7 @@ fun PostAttachments(
 	var showLightbox by remember { mutableStateOf(false) }
 	var initialPageIndex by remember { mutableIntStateOf(0) }
 	
-	// Estado para armazenar as imagens já carregadas
-	val imagesMap = remember { mutableMapOf<Int, ByteArray?>() }
+	val token = dev.fslab.comunicacao.escolar.network.TokenManager.getAccessToken()
 
 	Column(
 		modifier = Modifier
@@ -266,12 +223,10 @@ fun PostAttachments(
 		verticalArrangement = Arrangement.spacedBy(4.dp)
 	) {
 		val visibleCount = attachments.size.coerceAtMost(4)
-		val hasMore = attachments.size > 4
 
-		// Layout de Grade Dinâmico
 		when (visibleCount) {
 			1 -> {
-				AttachmentItem(attachments[0], 200.dp, muralViewModel) {
+				AttachmentItem(attachments[0], 200.dp, token) {
 					initialPageIndex = 0
 					showLightbox = true
 				}
@@ -279,24 +234,24 @@ fun PostAttachments(
 			2 -> {
 				Row(modifier = Modifier.fillMaxWidth().height(150.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
 					Box(modifier = Modifier.weight(1f)) {
-						AttachmentItem(attachments[0], 150.dp, muralViewModel) { initialPageIndex = 0; showLightbox = true }
+						AttachmentItem(attachments[0], 150.dp, token) { initialPageIndex = 0; showLightbox = true }
 					}
 					Box(modifier = Modifier.weight(1f)) {
-						AttachmentItem(attachments[1], 150.dp, muralViewModel) { initialPageIndex = 1; showLightbox = true }
+						AttachmentItem(attachments[1], 150.dp, token) { initialPageIndex = 1; showLightbox = true }
 					}
 				}
 			}
 			3 -> {
 				Row(modifier = Modifier.fillMaxWidth().height(200.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
 					Box(modifier = Modifier.weight(1.5f)) {
-						AttachmentItem(attachments[0], 200.dp, muralViewModel) { initialPageIndex = 0; showLightbox = true }
+						AttachmentItem(attachments[0], 200.dp, token) { initialPageIndex = 0; showLightbox = true }
 					}
 					Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
 						Box(modifier = Modifier.weight(1f)) {
-							AttachmentItem(attachments[1], 98.dp, muralViewModel) { initialPageIndex = 1; showLightbox = true }
+							AttachmentItem(attachments[1], 98.dp, token) { initialPageIndex = 1; showLightbox = true }
 						}
 						Box(modifier = Modifier.weight(1f)) {
-							AttachmentItem(attachments[2], 98.dp, muralViewModel) { initialPageIndex = 2; showLightbox = true }
+							AttachmentItem(attachments[2], 98.dp, token) { initialPageIndex = 2; showLightbox = true }
 						}
 					}
 				}
@@ -305,18 +260,18 @@ fun PostAttachments(
 				Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
 					Row(modifier = Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
 						Box(modifier = Modifier.weight(1f)) {
-							AttachmentItem(attachments[0], 120.dp, muralViewModel) { initialPageIndex = 0; showLightbox = true }
+							AttachmentItem(attachments[0], 120.dp, token) { initialPageIndex = 0; showLightbox = true }
 						}
 						Box(modifier = Modifier.weight(1f)) {
-							AttachmentItem(attachments[1], 120.dp, muralViewModel) { initialPageIndex = 1; showLightbox = true }
+							AttachmentItem(attachments[1], 120.dp, token) { initialPageIndex = 1; showLightbox = true }
 						}
 					}
 					Row(modifier = Modifier.fillMaxWidth().height(120.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
 						Box(modifier = Modifier.weight(1f)) {
-							AttachmentItem(attachments[2], 120.dp, muralViewModel) { initialPageIndex = 2; showLightbox = true }
+							AttachmentItem(attachments[2], 120.dp, token) { initialPageIndex = 2; showLightbox = true }
 						}
 						Box(modifier = Modifier.weight(1f)) {
-							AttachmentOverlayItem(attachments[3], 120.dp, attachments.size - 4, muralViewModel) { 
+							AttachmentOverlayItem(attachments[3], 120.dp, attachments.size - 4, token) { 
 								initialPageIndex = 3
 								showLightbox = true 
 							}
@@ -327,7 +282,6 @@ fun PostAttachments(
 		}
 	}
 
-	// Lightbox com HorizontalPager (Carrossel)
 	if (showLightbox) {
 		val pagerState = rememberPagerState(initialPage = initialPageIndex, pageCount = { attachments.size })
 		
@@ -345,29 +299,26 @@ fun PostAttachments(
 					modifier = Modifier.fillMaxSize(),
 					pageSpacing = 16.dp
 				) { pageIndex ->
-					var imageData by remember(pageIndex) { mutableStateOf<ByteArray?>(null) }
-					var isLoading by remember(pageIndex) { mutableStateOf(true) }
-
-					LaunchedEffect(pageIndex) {
-						imageData = muralViewModel.getAttachment(attachments[pageIndex])
-						isLoading = false
-					}
-
 					Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-						if (isLoading) {
-							CircularProgressIndicator(color = Color.White)
-						} else if (imageData != null) {
-							AsyncImage(
-								model = ImageRequest.Builder(context).data(imageData).build(),
-								contentDescription = "Imagem expandida",
-								modifier = Modifier.fillMaxSize().clickable { showLightbox = false },
-								contentScale = ContentScale.Fit
-							)
-						}
+						val attachmentUrl = "${RetrofitClient.BASE_URL}attachments/${attachments[pageIndex]}"
+						SubcomposeAsyncImage(
+							model = ImageRequest.Builder(context)
+								.data(attachmentUrl)
+								.addHeader("Authorization", "Bearer $token")
+								.crossfade(true)
+								.build(),
+							contentDescription = "Imagem expandida",
+							modifier = Modifier.fillMaxSize().clickable { showLightbox = false },
+							contentScale = ContentScale.Fit,
+							loading = {
+								Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+									CircularProgressIndicator(color = Color.White)
+								}
+							}
+						)
 					}
 				}
 
-				// Indicador de página (ex: 1/5)
 				Text(
 					text = "${pagerState.currentPage + 1} / ${attachments.size}",
 					color = Color.White,
@@ -375,7 +326,6 @@ fun PostAttachments(
 					style = MaterialTheme.typography.bodyMedium
 				)
 
-				// Botão Fechar
 				IconButton(
 					onClick = { showLightbox = false },
 					modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
@@ -395,17 +345,11 @@ fun PostAttachments(
 fun AttachmentItem(
     attachmentId: String,
     height: androidx.compose.ui.unit.Dp,
-    muralViewModel: MuralViewModel,
+    token: String?,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    var imageData by remember(attachmentId) { mutableStateOf<ByteArray?>(null) }
-    var isLoading by remember(attachmentId) { mutableStateOf(true) }
-
-    LaunchedEffect(attachmentId) {
-        imageData = muralViewModel.getAttachment(attachmentId)
-        isLoading = false
-    }
+	val attachmentUrl = "${RetrofitClient.BASE_URL}attachments/$attachmentId"
 
     Box(
         modifier = Modifier
@@ -413,19 +357,31 @@ fun AttachmentItem(
             .height(height)
             .clip(RoundedCornerShape(8.dp))
             .background(Color.LightGray.copy(alpha = 0.3f))
-            .clickable(enabled = !isLoading && imageData != null) { onClick() },
+            .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        if (isLoading) {
-            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
-        } else if (imageData != null) {
-            AsyncImage(
-                model = ImageRequest.Builder(context).data(imageData).build(),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
+		SubcomposeAsyncImage(
+			model = ImageRequest.Builder(context)
+				.data(attachmentUrl)
+				.addHeader("Authorization", "Bearer $token")
+				.crossfade(true)
+				.build(),
+			contentDescription = null,
+			contentScale = ContentScale.Crop,
+			modifier = Modifier.fillMaxSize(),
+			loading = {
+				Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+					CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+				}
+			},
+			error = {
+				Icon(
+					painter = painterResource(id = android.R.drawable.ic_menu_report_image),
+					contentDescription = "Erro ao carregar",
+					tint = Color.Gray
+				)
+			}
+		)
     }
 }
 
@@ -434,11 +390,11 @@ fun AttachmentOverlayItem(
     attachmentId: String,
     height: androidx.compose.ui.unit.Dp,
     remainingCount: Int,
-    muralViewModel: MuralViewModel,
+    token: String?,
     onClick: () -> Unit
 ) {
     Box(contentAlignment = Alignment.Center) {
-        AttachmentItem(attachmentId, height, muralViewModel, onClick)
+        AttachmentItem(attachmentId, height, token, onClick)
         if (remainingCount > 0) {
             Box(
                 modifier = Modifier
@@ -470,22 +426,15 @@ fun MuralPostCard(
 	val context = LocalContext.current
 
 	val likeState by likeViewModel.likeState.collectAsState()
+	val authors by muralViewModel.authors.collectAsState()
 	
 	var isLiked by remember { mutableStateOf(post.userLiked?.contains(currentUser.id) == true) }
 	var likesCount by remember { mutableIntStateOf(post.likesCount ?: 0) }
-	var author by remember { mutableStateOf<ApiUser?>(null) }
+	
+	val author = authors[post.authorId]
 
 	LaunchedEffect(post.authorId) {
-		if (post.authorId.isNotEmpty()) {
-			try {
-				val response = RetrofitClient.userApi.getById(post.authorId)
-				if (response.isSuccess()) {
-					author = response.data
-				}
-			} catch (e: Exception) {
-				Log.e("MuralPostCard", "Erro ao carregar autor: ${e.message}")
-			}
-		}
+		muralViewModel.fetchAuthor(post.authorId)
 	}
 
 	LaunchedEffect(likeState) {
@@ -509,7 +458,6 @@ fun MuralPostCard(
 		.background(colors.background, RoundedCornerShape(12.dp))
 		.padding(16.dp)
 	){
-		// Seção do Autor
 		Row(
 			verticalAlignment = Alignment.CenterVertically,
 			modifier = Modifier.padding(bottom = 12.dp)
@@ -520,13 +468,14 @@ fun MuralPostCard(
 				.background(Color.LightGray)
 
 			if (author?.avatarUrl != null) {
-				val avatarUrl = author?.avatarUrl?.replace("localhost", "10.0.2.2")
+				val avatarUrl = author.avatarUrl.replace("localhost", "10.0.2.2")
 				AsyncImage(
 					model = ImageRequest.Builder(context)
 						.data(avatarUrl)
+						.addHeader("Authorization", "Bearer ${dev.fslab.comunicacao.escolar.network.TokenManager.getAccessToken()}")
 						.crossfade(true)
 						.build(),
-					contentDescription = "Avatar de ${author?.fullName}",
+					contentDescription = "Avatar de ${author.fullName}",
 					modifier = avatarModifier,
 					contentScale = ContentScale.Crop,
 					error = painterResource(id = android.R.drawable.ic_menu_report_image),
@@ -573,14 +522,8 @@ fun MuralPostCard(
 			color = Color.Gray
 		)
 		
-		// Anexos de Imagem
 		PostAttachments(post.attachments, muralViewModel)
 
-//		Spacer(modifier = Modifier.height(8.dp))
-//		Text(
-//			text = "Público: ${post.target.scope}",
-//			style = MaterialTheme.typography.labelSmall
-//		)
 		Spacer(modifier = Modifier.height(8.dp))
 		Row (
 			modifier = Modifier.clickable {

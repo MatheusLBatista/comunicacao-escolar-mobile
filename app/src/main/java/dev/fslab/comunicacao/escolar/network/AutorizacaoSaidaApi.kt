@@ -7,9 +7,11 @@ import dev.fslab.comunicacao.escolar.model.CreatePickupAuthorizationResponse
 import dev.fslab.comunicacao.escolar.model.CreatePickupLogRequest
 import dev.fslab.comunicacao.escolar.model.CreatePickupLogResponse
 import dev.fslab.comunicacao.escolar.model.PatchAutorizacaoRequest
+import dev.fslab.comunicacao.escolar.model.PatchAutorizacaoUsedRequest
 import dev.fslab.comunicacao.escolar.model.PickupLogsResponse
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.PATCH
@@ -58,4 +60,17 @@ interface AutorizacaoSaidaApi {
         @Header("Authorization") token: String,
         @Body request: CreatePickupLogRequest
     ): CreatePickupLogResponse
+
+    @DELETE("pickup-logs/{id}")
+    suspend fun deletarPickupLog(
+        @Header("Authorization") token: String,
+        @Path("id") id: String
+    ): Response<Unit>
+
+    @PATCH("pickup-authorizations/{id}")
+    suspend fun patchAutorizacaoUsed(
+        @Header("Authorization") token: String,
+        @Path("id") id: String,
+        @Body body: PatchAutorizacaoUsedRequest
+    ): Response<Unit>
 }

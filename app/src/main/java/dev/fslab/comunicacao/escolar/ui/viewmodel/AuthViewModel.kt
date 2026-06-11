@@ -4,15 +4,17 @@ import android.util.Base64
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.messaging.FirebaseMessaging
+import com.google.gson.Gson
 import dev.fslab.comunicacao.escolar.model.*
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import dev.fslab.comunicacao.escolar.network.SocketManager
 import dev.fslab.comunicacao.escolar.network.TokenManager
-import com.google.gson.Gson
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
 
 sealed class AuthState {
@@ -111,6 +113,7 @@ class AuthViewModel : ViewModel() {
                         _accessToken.value = apiUser.accessToken
                         _currentUser.value = user
                         _authState.value = AuthState.Success(user)
+                        syncFcmToken()
                     } else {
                         _authState.value = AuthState.Error("Erro ao processar resposta do login")
                     }
@@ -236,6 +239,7 @@ class AuthViewModel : ViewModel() {
                         _accessToken.value = apiUser.accessToken
                         _currentUser.value = user
                         _authState.value = AuthState.Success(user)
+                        syncFcmToken()
                     } else {
                         _authState.value = AuthState.Error("Erro ao processar login com Google.")
                     }
@@ -304,6 +308,26 @@ class AuthViewModel : ViewModel() {
         UserRole.ADMIN       -> "admin"
         UserRole.PROFESSOR   -> "teacher"
         UserRole.RESPONSAVEL -> "parent"
+    }
+
+    private fun syncFcmToken() {
+        viewModelScope.launch {
+            try {
+                // Tenta obter o token atual do Firebase
+                val token = FirebaseMessaging.getInstance().token.await()
+                Log.d(TAG, "FCM Token obtido para sincronização: $token")
+
+                // Salva localmente de forma segura
+                TokenManager.saveFcmToken(token)
+
+                // Envia para a API via novo endpoint
+                val request = FcmTokenRequest(fcmToken = token)
+                RetrofitClient.userApi.updateFcmToken(request)
+                Log.d(TAG, "FCM Token sincronizado com o servidor com sucesso")
+            } catch (e: Exception) {
+                Log.e(TAG, "Falha ao sincronizar FCM Token: ${e.message}")
+            }
+        }
     }
 
     private fun createBasicUser(email: String) {

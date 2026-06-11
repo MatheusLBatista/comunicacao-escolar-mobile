@@ -299,7 +299,7 @@ private fun ConversaItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = previewText,
+                    text = previewText.ifBlank { "Nenhuma mensagem ainda" },
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.textSecondary,
                     maxLines = 1,
