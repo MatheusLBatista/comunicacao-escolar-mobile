@@ -279,7 +279,7 @@ private fun ClassTabRow(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(if (isSelected) colors.primary else Color.Transparent)
+                    .background(if (isSelected) colors.buttonContainer else Color.Transparent)
                     .border(
                         width = 1.dp,
                         color = if (isSelected) Color.Transparent else colors.inputBorder,
@@ -297,7 +297,7 @@ private fun ClassTabRow(
                     text = cls.name,
                     fontSize = 14.sp,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (isSelected) Color.White else colors.textPrimary
+                    color = if (isSelected) colors.buttonText else colors.textPrimary
                 )
             }
         }
@@ -404,7 +404,7 @@ private fun PresenceToggle(isPresent: Boolean, onToggle: () -> Unit) {
         modifier = Modifier
             .size(32.dp)
             .clip(CircleShape)
-            .background(if (isPresent) colors.primary else Color.Transparent)
+            .background(if (isPresent) colors.buttonContainer else Color.Transparent)
             .border(
                 width = 1.5.dp,
                 color = if (isPresent) Color.Transparent else colors.inputBorder,
@@ -420,7 +420,7 @@ private fun PresenceToggle(isPresent: Boolean, onToggle: () -> Unit) {
         Icon(
             imageVector = Icons.Outlined.Check,
             contentDescription = if (isPresent) "Presente" else "Ausente",
-            tint = if (isPresent) Color.White else colors.inputBorder,
+            tint = if (isPresent) colors.buttonText else colors.inputBorder,
             modifier = Modifier.size(18.dp)
         )
     }
@@ -598,7 +598,7 @@ private fun BooleanFieldToggle(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) colors.primary else Color.Transparent)
+                        .background(if (isSelected) colors.buttonContainer else Color.Transparent)
                         .border(
                             width = 1.dp,
                             color = if (isSelected) Color.Transparent else colors.inputBorder,
@@ -615,7 +615,7 @@ private fun BooleanFieldToggle(
                         text = option,
                         fontSize = 12.sp,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isSelected) Color.White else colors.textPrimary
+                        color = if (isSelected) colors.buttonText else colors.textPrimary
                     )
                 }
             }
