@@ -63,6 +63,8 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -1007,8 +1009,11 @@ private fun FiltroChip(
     ) {
         Text(
             text = label,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
+            style = TextStyle(
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                platformStyle = PlatformTextStyle(includeFontPadding = false)
+            ),
             color = if (selecionado) colors.textPrimary else colors.textSecondary
         )
     }
