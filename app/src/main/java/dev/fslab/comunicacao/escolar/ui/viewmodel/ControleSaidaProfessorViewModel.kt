@@ -365,7 +365,7 @@ class ControleSaidaProfessorViewModel : ViewModel() {
                     ),
                     verifiedBy = teacherId,
                     departureTime = isoFormatter.format(Date()),
-                    notes = relacao.trim().takeIf { it.isNotBlank() }
+                    notes = relacao.trim()
                 )
                 val response = RetrofitClient.autorizacaoSaidaApi.criarPickupLog("Bearer $token", request)
                 if (response.error) {

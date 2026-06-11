@@ -1,6 +1,10 @@
 package dev.fslab.comunicacao.escolar.model
 
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
+import java.lang.reflect.Type
 
 data class AutorizacaoSaida(
     val id: String,
@@ -132,7 +136,7 @@ data class CreatePickupLogRequest(
     @SerializedName("picked_up_by") val pickedUpBy: PickedUpBy,
     @SerializedName("verified_by") val verifiedBy: String,
     @SerializedName("departure_time") val departureTime: String,
-    @SerializedName("notes") val notes: String? = null
+    @SerializedName("notes") val notes: String = ""
 )
 
 data class PickedUpBy(
@@ -153,6 +157,14 @@ data class CreatePickupLogResponse(
 data class PickupLogAuthorization(
     @SerializedName("_id") val id: String = ""
 )
+
+class PickupLogAuthorizationDeserializer : JsonDeserializer<PickupLogAuthorization> {
+    override fun deserialize(json: JsonElement, typeOfT: Type, ctx: JsonDeserializationContext): PickupLogAuthorization? {
+        if (json.isJsonNull) return null
+        return if (json.isJsonPrimitive) PickupLogAuthorization(id = json.asString)
+        else PickupLogAuthorization(id = json.asJsonObject["_id"]?.asString ?: "")
+    }
+}
 
 data class PickupLogDoc(
     @SerializedName("_id") val id: String = "",
@@ -181,6 +193,20 @@ data class PickupLogVerifiedBy(
     @SerializedName("_id") val id: String = "",
     @SerializedName("full_name") val fullName: String = ""
 )
+
+class PickupLogVerifiedByDeserializer : JsonDeserializer<PickupLogVerifiedBy> {
+    override fun deserialize(json: JsonElement, typeOfT: Type, ctx: JsonDeserializationContext): PickupLogVerifiedBy? {
+        if (json.isJsonNull) return null
+        return if (json.isJsonPrimitive) PickupLogVerifiedBy(id = json.asString, fullName = "")
+        else {
+            val obj = json.asJsonObject
+            PickupLogVerifiedBy(
+                id = obj["_id"]?.asString ?: "",
+                fullName = obj["full_name"]?.asString ?: ""
+            )
+        }
+    }
+}
 
 data class PickupLogsResponse(
     @SerializedName("error") val error: Boolean = false,

@@ -156,6 +156,12 @@ fun AutorizacaoSaidaScreen(
                     ) {
                         Text("Nenhuma saída registrada.", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
                     }
+                    is PickupLogsUiState.Error -> Box(
+                        modifier = Modifier.fillMaxSize().padding(bottom = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(state.message, style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                    }
                     is PickupLogsUiState.Content -> LazyColumn(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)

@@ -52,7 +52,7 @@ interface AutorizacaoSaidaApi {
     @GET("pickup-logs")
     suspend fun getPickupLogs(
         @Header("Authorization") token: String,
-        @Query("school_id") schoolId: String
+        @Query("school_id") schoolId: String? = null
     ): PickupLogsResponse
 
     @POST("pickup-logs")
