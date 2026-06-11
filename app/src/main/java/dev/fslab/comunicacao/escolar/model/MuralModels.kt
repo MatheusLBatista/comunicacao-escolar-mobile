@@ -13,6 +13,11 @@ data class CreatePostRequest(
     @SerializedName("wait_attachments") val waitAttachments: Boolean = false
 )
 
+data class UpdatePostRequest(
+    @SerializedName("title") val title: String,
+    @SerializedName("content") val content: String
+)
+
 data class TargetInfo(
     @SerializedName("scope") val scope: String = "",
     @SerializedName("target_id") val target_id: String? = null

@@ -4,9 +4,11 @@ import android.app.Activity
 import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,11 +26,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -56,25 +60,27 @@ import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import dev.fslab.comunicacao.escolar.R
-import dev.fslab.comunicacao.escolar.ui.components.AppHeader
-import dev.fslab.comunicacao.escolar.model.MuralResponse
-import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
-import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
-import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralState
-import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralViewModel
-import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import androidx.compose.ui.Alignment
 import androidx.navigation.NavController
-import dev.fslab.comunicacao.escolar.model.User
-import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeState
-import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeViewModel
 import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import dev.fslab.comunicacao.escolar.model.ApiUser
-import dev.fslab.comunicacao.escolar.network.RetrofitClient
-import dev.fslab.comunicacao.escolar.util.DateUtils
 import dev.fslab.comunicacao.escolar.model.Docs
+import dev.fslab.comunicacao.escolar.model.MuralResponse
+import dev.fslab.comunicacao.escolar.model.User
+import dev.fslab.comunicacao.escolar.model.UserRole
+import dev.fslab.comunicacao.escolar.network.RetrofitClient
+import dev.fslab.comunicacao.escolar.ui.components.AppHeader
+import dev.fslab.comunicacao.escolar.ui.components.ConfirmDialog
+import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
+import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
+import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
+import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeState
+import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeViewModel
+import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralState
+import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralViewModel
+import dev.fslab.comunicacao.escolar.util.DateUtils
 
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -83,6 +89,10 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Scaffold
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,7 +100,10 @@ fun MuralScreen(
 	schoolId: String = "",
 	muralViewModel: MuralViewModel = viewModel(),
 	authViewModel: AuthViewModel = viewModel(),
-	navController: NavController? = null
+	navController: NavController? = null,
+	canCreate: Boolean = false,
+	onNovoPost: () -> Unit = {},
+	onEditPost: (Docs) -> Unit = {}
 ) {
 	val colors = LocalComunicacaoEscolarColors.current
 	val muralState by muralViewModel.muralState.collectAsState()
@@ -147,14 +160,23 @@ fun MuralScreen(
 		}
 	}
 
-	Column(
-		modifier = Modifier
-			.fillMaxSize()
-			.background(colors.background)
-	) {
-		AppHeader("Mural")
-
-		Box(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+	Scaffold(
+		containerColor = colors.background,
+		contentWindowInsets = WindowInsets(0, 0, 0, 0),
+		topBar = { AppHeader("Mural") },
+		floatingActionButton = {
+			if (canCreate) {
+				FloatingActionButton(
+					onClick = onNovoPost,
+					containerColor = colors.textPrimary,
+					contentColor = colors.background
+				) {
+					Icon(imageVector = Icons.Outlined.Add, contentDescription = "Novo post")
+				}
+			}
+		}
+	) { innerPadding ->
+		Box(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 24.dp)) {
 			when (muralState) {
 				MuralState.Idle -> {
 					Text("Carregando posts...", modifier = Modifier.align(Alignment.Center))
@@ -188,10 +210,15 @@ fun MuralScreen(
 						) {
 							LazyColumn(
 								state = listState,
-								modifier = Modifier.fillMaxSize()
+								modifier = Modifier.fillMaxSize(),
+								contentPadding = PaddingValues(top = 16.dp, bottom = 88.dp)
 							) {
 								itemsIndexed(docs) { index, post ->
-									MuralPostCard(post, currentUser = currentUser!!)
+									MuralPostCard(
+										post = post,
+										currentUser = currentUser!!,
+										onEditPost = onEditPost
+									)
 									Spacer(modifier = Modifier.height(16.dp))
 								}
 							}
@@ -420,18 +447,22 @@ fun MuralPostCard(
 	post: Docs,
 	likeViewModel: LikeViewModel = viewModel(key = post.id),
 	muralViewModel: MuralViewModel = viewModel(),
-	currentUser: User
+	currentUser: User,
+	onEditPost: (Docs) -> Unit = {}
 ) {
 	val colors = LocalComunicacaoEscolarColors.current
 	val context = LocalContext.current
 
 	val likeState by likeViewModel.likeState.collectAsState()
 	val authors by muralViewModel.authors.collectAsState()
-	
+
 	var isLiked by remember { mutableStateOf(post.userLiked?.contains(currentUser.id) == true) }
 	var likesCount by remember { mutableIntStateOf(post.likesCount ?: 0) }
-	
+	var showDeleteDialog by remember { mutableStateOf(false) }
+
 	val author = authors[post.authorId]
+	val canManage = currentUser.role == UserRole.ADMIN ||
+		(currentUser.role == UserRole.PROFESSOR && post.authorId == currentUser.id)
 
 	LaunchedEffect(post.authorId) {
 		muralViewModel.fetchAuthor(post.authorId)
@@ -455,12 +486,13 @@ fun MuralPostCard(
 
 	Column(modifier = Modifier
 		.fillMaxWidth()
-		.background(colors.background, RoundedCornerShape(12.dp))
+		.border(1.dp, colors.lightGray, RoundedCornerShape(12.dp))
+		.background(colors.surface, RoundedCornerShape(12.dp))
 		.padding(16.dp)
 	){
 		Row(
 			verticalAlignment = Alignment.CenterVertically,
-			modifier = Modifier.padding(bottom = 12.dp)
+			modifier = Modifier.padding(bottom = 12.dp).fillMaxWidth()
 		) {
 			val avatarModifier = Modifier
 				.size(32.dp)
@@ -489,10 +521,10 @@ fun MuralPostCard(
 					tint = Color.Gray
 				)
 			}
-			
+
 			Spacer(modifier = Modifier.width(8.dp))
-			
-			Column {
+
+			Column(modifier = Modifier.weight(1f)) {
 				Text(
 					text = author?.fullName ?: "Carregando...",
 					style = MaterialTheme.typography.labelLarge,
@@ -505,6 +537,31 @@ fun MuralPostCard(
 						text = timeAgo,
 						style = MaterialTheme.typography.labelSmall,
 						color = Color.Gray
+					)
+				}
+			}
+
+			if (canManage) {
+				IconButton(
+					onClick = { onEditPost(post) },
+					modifier = Modifier.size(36.dp)
+				) {
+					Icon(
+						imageVector = Icons.Outlined.Edit,
+						contentDescription = "Editar",
+						tint = colors.textSecondary,
+						modifier = Modifier.size(22.dp)
+					)
+				}
+				IconButton(
+					onClick = { showDeleteDialog = true },
+					modifier = Modifier.size(36.dp)
+				) {
+					Icon(
+						imageVector = Icons.Outlined.Delete,
+						contentDescription = "Excluir",
+						tint = colors.error,
+						modifier = Modifier.size(22.dp)
 					)
 				}
 			}
@@ -525,41 +582,59 @@ fun MuralPostCard(
 		PostAttachments(post.attachments, muralViewModel)
 
 		Spacer(modifier = Modifier.height(8.dp))
-		Row (
-			modifier = Modifier.clickable {
-				if (likeState !is LikeState.Loading) {
-					likeViewModel.postLike(post.id)
-				}
-			},
-			horizontalArrangement = Arrangement.Start,
+		Row(
+			modifier = Modifier.fillMaxWidth(),
+			horizontalArrangement = Arrangement.SpaceBetween,
 			verticalAlignment = Alignment.CenterVertically
 		) {
-			Icon (
-				imageVector = if(isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-				contentDescription = "Like",
-				tint = Color.Red,
-				modifier = Modifier.size(24.dp)
-			)
-			Spacer(modifier = Modifier.width(8.dp))
-			Text(
-				text = "$likesCount",
-				style = MaterialTheme.typography.headlineSmall,
-				fontWeight = FontWeight.Bold
-			)
-			
-			if (likeState is LikeState.Loading) {
+			Row(
+				modifier = Modifier.clickable {
+					if (likeState !is LikeState.Loading) {
+						likeViewModel.postLike(post.id)
+					}
+				},
+				verticalAlignment = Alignment.CenterVertically
+			) {
+				Icon(
+					imageVector = if (isLiked) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+					contentDescription = "Like",
+					tint = if (isLiked) Color.Red else colors.textSecondary,
+					modifier = Modifier.size(24.dp)
+				)
 				Spacer(modifier = Modifier.width(8.dp))
-				CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+				Text(
+					text = "$likesCount",
+					style = MaterialTheme.typography.headlineSmall,
+					fontWeight = FontWeight.Bold
+				)
+				if (likeState is LikeState.Loading) {
+					Spacer(modifier = Modifier.width(8.dp))
+					CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+				}
 			}
+
 		}
-		
+
 		if (likeState is LikeState.Error) {
 			Text(
 				text = (likeState as LikeState.Error).message,
 				color = Color.Red,
 				style = MaterialTheme.typography.labelSmall,
-				modifier = Modifier.padding(top = 8.dp)
+				modifier = Modifier.padding(top = 4.dp)
 			)
 		}
+	}
+
+	if (showDeleteDialog) {
+		ConfirmDialog(
+			title = "Excluir post",
+			message = "Excluir \"${post.title}\"? Esta ação não pode ser desfeita.",
+			confirmLabel = "Excluir",
+			onConfirm = {
+				showDeleteDialog = false
+				muralViewModel.deletePost(post.id)
+			},
+			onDismiss = { showDeleteDialog = false }
+		)
 	}
 }

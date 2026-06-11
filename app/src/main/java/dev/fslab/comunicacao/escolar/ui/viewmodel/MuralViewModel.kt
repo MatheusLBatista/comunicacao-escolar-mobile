@@ -1,17 +1,22 @@
 package dev.fslab.comunicacao.escolar.ui.viewmodel
 
+import android.content.Context
+import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.fslab.comunicacao.escolar.model.CreatePostRequest
+import dev.fslab.comunicacao.escolar.model.Docs
 import dev.fslab.comunicacao.escolar.model.MuralResponse
+import dev.fslab.comunicacao.escolar.model.UpdatePostRequest
+import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import dev.fslab.comunicacao.escolar.network.RetrofitClient
-import retrofit2.HttpException
-import android.util.Log
-import dev.fslab.comunicacao.escolar.navigation.Screen
-import kotlinx.coroutines.delay
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 
 sealed class MuralState {
@@ -19,6 +24,20 @@ sealed class MuralState {
     object Loading: MuralState()
     data class Success(val posts:MuralResponse) : MuralState()
     data class Error(val message: String) : MuralState()
+}
+
+sealed class CreatePostState {
+    object Idle : CreatePostState()
+    object Loading : CreatePostState()
+    data class Success(val post: Docs) : CreatePostState()
+    data class Error(val message: String) : CreatePostState()
+}
+
+sealed class EditPostState {
+    object Idle : EditPostState()
+    object Loading : EditPostState()
+    data class Success(val post: Docs) : EditPostState()
+    data class Error(val message: String) : EditPostState()
 }
 
 class MuralViewModel : ViewModel() {
@@ -35,6 +54,12 @@ class MuralViewModel : ViewModel() {
 
     private val _authors = MutableStateFlow<Map<String, dev.fslab.comunicacao.escolar.model.ApiUser>>(emptyMap())
     val authors: StateFlow<Map<String, dev.fslab.comunicacao.escolar.model.ApiUser>> = _authors.asStateFlow()
+
+    private val _createPostState = MutableStateFlow<CreatePostState>(CreatePostState.Idle)
+    val createPostState: StateFlow<CreatePostState> = _createPostState.asStateFlow()
+
+    private val _editPostState = MutableStateFlow<EditPostState>(EditPostState.Idle)
+    val editPostState: StateFlow<EditPostState> = _editPostState.asStateFlow()
 
     private var hasNextPage = true
     private var isPaginationLoading = false
@@ -186,6 +211,160 @@ class MuralViewModel : ViewModel() {
             Log.e(TAG, "Erro ao buscar anexo: ${e.message}")
             null
         }
+    }
+
+    fun createPost(
+        schoolId: String,
+        title: String,
+        content: String,
+        imageUris: List<Uri> = emptyList(),
+        context: Context? = null
+    ) {
+        viewModelScope.launch {
+            _createPostState.value = CreatePostState.Loading
+            try {
+                val hasImages = imageUris.isNotEmpty() && context != null
+                val response = RetrofitClient.muralApi.createPost(
+                    schoolId,
+                    CreatePostRequest(title = title, content = content, waitAttachments = hasImages)
+                )
+                var finalPost = response.data
+
+                if (hasImages && context != null) {
+                    val parts = imageUris.mapIndexed { index, uri ->
+                        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                        val bytes = context.contentResolver.openInputStream(uri)?.readBytes()
+                            ?: throw IllegalStateException("Não foi possível ler imagem $index")
+                        val ext = when (mimeType) {
+                            "image/png" -> "png"
+                            "image/webp" -> "webp"
+                            else -> "jpg"
+                        }
+                        MultipartBody.Part.createFormData(
+                            name = "files",
+                            filename = "image_$index.$ext",
+                            body = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+                        )
+                    }
+                    val uploadResponse = RetrofitClient.muralApi.uploadPostAttachments(
+                        finalPost.id, parts, notify = true
+                    )
+                    finalPost = uploadResponse.data
+                }
+
+                fetchAuthor(finalPost.authorId)
+                addPostToList(finalPost)
+                _createPostState.value = CreatePostState.Success(finalPost)
+            } catch (e: Exception) {
+                Log.e(TAG, "Erro ao criar post", e)
+                _createPostState.value = CreatePostState.Error(e.localizedMessage ?: "Erro ao criar post")
+            }
+        }
+    }
+
+    fun updatePost(
+        postId: String,
+        title: String,
+        content: String,
+        removedAttachmentIds: List<String> = emptyList(),
+        newImageUris: List<Uri> = emptyList(),
+        context: Context? = null
+    ) {
+        viewModelScope.launch {
+            _editPostState.value = EditPostState.Loading
+            try {
+                val response = RetrofitClient.muralApi.updatePost(postId, UpdatePostRequest(title, content))
+                var updatedPost = response.data
+
+                for (attachmentId in removedAttachmentIds) {
+                    try {
+                        RetrofitClient.muralApi.deleteAttachment(postId, attachmentId)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Erro ao remover attachment $attachmentId", e)
+                    }
+                }
+
+                if (newImageUris.isNotEmpty() && context != null) {
+                    val parts = newImageUris.mapIndexed { index, uri ->
+                        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+                        val bytes = context.contentResolver.openInputStream(uri)?.readBytes()
+                            ?: throw IllegalStateException("Não foi possível ler imagem $index")
+                        val ext = when (mimeType) {
+                            "image/png" -> "png"
+                            "image/webp" -> "webp"
+                            else -> "jpg"
+                        }
+                        MultipartBody.Part.createFormData(
+                            name = "files",
+                            filename = "image_$index.$ext",
+                            body = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+                        )
+                    }
+                    val uploadResponse = RetrofitClient.muralApi.uploadPostAttachments(postId, parts)
+                    updatedPost = uploadResponse.data
+                } else if (removedAttachmentIds.isNotEmpty()) {
+                    val refreshed = RetrofitClient.muralApi.getPost(postId)
+                    updatedPost = refreshed.data
+                }
+
+                updatePostInList(updatedPost)
+                _editPostState.value = EditPostState.Success(updatedPost)
+            } catch (e: Exception) {
+                Log.e(TAG, "Erro ao editar post $postId", e)
+                _editPostState.value = EditPostState.Error(e.localizedMessage ?: "Erro ao editar post")
+            }
+        }
+    }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch {
+            try {
+                RetrofitClient.muralApi.deletePost(postId)
+                removePostFromList(postId)
+            } catch (e: Exception) {
+                Log.e(TAG, "Erro ao deletar post $postId", e)
+            }
+        }
+    }
+
+    fun resetEditPostState() {
+        _editPostState.value = EditPostState.Idle
+    }
+
+    private fun addPostToList(post: Docs) {
+        val currentResponse = _posts.value ?: return
+        val updatedDocs = (listOf(post) + currentResponse.data.docs)
+            .distinctBy { it.id }
+            .take(MAX_CACHE_SIZE)
+        val updatedResponse = currentResponse.copy(data = currentResponse.data.copy(docs = updatedDocs))
+        _posts.value = updatedResponse
+        if (_muralState.value is MuralState.Success) {
+            _muralState.value = MuralState.Success(updatedResponse)
+        }
+    }
+
+    private fun updatePostInList(post: Docs) {
+        val currentResponse = _posts.value ?: return
+        val updatedDocs = currentResponse.data.docs.map { if (it.id == post.id) post else it }
+        val updatedResponse = currentResponse.copy(data = currentResponse.data.copy(docs = updatedDocs))
+        _posts.value = updatedResponse
+        if (_muralState.value is MuralState.Success) {
+            _muralState.value = MuralState.Success(updatedResponse)
+        }
+    }
+
+    private fun removePostFromList(postId: String) {
+        val currentResponse = _posts.value ?: return
+        val updatedDocs = currentResponse.data.docs.filter { it.id != postId }
+        val updatedResponse = currentResponse.copy(data = currentResponse.data.copy(docs = updatedDocs))
+        _posts.value = updatedResponse
+        if (_muralState.value is MuralState.Success) {
+            _muralState.value = MuralState.Success(updatedResponse)
+        }
+    }
+
+    fun resetCreatePostState() {
+        _createPostState.value = CreatePostState.Idle
     }
 
     fun clearError() {
