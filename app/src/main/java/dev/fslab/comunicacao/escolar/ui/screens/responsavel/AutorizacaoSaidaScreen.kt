@@ -1,8 +1,6 @@
 package dev.fslab.comunicacao.escolar.ui.screens.responsavel
 
 import android.app.DatePickerDialog
-import android.graphics.Bitmap
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,21 +19,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -48,6 +48,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,28 +59,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import com.google.zxing.BarcodeFormat
-import com.google.zxing.EncodeHintType
-import com.google.zxing.qrcode.QRCodeWriter
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import dev.fslab.comunicacao.escolar.model.ApiAssociatedStudent
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaida
+import dev.fslab.comunicacao.escolar.model.PickupLogUi
 import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
+import dev.fslab.comunicacao.escolar.ui.viewmodel.AutorizacaoFiltro
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AutorizacaoSaidaUiState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AutorizacaoSaidaViewModel
+import dev.fslab.comunicacao.escolar.ui.viewmodel.PickupLogsUiState
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -87,17 +90,21 @@ import java.util.Locale
 @Composable
 fun AutorizacaoSaidaScreen(
     onBack: () -> Unit,
+    canCreate: Boolean = true,
+    canRegisterSaida: Boolean = false,
     viewModel: AutorizacaoSaidaViewModel = viewModel()
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val uiState by viewModel.uiState.collectAsState()
     val cancelando by viewModel.cancelando.collectAsState()
+    val registrando by viewModel.registrando.collectAsState()
     val showSheet by viewModel.showNovaAutorizacaoSheet.collectAsState()
     val criando by viewModel.criando.collectAsState()
     val criarErro by viewModel.criarErro.collectAsState()
-    val qrCodeId by viewModel.qrCodeId.collectAsState()
     val alunos by viewModel.alunos.collectAsState()
-    val alunoFiltro by viewModel.alunoFiltro.collectAsState()
+    val filtro by viewModel.filtro.collectAsState()
+    val pickupLogsState by viewModel.pickupLogsState.collectAsState()
+    val revertendo by viewModel.revertendo.collectAsState()
 
     Box(
         modifier = Modifier
@@ -107,32 +114,64 @@ fun AutorizacaoSaidaScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             AppHeader(title = "Autorizações de Saída", onBack = onBack)
 
-            if (alunos.size > 1) {
-                LazyRow(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    item {
-                        FiltroChip(
-                            label = "Todos",
-                            selecionado = alunoFiltro == null,
-                            onClick = { viewModel.filtrarPorAluno(null) },
-                            colors = colors
-                        )
-                    }
-                    items(alunos) { aluno ->
-                        FiltroChip(
-                            label = aluno.fullName.trim().split(" ").firstOrNull() ?: aluno.fullName,
-                            selecionado = alunoFiltro == aluno.id,
-                            onClick = { viewModel.filtrarPorAluno(aluno.id) },
-                            colors = colors
-                        )
-                    }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FiltroChip(
+                    label = "Ativas",
+                    selecionado = filtro is AutorizacaoFiltro.Ativas,
+                    onClick = { if (filtro !is AutorizacaoFiltro.Ativas) viewModel.setFiltro(AutorizacaoFiltro.Ativas) },
+                    colors = colors
+                )
+                FiltroChip(
+                    label = "Canceladas",
+                    selecionado = filtro is AutorizacaoFiltro.Canceladas,
+                    onClick = { if (filtro !is AutorizacaoFiltro.Canceladas) viewModel.setFiltro(AutorizacaoFiltro.Canceladas) },
+                    colors = colors
+                )
+                if (canRegisterSaida) {
+                    FiltroChip(
+                        label = "Saídas",
+                        selecionado = filtro is AutorizacaoFiltro.Saidas,
+                        onClick = { if (filtro !is AutorizacaoFiltro.Saidas) viewModel.setFiltro(AutorizacaoFiltro.Saidas) },
+                        colors = colors
+                    )
                 }
             }
 
-            when (val state = uiState) {
+            if (filtro is AutorizacaoFiltro.Saidas) {
+                when (val state = pickupLogsState) {
+                    is PickupLogsUiState.Loading -> Box(
+                        modifier = Modifier.fillMaxSize().padding(bottom = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Carregando saídas...", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                    }
+                    is PickupLogsUiState.Empty -> Box(
+                        modifier = Modifier.fillMaxSize().padding(bottom = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Nenhuma saída registrada.", style = MaterialTheme.typography.bodyMedium, color = colors.textSecondary)
+                    }
+                    is PickupLogsUiState.Content -> LazyColumn(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        item { Spacer(modifier = Modifier.height(4.dp)) }
+                        items(state.logs, key = { it.id }) { log ->
+                            PickupLogCard(
+                                log = log,
+                                revertendo = revertendo == log.id,
+                                onReverter = { viewModel.reverterSaida(log.id, log.authorizationId) }
+                            )
+                        }
+                        item { Spacer(modifier = Modifier.height(80.dp)) }
+                    }
+                }
+            } else when (val state = uiState) {
                 is AutorizacaoSaidaUiState.Loading -> {
                     Box(
                         modifier = Modifier.fillMaxSize().padding(bottom = 24.dp),
@@ -193,7 +232,9 @@ fun AutorizacaoSaidaScreen(
                                 autorizacao = autorizacao,
                                 cancelando = cancelando == autorizacao.id,
                                 onCancelar = { viewModel.cancelarAutorizacao(autorizacao.id) },
-                                onVerQrCode = { viewModel.mostrarQrCode(autorizacao.id) }
+                                canRegisterSaida = canRegisterSaida,
+                                registrando = registrando == autorizacao.id,
+                                onRegistrarSaida = { viewModel.registrarSaida(autorizacao) }
                             )
                         }
                         item { Spacer(modifier = Modifier.height(80.dp)) }
@@ -202,19 +243,22 @@ fun AutorizacaoSaidaScreen(
             }
         }
 
-        FloatingActionButton(
-            onClick = { viewModel.abrirNovaAutorizacao() },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 20.dp),
-            containerColor = colors.textPrimary,
-            contentColor = Color.White
-        ) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = "Nova autorização")
+        if (canCreate && filtro !is AutorizacaoFiltro.Saidas) {
+            FloatingActionButton(
+                onClick = { viewModel.abrirNovaAutorizacao() },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 20.dp),
+                containerColor = colors.buttonContainer,
+                contentColor = colors.buttonText,
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Icon(imageVector = Icons.Outlined.Add, contentDescription = "Nova autorização")
+            }
         }
     }
 
-    if (showSheet) {
+    if (canCreate && showSheet) {
         NovaAutorizacaoSheet(
             alunos = alunos,
             criando = criando,
@@ -226,12 +270,6 @@ fun AutorizacaoSaidaScreen(
         )
     }
 
-    if (qrCodeId != null) {
-        QrCodeDialog(
-            authorizationId = qrCodeId!!,
-            onDismiss = { viewModel.dispensarQrCode() }
-        )
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -249,6 +287,9 @@ private fun NovaAutorizacaoSheet(
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR")) }
 
     var alunoSelecionado by remember { mutableStateOf(alunos.firstOrNull()) }
+    LaunchedEffect(alunos) {
+        if (alunoSelecionado == null) alunoSelecionado = alunos.firstOrNull()
+    }
     var nome by remember { mutableStateOf("") }
     var documento by remember { mutableStateOf("") }
     var relacao by remember { mutableStateOf("") }
@@ -285,6 +326,20 @@ private fun NovaAutorizacaoSheet(
         containerColor = colors.background,
         dragHandle = null
     ) {
+        val sheetView = LocalView.current
+        val isDark = colors.isDark
+        val bgColor = colors.background
+        SideEffect {
+            val window = (sheetView.parent as? DialogWindowProvider)?.window
+            if (window != null) {
+                window.setBackgroundDrawable(
+                    android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT)
+                )
+                window.navigationBarColor = bgColor.toArgb()
+                WindowCompat.getInsetsController(window, sheetView)
+                    .isAppearanceLightNavigationBars = !isDark
+            }
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -325,152 +380,291 @@ private fun NovaAutorizacaoSheet(
             if (alunos.size > 1) {
                 Text(
                     text = "ALUNO",
-                    fontSize = 11.sp,
-                    letterSpacing = 0.8.sp,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
                     color = colors.textSecondary
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    alunos.forEach { aluno ->
-                        val selecionado = alunoSelecionado?.id == aluno.id
-                        val firstName = aluno.fullName.trim().split(" ").firstOrNull() ?: aluno.fullName
+                if (alunos.size > 5) {
+                    var dropdownExpanded by remember { mutableStateOf(false) }
+                    var searchQuery by remember { mutableStateOf("") }
+                    val filteredAlunos = remember(alunos, searchQuery) {
+                        if (searchQuery.isBlank()) alunos
+                        else alunos.filter { it.fullName.contains(searchQuery, ignoreCase = true) }
+                    }
+                    Box {
+                        OutlinedTextField(
+                            value = alunoSelecionado?.fullName ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            placeholder = {
+                                Text(
+                                    "Selecionar aluno",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.textSecondary
+                                )
+                            },
+                            trailingIcon = {
+                                Icon(
+                                    imageVector = Icons.Outlined.ChevronRight,
+                                    contentDescription = null,
+                                    tint = colors.textSecondary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            colors = fieldColors(colors)
+                        )
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(10.dp))
-                                .border(
-                                    1.dp,
-                                    if (selecionado) colors.focusedIndicator else colors.inputBorder,
-                                    RoundedCornerShape(10.dp)
-                                )
-                                .background(if (selecionado) colors.surface else colors.background)
+                                .matchParentSize()
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null
-                                ) { alunoSelecionado = aluno }
-                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                                ) { dropdownExpanded = true; searchQuery = "" }
+                        )
+                        DropdownMenu(
+                            expanded = dropdownExpanded,
+                            onDismissRequest = { dropdownExpanded = false },
+                            modifier = Modifier
+                                .fillMaxWidth(0.9f)
+                                .background(colors.surface)
                         ) {
-                            Text(
-                                text = firstName,
-                                fontSize = 14.sp,
-                                fontWeight = if (selecionado) FontWeight.SemiBold else FontWeight.Normal,
-                                color = if (selecionado) colors.textPrimary else colors.textSecondary
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                placeholder = {
+                                    Text(
+                                        "Buscar aluno...",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.textSecondary
+                                    )
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                                singleLine = true,
+                                shape = RoundedCornerShape(10.dp),
+                                colors = fieldColors(colors)
                             )
+                            filteredAlunos.forEach { aluno ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            aluno.fullName,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = colors.textPrimary
+                                        )
+                                    },
+                                    onClick = { alunoSelecionado = aluno; dropdownExpanded = false }
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        alunos.forEach { aluno ->
+                            val selecionado = alunoSelecionado?.id == aluno.id
+                            val firstName = aluno.fullName.trim().split(" ").firstOrNull() ?: aluno.fullName
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .border(
+                                        1.dp,
+                                        if (selecionado) colors.focusedIndicator else colors.inputBorder,
+                                        RoundedCornerShape(10.dp)
+                                    )
+                                    .background(if (selecionado) colors.surface else colors.background)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { alunoSelecionado = aluno }
+                                    .padding(horizontal = 16.dp, vertical = 10.dp)
+                            ) {
+                                Text(
+                                    text = firstName,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (selecionado) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (selecionado) colors.textPrimary else colors.textSecondary
+                                )
+                            }
                         }
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Nome
-            OutlinedTextField(
-                value = nome,
-                onValueChange = { nome = it },
-                label = { Text("QUEM VAI BUSCAR", fontSize = 11.sp, letterSpacing = 0.8.sp) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = fieldColors(colors)
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "QUEM VAI BUSCAR",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textSecondary
+                )
+                OutlinedTextField(
+                    value = nome,
+                    onValueChange = { nome = it },
+                    placeholder = {
+                        Text(
+                            "Quem vai buscar",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = fieldColors(colors)
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Documento (CPF)
-            OutlinedTextField(
-                value = documento,
-                onValueChange = { raw ->
-                    val digits = raw.filter { it.isDigit() }.take(11)
-                    documento = buildString {
-                        digits.forEachIndexed { i, c ->
-                            append(c)
-                            if (i == 2 || i == 5) append('.')
-                            if (i == 8) append('-')
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "DOCUMENTO (CPF)",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textSecondary
+                )
+                OutlinedTextField(
+                    value = documento,
+                    onValueChange = { raw ->
+                        val digits = raw.filter { it.isDigit() }.take(11)
+                        documento = buildString {
+                            digits.forEachIndexed { i, c ->
+                                append(c)
+                                if (i == 2 || i == 5) append('.')
+                                if (i == 8) append('-')
+                            }
                         }
-                    }
-                },
-                label = { Text("DOCUMENTO (CPF)", fontSize = 11.sp, letterSpacing = 0.8.sp) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                colors = fieldColors(colors)
-            )
+                    },
+                    placeholder = {
+                        Text(
+                            "Documento (CPF)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    colors = fieldColors(colors)
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Relação
-            OutlinedTextField(
-                value = relacao,
-                onValueChange = { relacao = it },
-                label = { Text("RELAÇÃO", fontSize = 11.sp, letterSpacing = 0.8.sp) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                colors = fieldColors(colors)
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "RELAÇÃO",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textSecondary
+                )
+                OutlinedTextField(
+                    value = relacao,
+                    onValueChange = { relacao = it },
+                    placeholder = {
+                        Text(
+                            "Relação",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.textSecondary
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = fieldColors(colors)
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Datas
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedTextField(
-                        value = validFromText,
-                        onValueChange = {},
-                        label = { Text("DE", fontSize = 11.sp, letterSpacing = 0.8.sp) },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.CalendarMonth,
-                                contentDescription = null,
-                                tint = colors.textSecondary,
-                                modifier = Modifier.size(18.dp)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "PERÍODO DE VIGÊNCIA",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textSecondary
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "DE",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary
+                        )
+                        Box {
+                            OutlinedTextField(
+                                value = validFromText,
+                                onValueChange = {},
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.CalendarMonth,
+                                        contentDescription = null,
+                                        tint = colors.textSecondary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                readOnly = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = fieldColors(colors)
                             )
-                        },
-                        readOnly = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = fieldColors(colors)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { showDatePicker(validFromMs) { validFromMs = it } }
-                    )
-                }
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { showDatePicker(validFromMs) { validFromMs = it } }
+                            )
+                        }
+                    }
 
-                Box(modifier = Modifier.weight(1f)) {
-                    OutlinedTextField(
-                        value = validUntilText,
-                        onValueChange = {},
-                        label = { Text("ATÉ", fontSize = 11.sp, letterSpacing = 0.8.sp) },
-                        trailingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.CalendarMonth,
-                                contentDescription = null,
-                                tint = colors.textSecondary,
-                                modifier = Modifier.size(18.dp)
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "ATÉ",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.textSecondary
+                        )
+                        Box {
+                            OutlinedTextField(
+                                value = validUntilText,
+                                onValueChange = {},
+                                trailingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.CalendarMonth,
+                                        contentDescription = null,
+                                        tint = colors.textSecondary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                },
+                                readOnly = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                shape = RoundedCornerShape(12.dp),
+                                colors = fieldColors(colors)
                             )
-                        },
-                        readOnly = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = fieldColors(colors)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { showDatePicker(validUntilMs) { validUntilMs = it } }
-                    )
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { showDatePicker(validUntilMs) { validUntilMs = it } }
+                            )
+                        }
+                    }
                 }
             }
 
@@ -483,18 +677,19 @@ private fun NovaAutorizacaoSheet(
 
             val isValid = alunoSelecionado != null && nome.isNotBlank() &&
                     documento.isNotBlank() && relacao.isNotBlank() && validUntilMs > validFromMs
-            Box(
+            Button(
+                onClick = { alunoSelecionado?.id?.let { onCriar(nome, documento, relacao, validFromMs, validUntilMs, it) } },
+                enabled = isValid && !criando,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(if (isValid && !criando) colors.buttonContainer else colors.lightGray)
-                    .clickable(
-                        enabled = isValid && !criando,
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { alunoSelecionado?.id?.let { onCriar(nome, documento, relacao, validFromMs, validUntilMs, it) } }
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
+                    .height(52.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.buttonContainer,
+                    contentColor = colors.buttonText,
+                    disabledContainerColor = colors.lightGray,
+                    disabledContentColor = colors.textSecondary
+                )
             ) {
                 if (criando) {
                     CircularProgressIndicator(
@@ -505,115 +700,10 @@ private fun NovaAutorizacaoSheet(
                 } else {
                     Text(
                         text = "Criar Autorização",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (isValid) colors.buttonText else colors.textSecondary
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
-            }
-        }
-    }
-}
-
-private fun generateQrBitmap(content: String, sizePx: Int = 600): Bitmap {
-    val hints = mapOf<EncodeHintType, Any>(
-        EncodeHintType.MARGIN to 1,
-        EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M
-    )
-    val matrix = QRCodeWriter().encode(content, BarcodeFormat.QR_CODE, sizePx, sizePx, hints)
-    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.RGB_565)
-    for (x in 0 until sizePx) {
-        for (y in 0 until sizePx) {
-            bitmap.setPixel(x, y, if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
-        }
-    }
-    return bitmap
-}
-
-@Composable
-private fun QrCodeDialog(
-    authorizationId: String,
-    onDismiss: () -> Unit
-) {
-    val colors = LocalComunicacaoEscolarColors.current
-    val qrBitmap = remember(authorizationId) { generateQrBitmap(authorizationId) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(20.dp))
-                .background(colors.background)
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "QR Code de Autorização",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.textPrimary
-                )
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Fechar",
-                        tint = colors.textSecondary
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Apresente este QR Code na portaria para autorizar a saída",
-                fontSize = 13.sp,
-                color = colors.textSecondary,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Box(
-                modifier = Modifier
-                    .size(240.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White)
-                    .padding(8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    bitmap = qrBitmap.asImageBitmap(),
-                    contentDescription = "QR Code",
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(colors.buttonContainer)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onDismiss
-                    )
-                    .padding(vertical = 14.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Entendido",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.buttonText
-                )
             }
         }
     }
@@ -628,9 +718,7 @@ private fun fieldColors(colors: dev.fslab.comunicacao.escolar.ui.theme.Comunicac
         unfocusedTextColor = colors.textInput,
         cursorColor = colors.focusedIndicator,
         focusedContainerColor = colors.surface,
-        unfocusedContainerColor = colors.surface,
-        focusedLabelColor = colors.textSecondary,
-        unfocusedLabelColor = colors.textSecondary
+        unfocusedContainerColor = colors.surface
     )
 
 @Composable
@@ -638,36 +726,111 @@ private fun AutorizacaoCard(
     autorizacao: AutorizacaoSaida,
     cancelando: Boolean,
     onCancelar: () -> Unit,
-    onVerQrCode: () -> Unit
+    canRegisterSaida: Boolean = false,
+    registrando: Boolean = false,
+    onRegistrarSaida: () -> Unit = {}
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val context = LocalContext.current
     var showConfirm by remember { mutableStateOf(false) }
+    var showConfirmSaida by remember { mutableStateOf(false) }
 
-    if (showConfirm) {
+    if (showConfirmSaida) {
         AlertDialog(
-            onDismissRequest = { showConfirm = false },
-            title = { Text("Cancelar autorização", fontSize = 16.sp, fontWeight = FontWeight.SemiBold) },
+            onDismissRequest = { showConfirmSaida = false },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = colors.background,
+            title = {
+                Text(
+                    text = "Registrar saída",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary
+                )
+            },
             text = {
                 Text(
-                    "Tem certeza que deseja cancelar esta autorização? Ela não poderá ser usada após o cancelamento.",
-                    fontSize = 14.sp
+                    text = "Confirmar saída de ${autorizacao.studentName} com ${autorizacao.autorizadoPor}?",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary
                 )
             },
             confirmButton = {
-                TextButton(onClick = { showConfirm = false; onCancelar() }) {
-                    Text("Confirmar", color = colors.errorText, fontWeight = FontWeight.SemiBold)
+                Button(
+                    onClick = { showConfirmSaida = false; onRegistrarSaida() },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.buttonContainer,
+                        contentColor = colors.buttonText
+                    )
+                ) {
+                    Text(
+                        "Confirmar",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showConfirm = false }) {
-                    Text("Manter", color = colors.textSecondary)
+                TextButton(onClick = { showConfirmSaida = false }) {
+                    Text(
+                        "Cancelar",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary
+                    )
                 }
             }
         )
     }
 
-    val isActive = autorizacao.status == "Aguardando saída"
+    if (showConfirm) {
+        AlertDialog(
+            onDismissRequest = { showConfirm = false },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = colors.background,
+            title = {
+                Text(
+                    text = "Cancelar autorização",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Tem certeza que deseja cancelar esta autorização? Ela não poderá ser usada após o cancelamento.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showConfirm = false; onCancelar() },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.error,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(
+                        "Confirmar",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirm = false }) {
+                    Text(
+                        "Manter",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary
+                    )
+                }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -675,13 +838,6 @@ private fun AutorizacaoCard(
             .clip(RoundedCornerShape(16.dp))
             .border(1.dp, colors.inputBorder, RoundedCornerShape(16.dp))
             .background(colors.background)
-            .then(
-                if (isActive) Modifier.clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onVerQrCode
-                ) else Modifier
-            )
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -749,34 +905,69 @@ private fun AutorizacaoCard(
             InfoRow(label = "Válido até", value = autorizacao.validAte)
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        if (autorizacao.status == "Aguardando saída") {
+            Spacer(modifier = Modifier.height(12.dp))
 
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .border(1.dp, colors.inputBorder, RoundedCornerShape(8.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = !cancelando,
-                    onClick = { showConfirm = true }
-                )
-                .padding(vertical = 13.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (cancelando) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = colors.textSecondary
-                )
-            } else {
-                Text(
-                    text = "Cancelar autorização",
-                    fontSize = 14.sp,
-                    color = colors.textSecondary
-                )
+            if (canRegisterSaida) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(colors.buttonContainer)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = !registrando,
+                            onClick = { showConfirmSaida = true }
+                        )
+                        .padding(vertical = 13.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (registrando) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                            color = colors.buttonText
+                        )
+                    } else {
+                        Text(
+                            text = "Registrar saída",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = colors.buttonText
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, colors.inputBorder, RoundedCornerShape(8.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = !cancelando,
+                        onClick = { showConfirm = true }
+                    )
+                    .padding(vertical = 13.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (cancelando) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = colors.textSecondary
+                    )
+                } else {
+                    Text(
+                        text = "Cancelar autorização",
+                        fontSize = 14.sp,
+                        color = colors.textSecondary
+                    )
+                }
             }
         }
     }
@@ -801,8 +992,12 @@ private fun FiltroChip(
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (selecionado) colors.textPrimary else colors.background)
-            .border(1.dp, if (selecionado) colors.textPrimary else colors.inputBorder, RoundedCornerShape(20.dp))
+            .background(if (selecionado) colors.surface else colors.background)
+            .border(
+                1.dp,
+                if (selecionado) colors.focusedIndicator else colors.inputBorder,
+                RoundedCornerShape(20.dp)
+            )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
@@ -813,8 +1008,152 @@ private fun FiltroChip(
         Text(
             text = label,
             fontSize = 13.sp,
-            fontWeight = if (selecionado) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (selecionado) Color.White else colors.textSecondary
+            fontWeight = FontWeight.Medium,
+            color = if (selecionado) colors.textPrimary else colors.textSecondary
         )
+    }
+}
+
+@Composable
+private fun PickupLogCard(
+    log: PickupLogUi,
+    revertendo: Boolean = false,
+    onReverter: () -> Unit = {}
+) {
+    val colors = LocalComunicacaoEscolarColors.current
+    var showConfirmReverter by remember { mutableStateOf(false) }
+
+    if (showConfirmReverter) {
+        AlertDialog(
+            onDismissRequest = { showConfirmReverter = false },
+            shape = RoundedCornerShape(16.dp),
+            containerColor = colors.background,
+            title = {
+                Text(
+                    text = "Reverter saída",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary
+                )
+            },
+            text = {
+                Text(
+                    text = "Reverter o registro de saída de ${log.studentName}? A autorização voltará a ficar ativa.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textSecondary
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showConfirmReverter = false; onReverter() },
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.error,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text(
+                        "Reverter",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfirmReverter = false }) {
+                    Text(
+                        "Cancelar",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary
+                    )
+                }
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, colors.inputBorder, RoundedCornerShape(16.dp))
+            .background(colors.background)
+            .padding(16.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(colors.lightGray),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                    contentDescription = null,
+                    tint = colors.iconGray,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = log.studentName,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textPrimary
+                )
+                Text(
+                    text = log.departureTime,
+                    fontSize = 13.sp,
+                    color = colors.textSecondary
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(colors.lightGray)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (log.pickedUpByName.isNotBlank()) {
+                InfoRow(label = "Buscado por", value = log.pickedUpByName)
+            }
+            if (log.verifiedByName.isNotBlank()) {
+                InfoRow(label = "Verificado por", value = log.verifiedByName)
+            }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .border(1.dp, colors.inputBorder, RoundedCornerShape(8.dp))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    enabled = !revertendo,
+                    onClick = { showConfirmReverter = true }
+                )
+                .padding(vertical = 13.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (revertendo) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    strokeWidth = 2.dp,
+                    color = colors.textSecondary
+                )
+            } else {
+                Text(
+                    text = "Reverter saída",
+                    fontSize = 14.sp,
+                    color = colors.textSecondary
+                )
+            }
+        }
     }
 }

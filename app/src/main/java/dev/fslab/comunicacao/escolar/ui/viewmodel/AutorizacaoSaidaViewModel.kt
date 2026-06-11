@@ -9,7 +9,11 @@ import dev.fslab.comunicacao.escolar.model.AutorizacaoSaida
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaidaDoc
 import dev.fslab.comunicacao.escolar.model.CreateAuthorizedPerson
 import dev.fslab.comunicacao.escolar.model.CreatePickupAuthorizationRequest
+import dev.fslab.comunicacao.escolar.model.CreatePickupLogRequest
 import dev.fslab.comunicacao.escolar.model.PatchAutorizacaoRequest
+import dev.fslab.comunicacao.escolar.model.PatchAutorizacaoUsedRequest
+import dev.fslab.comunicacao.escolar.model.PickedUpBy
+import dev.fslab.comunicacao.escolar.model.PickupLogUi
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import dev.fslab.comunicacao.escolar.network.TokenManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +32,18 @@ sealed class AutorizacaoSaidaUiState {
     data class Content(val autorizacoes: List<AutorizacaoSaida>) : AutorizacaoSaidaUiState()
 }
 
+sealed class AutorizacaoFiltro {
+    object Ativas : AutorizacaoFiltro()
+    object Canceladas : AutorizacaoFiltro()
+    object Saidas : AutorizacaoFiltro()
+}
+
+sealed class PickupLogsUiState {
+    object Loading : PickupLogsUiState()
+    object Empty : PickupLogsUiState()
+    data class Content(val logs: List<PickupLogUi>) : PickupLogsUiState()
+}
+
 class AutorizacaoSaidaViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow<AutorizacaoSaidaUiState>(AutorizacaoSaidaUiState.Loading)
@@ -35,6 +51,12 @@ class AutorizacaoSaidaViewModel : ViewModel() {
 
     private val _cancelando = MutableStateFlow<String?>(null)
     val cancelando: StateFlow<String?> = _cancelando.asStateFlow()
+
+    private val _registrando = MutableStateFlow<String?>(null)
+    val registrando: StateFlow<String?> = _registrando.asStateFlow()
+
+    private val _revertendo = MutableStateFlow<String?>(null)
+    val revertendo: StateFlow<String?> = _revertendo.asStateFlow()
 
     private val _showNovaAutorizacaoSheet = MutableStateFlow(false)
     val showNovaAutorizacaoSheet: StateFlow<Boolean> = _showNovaAutorizacaoSheet.asStateFlow()
@@ -45,16 +67,16 @@ class AutorizacaoSaidaViewModel : ViewModel() {
     private val _criarErro = MutableStateFlow<String?>(null)
     val criarErro: StateFlow<String?> = _criarErro.asStateFlow()
 
-    private val _qrCodeId = MutableStateFlow<String?>(null)
-    val qrCodeId: StateFlow<String?> = _qrCodeId.asStateFlow()
-
     private val _rawDocs = MutableStateFlow<List<AutorizacaoSaidaDoc>>(emptyList())
 
     private val _alunos = MutableStateFlow<List<ApiAssociatedStudent>>(emptyList())
     val alunos: StateFlow<List<ApiAssociatedStudent>> = _alunos.asStateFlow()
 
-    private val _alunoFiltro = MutableStateFlow<String?>(null)
-    val alunoFiltro: StateFlow<String?> = _alunoFiltro.asStateFlow()
+    private val _filtro = MutableStateFlow<AutorizacaoFiltro>(AutorizacaoFiltro.Ativas)
+    val filtro: StateFlow<AutorizacaoFiltro> = _filtro.asStateFlow()
+
+    private val _pickupLogsState = MutableStateFlow<PickupLogsUiState>(PickupLogsUiState.Loading)
+    val pickupLogsState: StateFlow<PickupLogsUiState> = _pickupLogsState.asStateFlow()
 
     private val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
@@ -67,16 +89,54 @@ class AutorizacaoSaidaViewModel : ViewModel() {
     }
 
     private fun loadAlunos() {
-        val json = TokenManager.getStudentsJson() ?: return
-        try {
-            val type = object : TypeToken<List<ApiAssociatedStudent>>() {}.type
-            _alunos.value = Gson().fromJson(json, type)
-        } catch (_: Exception) {}
+        val json = TokenManager.getStudentsJson()
+        if (!json.isNullOrBlank()) {
+            try {
+                val type = object : TypeToken<List<ApiAssociatedStudent>>() {}.type
+                val parsed = Gson().fromJson<List<ApiAssociatedStudent>>(json, type)
+                if (parsed.isNotEmpty()) {
+                    _alunos.value = parsed
+                    return
+                }
+            } catch (_: Exception) {}
+        }
+        val schoolId = TokenManager.getSavedUser()?.schoolId ?: return
+        viewModelScope.launch {
+            try {
+                val docs = RetrofitClient.adminApi.listUsers(
+                    schoolId,
+                    mapOf("role" to "student", "limit" to "100")
+                ).data?.docs.orEmpty()
+                _alunos.value = docs.map { u ->
+                    ApiAssociatedStudent(
+                        id = u.id,
+                        fullName = u.fullName,
+                        classId = u.memberships.find { it.role == "student" }?.classId
+                    )
+                }
+            } catch (_: Exception) {}
+        }
     }
 
-    fun filtrarPorAluno(studentId: String?) {
-        _alunoFiltro.value = studentId
-        loadAutorizacoes()
+    fun setFiltro(filtro: AutorizacaoFiltro) {
+        _filtro.value = filtro
+        if (filtro is AutorizacaoFiltro.Saidas) loadPickupLogs() else loadAutorizacoes()
+    }
+
+    fun loadPickupLogs() {
+        viewModelScope.launch {
+            _pickupLogsState.value = PickupLogsUiState.Loading
+            val token = TokenManager.getAccessToken() ?: return@launch
+            try {
+                val docs = RetrofitClient.autorizacaoSaidaApi.getPickupLogs(
+                    "Bearer $token"
+                ).data?.docs.orEmpty()
+                _pickupLogsState.value = if (docs.isEmpty()) PickupLogsUiState.Empty
+                else PickupLogsUiState.Content(docs.map { it.toPickupLogUi() })
+            } catch (_: Exception) {
+                _pickupLogsState.value = PickupLogsUiState.Empty
+            }
+        }
     }
 
     fun loadAutorizacoes() {
@@ -90,16 +150,23 @@ class AutorizacaoSaidaViewModel : ViewModel() {
             }
 
             try {
+                val isAtivas = _filtro.value is AutorizacaoFiltro.Ativas
+                val active = if (_filtro.value is AutorizacaoFiltro.Canceladas) false else true
                 val response = RetrofitClient.autorizacaoSaidaApi.getAutorizacoes(
                     token = "Bearer $token",
-                    active = true,
-                    studentId = _alunoFiltro.value
+                    active = active,
+                    used = if (isAtivas) false else null
                 )
                 if (response.error) {
                     _uiState.value = AutorizacaoSaidaUiState.Error(response.getErrorMessage())
                     return@launch
                 }
-                val docs = response.data?.docs.orEmpty()
+                val now = java.util.Date()
+                val docs = response.data?.docs.orEmpty().let { all ->
+                    if (isAtivas) all.filter { doc ->
+                        runCatching { isoFormatter.parse(doc.validUntil)?.after(now) }.getOrNull() == true
+                    } else all
+                }
                 _rawDocs.value = docs
                 val list = docs.map { it.toUi() }
                 _uiState.value = if (list.isEmpty()) AutorizacaoSaidaUiState.Empty else AutorizacaoSaidaUiState.Content(list)
@@ -145,14 +212,6 @@ class AutorizacaoSaidaViewModel : ViewModel() {
 
     fun fecharNovaAutorizacao() {
         _showNovaAutorizacaoSheet.value = false
-    }
-
-    fun mostrarQrCode(id: String) {
-        _qrCodeId.value = id
-    }
-
-    fun dispensarQrCode() {
-        _qrCodeId.value = null
     }
 
     fun criarAutorizacao(nome: String, documento: String, relacao: String, validFromMs: Long, validUntilMs: Long, studentId: String) {
@@ -201,7 +260,6 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                     _criarErro.value = response.getErrorMessage()
                 } else {
                     _showNovaAutorizacaoSheet.value = false
-                    _qrCodeId.value = response.data?.id
                     loadAutorizacoes()
                 }
             } catch (e: retrofit2.HttpException) {
@@ -230,12 +288,92 @@ class AutorizacaoSaidaViewModel : ViewModel() {
 
         return AutorizacaoSaida(
             id = id,
+            schoolId = school?.id.orEmpty(),
+            studentId = student?.id.orEmpty(),
             studentName = firstName,
             studentAvatarUrl = student?.avatarUrl?.takeIf { it.isNotBlank() },
             status = status,
             autorizadoPor = authorizedPerson?.name.orEmpty(),
+            autorizadoDocumento = authorizedPerson?.document.orEmpty(),
             relacao = authorizedPerson?.relationship.orEmpty(),
             validAte = validAte
+        )
+    }
+
+    fun registrarSaida(autorizacao: AutorizacaoSaida) {
+        viewModelScope.launch {
+            _registrando.value = autorizacao.id
+            val token = TokenManager.getAccessToken() ?: run {
+                _registrando.value = null
+                return@launch
+            }
+            val savedUser = TokenManager.getSavedUser() ?: run {
+                _registrando.value = null
+                return@launch
+            }
+            try {
+                RetrofitClient.autorizacaoSaidaApi.criarPickupLog(
+                    "Bearer $token",
+                    CreatePickupLogRequest(
+                        schoolId = autorizacao.schoolId,
+                        studentId = autorizacao.studentId,
+                        authorizationId = autorizacao.id,
+                        method = "manual",
+                        pickedUpBy = PickedUpBy(
+                            name = autorizacao.autorizadoPor,
+                            document = autorizacao.autorizadoDocumento
+                        ),
+                        verifiedBy = savedUser.id,
+                        departureTime = isoFormatter.format(java.util.Date())
+                    )
+                )
+                loadAutorizacoes()
+            } catch (_: Exception) {
+            } finally {
+                _registrando.value = null
+            }
+        }
+    }
+
+    fun reverterSaida(logId: String, authorizationId: String) {
+        viewModelScope.launch {
+            _revertendo.value = logId
+            val token = TokenManager.getAccessToken() ?: run {
+                _revertendo.value = null
+                return@launch
+            }
+            try {
+                RetrofitClient.autorizacaoSaidaApi.deletarPickupLog("Bearer $token", logId)
+                if (authorizationId.isNotBlank()) {
+                    RetrofitClient.autorizacaoSaidaApi.patchAutorizacaoUsed(
+                        "Bearer $token",
+                        authorizationId,
+                        PatchAutorizacaoUsedRequest(used = false)
+                    )
+                }
+                loadPickupLogs()
+            } catch (_: Exception) {
+            } finally {
+                _revertendo.value = null
+            }
+        }
+    }
+
+    private fun dev.fslab.comunicacao.escolar.model.PickupLogDoc.toPickupLogUi(): PickupLogUi {
+        val hora = runCatching {
+            val iso = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            val local = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR"))
+            iso.parse(departureTime)?.let { local.format(it) }
+        }.getOrNull() ?: departureTime
+        return PickupLogUi(
+            id = id,
+            authorizationId = authorization?.id.orEmpty(),
+            studentName = student?.fullName?.trim()?.split(" ")?.firstOrNull() ?: "Aluno",
+            pickedUpByName = pickedUpBy?.name.orEmpty(),
+            departureTime = hora,
+            verifiedByName = verifiedBy?.fullName.orEmpty()
         )
     }
 }
