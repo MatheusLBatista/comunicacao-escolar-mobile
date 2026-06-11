@@ -63,8 +63,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.PlatformTextStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -162,7 +160,6 @@ fun AutorizacaoSaidaScreen(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        item { Spacer(modifier = Modifier.height(4.dp)) }
                         items(state.logs, key = { it.id }) { log ->
                             PickupLogCard(
                                 log = log,
@@ -228,7 +225,6 @@ fun AutorizacaoSaidaScreen(
                             .padding(horizontal = 20.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        item { Spacer(modifier = Modifier.height(4.dp)) }
                         items(state.autorizacoes, key = { it.id }) { autorizacao ->
                             AutorizacaoCard(
                                 autorizacao = autorizacao,
@@ -1009,11 +1005,8 @@ private fun FiltroChip(
     ) {
         Text(
             text = label,
-            style = TextStyle(
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Medium,
-                platformStyle = PlatformTextStyle(includeFontPadding = false)
-            ),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
             color = if (selecionado) colors.textPrimary else colors.textSecondary
         )
     }
