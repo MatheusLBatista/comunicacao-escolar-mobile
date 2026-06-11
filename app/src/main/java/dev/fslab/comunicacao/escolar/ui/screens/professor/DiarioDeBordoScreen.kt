@@ -11,6 +11,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -63,6 +64,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import dev.fslab.comunicacao.escolar.model.ApiClass
 import dev.fslab.comunicacao.escolar.model.ApiTemplateField
+import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.components.AppToast
 import dev.fslab.comunicacao.escolar.ui.components.rememberAppToastState
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
@@ -173,37 +175,16 @@ private fun DiarioContent(
     val isSubmitting = state.submitState is SubmitState.Submitting
 
     Column(modifier = Modifier.fillMaxSize()) {
+        AppHeader("Diário de Bordo")
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
                 .background(colors.background),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                start = 20.dp, end = 20.dp, bottom = 16.dp
+            contentPadding = PaddingValues(
+                start = 20.dp, end = 20.dp, top = 16.dp, bottom = 16.dp
             ),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 28.dp, bottom = 4.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Diário de Bordo",
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = colors.textPrimary
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "Hoje",
-                        fontSize = 13.sp,
-                        color = colors.textSecondary
-                    )
-                }
-            }
-
             item {
                 Spacer(modifier = Modifier.height(20.dp))
                 ClassTabRow(
@@ -298,7 +279,7 @@ private fun ClassTabRow(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(if (isSelected) colors.primary else Color.Transparent)
+                    .background(if (isSelected) colors.buttonContainer else Color.Transparent)
                     .border(
                         width = 1.dp,
                         color = if (isSelected) Color.Transparent else colors.inputBorder,
@@ -316,7 +297,7 @@ private fun ClassTabRow(
                     text = cls.name,
                     fontSize = 14.sp,
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (isSelected) Color.White else colors.textPrimary
+                    color = if (isSelected) colors.buttonText else colors.textPrimary
                 )
             }
         }
@@ -423,7 +404,7 @@ private fun PresenceToggle(isPresent: Boolean, onToggle: () -> Unit) {
         modifier = Modifier
             .size(32.dp)
             .clip(CircleShape)
-            .background(if (isPresent) colors.primary else Color.Transparent)
+            .background(if (isPresent) colors.buttonContainer else Color.Transparent)
             .border(
                 width = 1.5.dp,
                 color = if (isPresent) Color.Transparent else colors.inputBorder,
@@ -439,7 +420,7 @@ private fun PresenceToggle(isPresent: Boolean, onToggle: () -> Unit) {
         Icon(
             imageVector = Icons.Outlined.Check,
             contentDescription = if (isPresent) "Presente" else "Ausente",
-            tint = if (isPresent) Color.White else colors.inputBorder,
+            tint = if (isPresent) colors.buttonText else colors.inputBorder,
             modifier = Modifier.size(18.dp)
         )
     }
@@ -617,7 +598,7 @@ private fun BooleanFieldToggle(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) colors.primary else Color.Transparent)
+                        .background(if (isSelected) colors.buttonContainer else Color.Transparent)
                         .border(
                             width = 1.dp,
                             color = if (isSelected) Color.Transparent else colors.inputBorder,
@@ -634,7 +615,7 @@ private fun BooleanFieldToggle(
                         text = option,
                         fontSize = 12.sp,
                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isSelected) Color.White else colors.textPrimary
+                        color = if (isSelected) colors.buttonText else colors.textPrimary
                     )
                 }
             }

@@ -37,7 +37,6 @@ import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.People
 import androidx.compose.material.icons.outlined.Face
-import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.SpaceDashboard
 import androidx.compose.material3.Icon
@@ -75,6 +74,7 @@ import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.screens.conversas.ConversaDetailScreen
 import dev.fslab.comunicacao.escolar.ui.screens.conversas.ConversaListScreen
 import dev.fslab.comunicacao.escolar.ui.screens.conversas.NovaConversaScreen
+import dev.fslab.comunicacao.escolar.ui.screens.responsavel.AgendaScreen
 import dev.fslab.comunicacao.escolar.ui.screens.responsavel.PerfilScreen
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AdminViewModel
@@ -96,7 +96,6 @@ sealed class AdminSubScreen {
     object AuditLogs : AdminSubScreen()
     data class ConversaDetail(val conversaId: String, val titulo: String, val avatarUrl: String? = null) : AdminSubScreen()
     object NovaConversa : AdminSubScreen()
-    object Portaria : AdminSubScreen()
 }
 
 private sealed class AdminNavKey {
@@ -243,17 +242,7 @@ fun AdminDashboardScreen(
                         },
                         nome = "Mural"
                     )
-                    Screen.Agenda.route -> AdminPlaceholderTela(
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Outlined.DateRange,
-                                contentDescription = null,
-                                tint = colors.textSecondary.copy(alpha = 0.35f),
-                                modifier = Modifier.size(72.dp)
-                            )
-                        },
-                        nome = "Agenda"
-                    )
+                    Screen.Agenda.route -> AgendaScreen(user = user, accessToken = accessToken)
                     Screen.Perfil.route -> PerfilScreen(
                         user = user,
                         authViewModel = authViewModel,
@@ -377,11 +366,6 @@ fun AdminDashboardScreen(
                             }
                         )
 
-                    is AdminSubScreen.Portaria ->
-                        PortariaQrScanScreen(
-                            user = user,
-                            onBack = { subScreenStack.removeLast() }
-                        )
                 }
             }
         }
@@ -406,7 +390,7 @@ private fun AdminHomeScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 0.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
         item {
@@ -436,16 +420,12 @@ private fun AdminHomeScreen(
                 color = colors.textSecondary,
                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
             )
-        }
-
-        item {
             Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
                 QuickAccessItem(icon = Icons.Outlined.People, title = "Usuários", subtitle = "Professores e responsáveis", onClick = { onNavigate(AdminSubScreen.Usuarios) })
                 QuickAccessItem(icon = Icons.Outlined.Face, title = "Alunos", subtitle = "Ver todos os alunos da escola", onClick = { onNavigate(AdminSubScreen.Alunos) })
                 QuickAccessItem(icon = Icons.Outlined.School, title = "Turmas", subtitle = "Criar e editar turmas", onClick = { onNavigate(AdminSubScreen.Turmas) })
                 QuickAccessItem(icon = Icons.Outlined.Description, title = "Templates de Comunicado", subtitle = "Gerenciar modelos de diário", onClick = { onNavigate(AdminSubScreen.Templates) })
-                QuickAccessItem(icon = Icons.Outlined.History, title = "Logs de Auditoria", subtitle = "Rastrear ações do sistema", onClick = { onNavigate(AdminSubScreen.AuditLogs) })
-                QuickAccessItem(icon = Icons.Outlined.QrCodeScanner, title = "Portaria", subtitle = "Escanear QR Code de autorização", onClick = { onNavigate(AdminSubScreen.Portaria) }, showDivider = false)
+                QuickAccessItem(icon = Icons.Outlined.History, title = "Logs de Auditoria", subtitle = "Rastrear ações do sistema", onClick = { onNavigate(AdminSubScreen.AuditLogs) }, showDivider = false)
             }
         }
         }
@@ -481,7 +461,7 @@ private fun QuickAccessItem(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
-                .padding(vertical = 14.dp),
+                .padding(top = 14.dp, bottom = if (showDivider) 14.dp else 0.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {

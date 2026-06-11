@@ -14,10 +14,8 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -51,13 +49,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import dev.fslab.comunicacao.escolar.ui.theme.Poppins
+import androidx.navigation.compose.rememberNavController
+import dev.fslab.comunicacao.escolar.R
+import dev.fslab.comunicacao.escolar.ui.components.AppHeader
+import dev.fslab.comunicacao.escolar.model.MuralResponse
+import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.MuralViewModel
@@ -150,27 +151,10 @@ fun MuralScreen(
 		modifier = Modifier
 			.fillMaxSize()
 			.background(colors.background)
-			.statusBarsPadding()
-			.navigationBarsPadding()
-			.padding(horizontal = 24.dp)
 	) {
-		Text(
-			text = "Mural",
-			color = colors.textPrimary,
-			style = MaterialTheme.typography.headlineLarge.copy(
-				fontFamily = Poppins,
-				fontWeight = FontWeight.SemiBold,
-				fontSize = 18.sp
-			),
-			textAlign = TextAlign.Center,
-			modifier = Modifier
-				.fillMaxWidth()
-				.padding(top = 10.dp)
-		)
+		AppHeader("Mural")
 
-		Spacer(modifier = Modifier.height(22.dp))
-
-		Box(modifier = Modifier.fillMaxSize()) {
+		Box(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
 			when (muralState) {
 				MuralState.Idle -> {
 					Text("Carregando posts...", modifier = Modifier.align(Alignment.Center))
