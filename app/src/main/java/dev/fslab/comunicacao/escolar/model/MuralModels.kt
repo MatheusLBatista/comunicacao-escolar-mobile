@@ -6,6 +6,13 @@ data class MuralRequest (
     @SerializedName("id") val id:String
 )
 
+data class CreatePostRequest(
+    @SerializedName("title") val title: String,
+    @SerializedName("content") val content: String,
+    @SerializedName("target") val target: TargetInfo? = null,
+    @SerializedName("wait_attachments") val waitAttachments: Boolean = false
+)
+
 data class TargetInfo(
     @SerializedName("scope") val scope: String = "",
     @SerializedName("target_id") val target_id: String? = null
@@ -44,6 +51,13 @@ data class MuralResponse (
     @SerializedName("code") val code: Int,
     @SerializedName("message") val message: String? = "",
     @SerializedName("data") val data: Dados
+)
+
+data class SinglePostResponse (
+    @SerializedName("error") val error: Boolean,
+    @SerializedName("code") val code: Int,
+    @SerializedName("message") val message: String? = "",
+    @SerializedName("data") val data: Docs
 )
 
 data class AttachmentResponse(

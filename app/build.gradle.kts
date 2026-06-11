@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    // Add the Google services Gradle plugin
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -98,9 +100,10 @@ dependencies {
     // Autenticação biométrica
     implementation("androidx.biometric:biometric:1.2.0-alpha05")
 
-    // Firebase Cloud Messaging
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    // Firebase Cloud Messaging (FCM)
+    implementation(platform("com.google.firebase:firebase-bom:33.10.0"))
     implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.firebase:firebase-analytics-ktx")
 
     // Google Sign-In (Credential Manager)
     implementation("androidx.credentials:credentials:1.3.0")

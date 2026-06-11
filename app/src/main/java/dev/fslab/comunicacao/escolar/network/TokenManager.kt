@@ -17,6 +17,7 @@ object TokenManager {
     private const val KEY_USER_ROLE = "user_role"
     private const val KEY_SCHOOL_ID = "school_id"
     private const val KEY_STUDENTS = "students_json"
+    private const val KEY_FCM_TOKEN = "fcm_token"
 
     @Volatile private var accessToken: String? = null
     @Volatile private var refreshToken: String? = null
@@ -26,6 +27,7 @@ object TokenManager {
     @Volatile private var userRole: String? = null
     @Volatile private var schoolId: String? = null
     @Volatile private var studentsJson: String? = null
+    @Volatile private var fcmToken: String? = null
     private var prefs: SharedPreferences? = null
 
     var onSessionExpired: (() -> Unit)? = null
@@ -38,14 +40,11 @@ object TokenManager {
         } catch (e: Exception) {
             Log.e(TAG, "Erro fatal ao inicializar TokenManager (possível corrupção de chaves): ${e.message}")
             try {
-                // Se falhou, as chaves no Keystore podem estar corrompidas ou dessincronizadas.
-                // A única solução é limpar as preferências e tentar novamente.
                 context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit().clear().apply()
                 initInternal(context)
                 Log.w(TAG, "TokenManager reinicializado após limpeza de dados corrompidos")
             } catch (e2: Exception) {
                 Log.e(TAG, "Falha crítica ao tentar recuperar TokenManager: ${e2.message}")
-                // Fallback final: usar SharedPreferences comum se o sistema de criptografia estiver quebrado no dispositivo
                 prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             }
         }
@@ -71,6 +70,7 @@ object TokenManager {
         userRole = prefs?.getString(KEY_USER_ROLE, null)
         schoolId = prefs?.getString(KEY_SCHOOL_ID, null)
         studentsJson = prefs?.getString(KEY_STUDENTS, null)
+        fcmToken = prefs?.getString(KEY_FCM_TOKEN, null)
         Log.d(TAG, "TokenManager init. Autenticado: ${isAuthenticated()}")
     }
 
@@ -109,6 +109,15 @@ object TokenManager {
     }
 
     @Synchronized
+    fun saveFcmToken(token: String) {
+        fcmToken = token
+        prefs?.edit()?.putString(KEY_FCM_TOKEN, token)?.apply()
+    }
+
+    @Synchronized
+    fun getFcmToken(): String? = fcmToken
+
+    @Synchronized
     fun saveStudentsJson(json: String) {
         studentsJson = json
         prefs?.edit()?.putString(KEY_STUDENTS, json)?.apply()
@@ -142,6 +151,7 @@ object TokenManager {
         userRole = null
         schoolId = null
         studentsJson = null
+        // Mantemos o FCM Token mesmo no logout para que o dispositivo possa ser re-identificado
         prefs?.edit()
             ?.remove(KEY_ACCESS)?.remove(KEY_REFRESH)?.remove(KEY_EMAIL)
             ?.remove(KEY_USER_ID)?.remove(KEY_USER_NAME)?.remove(KEY_USER_ROLE)?.remove(KEY_SCHOOL_ID)
