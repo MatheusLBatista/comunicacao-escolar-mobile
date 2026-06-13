@@ -48,6 +48,29 @@ class MuralViewModel : ViewModel() {
                 fetchNewPost(postId)
             }
         }
+
+        // Observa eventos de deleção de posts vindos do FCM
+        viewModelScope.launch {
+            dev.fslab.comunicacao.escolar.network.FCMEventManager.deletePostEvent.collect { postId ->
+                Log.d(TAG, "Evento de deleção de post recebido via FCM: $postId. Removendo localmente...")
+                removePostLocally(postId)
+            }
+        }
+    }
+
+    private fun removePostLocally(postId: String) {
+        val currentResponse = _posts.value
+        if (currentResponse != null) {
+            val updatedDocs = currentResponse.data.docs.filter { it.id != postId }
+            val updatedResponse = currentResponse.copy(
+                data = currentResponse.data.copy(docs = updatedDocs)
+            )
+            _posts.value = updatedResponse
+
+            if (_muralState.value is MuralState.Success) {
+                _muralState.value = MuralState.Success(updatedResponse)
+            }
+        }
     }
 
     private fun fetchNewPost(postId: String) {
@@ -199,20 +222,8 @@ class MuralViewModel : ViewModel() {
             try {
                 val response = RetrofitClient.muralApi.deletePost(postId)
                 if (!response.error) {
-                    // Remove o post da lista local
-                    val currentResponse = _posts.value
-                    if (currentResponse != null) {
-                        val updatedDocs = currentResponse.data.docs.filter { it.id != postId }
-                        val updatedResponse = currentResponse.copy(
-                            data = currentResponse.data.copy(docs = updatedDocs)
-                        )
-                        _posts.value = updatedResponse
-                        
-                        // Se o estado for Success, atualiza a UI
-                        if (_muralState.value is MuralState.Success) {
-                            _muralState.value = MuralState.Success(updatedResponse)
-                        }
-                    }
+                    // Remove o post da lista local usando o helper
+                    removePostLocally(postId)
                     Log.d(TAG, "Post $postId deletado com sucesso.")
                 } else {
                     Log.e(TAG, "Erro ao deletar post: ${response.message}")

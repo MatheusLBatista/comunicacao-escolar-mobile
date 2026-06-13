@@ -53,6 +53,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
             scope.launch {
                 FCMEventManager.emitNewPost(postId)
             }
+        } else if (type == "delete_post" && postId != null) {
+            scope.launch {
+                FCMEventManager.emitDeletePost(postId)
+            }
         }
 
         // Se a mensagem contiver uma notificação, e NÃO for um post (ou quisermos mostrar sempre no sistema)

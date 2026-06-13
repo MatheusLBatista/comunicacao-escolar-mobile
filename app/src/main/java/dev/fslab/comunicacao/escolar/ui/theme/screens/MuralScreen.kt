@@ -522,7 +522,10 @@ fun MuralPostCard(
 				}
 			}
 
-            if (currentUser.role == UserRole.ADMIN) {
+            val isOwner = post.authorId == currentUser.id
+            val canDelete = currentUser.role == UserRole.ADMIN || (currentUser.role == UserRole.PROFESSOR && isOwner)
+
+            if (canDelete) {
                 IconButton(onClick = { showDeleteDialog = true }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
