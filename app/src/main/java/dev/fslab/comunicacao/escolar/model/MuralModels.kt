@@ -60,6 +60,12 @@ data class SinglePostResponse (
     @SerializedName("data") val data: Docs
 )
 
+data class DeletePostResponse(
+    @SerializedName("error") val error: Boolean,
+    @SerializedName("code") val code: Int,
+    @SerializedName("message") val message: String? = ""
+)
+
 data class AttachmentResponse(
     val data: ByteArray
 ) {

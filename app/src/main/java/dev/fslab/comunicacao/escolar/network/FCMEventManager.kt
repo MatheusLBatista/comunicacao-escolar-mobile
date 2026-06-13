@@ -14,10 +14,21 @@ object FCMEventManager {
     private val _newPostEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val newPostEvent: SharedFlow<String> = _newPostEvent.asSharedFlow()
 
+    // Representa o ID de um post deletado
+    private val _deletePostEvent = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val deletePostEvent: SharedFlow<String> = _deletePostEvent.asSharedFlow()
+
     /**
      * Emite um evento de novo post.
      */
     suspend fun emitNewPost(postId: String) {
         _newPostEvent.emit(postId)
+    }
+
+    /**
+     * Emite um evento de deleção de post.
+     */
+    suspend fun emitDeletePost(postId: String) {
+        _deletePostEvent.emit(postId)
     }
 }

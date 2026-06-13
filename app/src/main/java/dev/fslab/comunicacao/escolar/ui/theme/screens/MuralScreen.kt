@@ -27,12 +27,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -66,6 +69,7 @@ import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import androidx.compose.ui.Alignment
 import androidx.navigation.NavController
 import dev.fslab.comunicacao.escolar.model.User
+import dev.fslab.comunicacao.escolar.model.UserRole
 import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.LikeViewModel
 import coil.compose.AsyncImage
@@ -432,26 +436,35 @@ fun MuralPostCard(
 	var likesCount by remember { mutableIntStateOf(post.likesCount ?: 0) }
 	
 	val author = authors[post.authorId]
+    
+    var showDeleteDialog by remember { mutableStateOf(false) }
 
 	LaunchedEffect(post.authorId) {
 		muralViewModel.fetchAuthor(post.authorId)
 	}
 
-	LaunchedEffect(likeState) {
-		if (likeState is LikeState.Success) {
-			val response = (likeState as LikeState.Success).like
-			val newlyLiked = response.data?.id != null
-			
-			if (newlyLiked != isLiked) {
-				isLiked = newlyLiked
-				if (newlyLiked) {
-					likesCount++
-				} else {
-					if (likesCount > 0) likesCount--
-				}
-			}
-		}
-	}
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Excluir Anúncio") },
+            text = { Text("Tem certeza que deseja excluir este anúncio? Esta ação não pode ser desfeita.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        muralViewModel.deletePost(post.id)
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Excluir", color = Color.Red)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
 
 	Column(modifier = Modifier
 		.fillMaxWidth()
@@ -492,7 +505,7 @@ fun MuralPostCard(
 			
 			Spacer(modifier = Modifier.width(8.dp))
 			
-			Column {
+			Column(modifier = Modifier.weight(1f)) {
 				Text(
 					text = author?.fullName ?: "Carregando...",
 					style = MaterialTheme.typography.labelLarge,
@@ -508,6 +521,20 @@ fun MuralPostCard(
 					)
 				}
 			}
+
+            val isOwner = post.authorId == currentUser.id
+            val canDelete = currentUser.role == UserRole.ADMIN || (currentUser.role == UserRole.PROFESSOR && isOwner)
+
+            if (canDelete) {
+                IconButton(onClick = { showDeleteDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Excluir Post",
+                        tint = Color.Gray.copy(alpha = 0.6f),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
 		}
 
 		Text(
