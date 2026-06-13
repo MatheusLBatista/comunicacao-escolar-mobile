@@ -193,4 +193,35 @@ class MuralViewModel : ViewModel() {
             _muralState.value = MuralState.Idle
         }
     }
+
+    fun deletePost(postId: String) {
+        viewModelScope.launch {
+            try {
+                val response = RetrofitClient.muralApi.deletePost(postId)
+                if (!response.error) {
+                    // Remove o post da lista local
+                    val currentResponse = _posts.value
+                    if (currentResponse != null) {
+                        val updatedDocs = currentResponse.data.docs.filter { it.id != postId }
+                        val updatedResponse = currentResponse.copy(
+                            data = currentResponse.data.copy(docs = updatedDocs)
+                        )
+                        _posts.value = updatedResponse
+                        
+                        // Se o estado for Success, atualiza a UI
+                        if (_muralState.value is MuralState.Success) {
+                            _muralState.value = MuralState.Success(updatedResponse)
+                        }
+                    }
+                    Log.d(TAG, "Post $postId deletado com sucesso.")
+                } else {
+                    Log.e(TAG, "Erro ao deletar post: ${response.message}")
+                    _muralState.value = MuralState.Error(response.message ?: "Erro ao deletar post")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exceção ao deletar post", e)
+                _muralState.value = MuralState.Error(e.localizedMessage ?: "Erro ao processar exclusão")
+            }
+        }
+    }
 }
