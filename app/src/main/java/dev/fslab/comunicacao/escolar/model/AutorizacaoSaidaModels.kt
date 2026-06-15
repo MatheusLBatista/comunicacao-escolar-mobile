@@ -1,6 +1,10 @@
 package dev.fslab.comunicacao.escolar.model
 
+import com.google.gson.JsonDeserializationContext
+import com.google.gson.JsonDeserializer
+import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
+import java.lang.reflect.Type
 
 data class AutorizacaoSaida(
     val id: String,
@@ -127,7 +131,7 @@ data class AutorizacaoSaidaByIdResponse(
 data class CreatePickupLogRequest(
     @SerializedName("school_id") val schoolId: String,
     @SerializedName("student_id") val studentId: String,
-    @SerializedName("authorization_id") val authorizationId: String,
+    @SerializedName("authorization_id") val authorizationId: String? = null,
     @SerializedName("method") val method: String = "qr_code",
     @SerializedName("picked_up_by") val pickedUpBy: PickedUpBy,
     @SerializedName("verified_by") val verifiedBy: String,
@@ -138,7 +142,8 @@ data class CreatePickupLogRequest(
 data class PickedUpBy(
     @SerializedName("user_id") val userId: String? = null,
     @SerializedName("name") val name: String,
-    @SerializedName("document") val document: String
+    @SerializedName("document") val document: String,
+    @SerializedName("relationship") val relationship: String? = null
 )
 
 data class CreatePickupLogResponse(
@@ -153,23 +158,35 @@ data class PickupLogAuthorization(
     @SerializedName("_id") val id: String = ""
 )
 
+class PickupLogAuthorizationDeserializer : JsonDeserializer<PickupLogAuthorization> {
+    override fun deserialize(json: JsonElement, typeOfT: Type, ctx: JsonDeserializationContext): PickupLogAuthorization? {
+        if (json.isJsonNull) return null
+        return if (json.isJsonPrimitive) PickupLogAuthorization(id = json.asString)
+        else PickupLogAuthorization(id = json.asJsonObject["_id"]?.asString ?: "")
+    }
+}
+
 data class PickupLogDoc(
     @SerializedName("_id") val id: String = "",
     @SerializedName("student_id") val student: PickupLogStudent? = null,
     @SerializedName("picked_up_by") val pickedUpBy: PickupLogPickedUpByDoc? = null,
+    @SerializedName("method") val method: String = "",
     @SerializedName("departure_time") val departureTime: String = "",
+    @SerializedName("notes") val notes: String? = null,
     @SerializedName("verified_by") val verifiedBy: PickupLogVerifiedBy? = null,
     @SerializedName("authorization_id") val authorization: PickupLogAuthorization? = null
 )
 
 data class PickupLogStudent(
     @SerializedName("_id") val id: String = "",
-    @SerializedName("full_name") val fullName: String = ""
+    @SerializedName("full_name") val fullName: String = "",
+    @SerializedName("avatar_url") val avatarUrl: String? = null
 )
 
 data class PickupLogPickedUpByDoc(
     @SerializedName("name") val name: String = "",
-    @SerializedName("document") val document: String = ""
+    @SerializedName("document") val document: String = "",
+    @SerializedName("relationship") val relationship: String? = null
 )
 
 data class PickupLogVerifiedBy(
@@ -177,16 +194,46 @@ data class PickupLogVerifiedBy(
     @SerializedName("full_name") val fullName: String = ""
 )
 
+class PickupLogVerifiedByDeserializer : JsonDeserializer<PickupLogVerifiedBy> {
+    override fun deserialize(json: JsonElement, typeOfT: Type, ctx: JsonDeserializationContext): PickupLogVerifiedBy? {
+        if (json.isJsonNull) return null
+        return if (json.isJsonPrimitive) PickupLogVerifiedBy(id = json.asString, fullName = "")
+        else {
+            val obj = json.asJsonObject
+            PickupLogVerifiedBy(
+                id = obj["_id"]?.asString ?: "",
+                fullName = obj["full_name"]?.asString ?: ""
+            )
+        }
+    }
+}
+
 data class PickupLogsResponse(
     @SerializedName("error") val error: Boolean = false,
+    @SerializedName("code") val code: Int = 0,
     @SerializedName("message") val message: String = "",
-    @SerializedName("errors") val errors: List<String> = emptyList(),
-    @SerializedName("data") val data: PickupLogsData? = null
-)
+    @SerializedName("data") val data: PickupLogsData? = null,
+    @SerializedName("errors") val errors: List<String> = emptyList()
+) {
+    fun getErrorMessage(): String = errors.firstOrNull() ?: message
+}
 
 data class PickupLogsData(
     @SerializedName("docs") val docs: List<PickupLogDoc> = emptyList(),
-    @SerializedName("totalDocs") val totalDocs: Int = 0
+    @SerializedName("totalDocs") val totalDocs: Int = 0,
+    @SerializedName("limit") val limit: Int = 0,
+    @SerializedName("totalPages") val totalPages: Int = 0,
+    @SerializedName("page") val page: Int = 0
+)
+
+data class PickupLogItem(
+    val id: String,
+    val studentName: String,
+    val studentAvatarUrl: String?,
+    val pickedUpName: String,
+    val relationship: String,
+    val time: String,
+    val isManual: Boolean
 )
 
 data class PickupLogUi(
