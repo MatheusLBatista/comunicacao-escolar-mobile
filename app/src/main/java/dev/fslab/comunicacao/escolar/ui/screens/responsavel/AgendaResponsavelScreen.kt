@@ -520,7 +520,7 @@ fun AgendaResponsavelScreen(
                     ) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(28.dp),
-                            color = colors.primary,
+                            color = colors.textPrimary,
                             strokeWidth = 2.dp
                         )
                     }

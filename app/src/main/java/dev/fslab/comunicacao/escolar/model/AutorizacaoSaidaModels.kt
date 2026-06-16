@@ -12,6 +12,7 @@ data class AutorizacaoSaida(
     val studentId: String,
     val studentName: String,
     val studentAvatarUrl: String?,
+    val className: String,
     val status: String,
     val autorizadoPor: String,
     val autorizadoDocumento: String,
@@ -58,7 +59,13 @@ data class AutorizacaoSaidaDoc(
 data class AutorizacaoSaidaStudent(
     @SerializedName("_id") val id: String = "",
     @SerializedName("full_name") val fullName: String = "",
-    @SerializedName("avatar_url") val avatarUrl: String? = null
+    @SerializedName("avatar_url") val avatarUrl: String? = null,
+    @SerializedName("memberships") val memberships: List<AutorizacaoStudentMembership> = emptyList()
+)
+
+data class AutorizacaoStudentMembership(
+    @SerializedName("class_id") val classId: String? = null,
+    @SerializedName("role") val role: String = ""
 )
 
 data class AutorizacaoAuthorizedPerson(
@@ -180,7 +187,8 @@ data class PickupLogDoc(
 data class PickupLogStudent(
     @SerializedName("_id") val id: String = "",
     @SerializedName("full_name") val fullName: String = "",
-    @SerializedName("avatar_url") val avatarUrl: String? = null
+    @SerializedName("avatar_url") val avatarUrl: String? = null,
+    @SerializedName("memberships") val memberships: List<AutorizacaoStudentMembership> = emptyList()
 )
 
 data class PickupLogPickedUpByDoc(
@@ -240,7 +248,10 @@ data class PickupLogUi(
     val id: String,
     val authorizationId: String,
     val studentName: String,
+    val className: String,
     val pickedUpByName: String,
+    val pickedUpByDocument: String,
+    val pickedUpByRelationship: String,
     val departureTime: String,
     val verifiedByName: String
 )

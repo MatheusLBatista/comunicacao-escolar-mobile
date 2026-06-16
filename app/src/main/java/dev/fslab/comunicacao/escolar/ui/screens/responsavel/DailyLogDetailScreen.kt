@@ -16,15 +16,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -33,32 +35,44 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import dev.fslab.comunicacao.escolar.model.CreateConversationRequest
 import dev.fslab.comunicacao.escolar.model.DailyLog
 import dev.fslab.comunicacao.escolar.model.DailyLogDetailEntry
+import dev.fslab.comunicacao.escolar.model.SendMessageRequest
+import dev.fslab.comunicacao.escolar.model.User
+import dev.fslab.comunicacao.escolar.network.RetrofitClient
+import dev.fslab.comunicacao.escolar.network.TokenManager
 import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
+import kotlinx.coroutines.launch
 
 @Composable
 fun DailyLogDetailScreen(
     log: DailyLog,
-    onBack: () -> Unit
+    user: User,
+    onBack: () -> Unit,
+    onOpenConversation: (conversaId: String, titulo: String, avatarUrl: String?) -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
 
-    val message = log.observation.trim().ifBlank { log.description }
+    val observation = log.observation.trim().takeIf { it.isNotBlank() }
+        ?: if (log.entries.isEmpty()) log.description else null
     val dateTimeLabel = buildDateTimeLabel(log.date, log.time)
     val teacherName = log.teacherName.ifBlank { "Professor(a)" }
 
@@ -74,28 +88,33 @@ fun DailyLogDetailScreen(
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item { Spacer(modifier = Modifier.height(4.dp)) }
+
             item {
                 DailyLogMessageCard(
                     teacherName = teacherName,
                     dateTimeLabel = dateTimeLabel,
-                    message = message,
+                    observation = observation,
                     teacherAvatarUrl = log.teacherAvatarUrl
                 )
             }
 
-            itemsIndexed(log.entries) { index, entry ->
-                DailyLogEntryRow(
-                    entry = entry,
-                    showDivider = index != log.entries.lastIndex
-                )
+            if (log.entries.isNotEmpty()) {
+                item {
+                    DailyLogEntriesCard(entries = log.entries)
+                }
             }
 
             item { Spacer(modifier = Modifier.height(8.dp)) }
         }
 
-        DailyLogMessageComposer()
+        DailyLogMessageComposer(
+            log = log,
+            schoolId = user.schoolId.orEmpty(),
+            onOpenConversation = onOpenConversation
+        )
     }
 }
 
@@ -103,7 +122,7 @@ fun DailyLogDetailScreen(
 private fun DailyLogMessageCard(
     teacherName: String,
     dateTimeLabel: String,
-    message: String,
+    observation: String?,
     teacherAvatarUrl: String? = null
 ) {
     val colors = LocalComunicacaoEscolarColors.current
@@ -156,121 +175,192 @@ private fun DailyLogMessageCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Prof. $teacherName",
-                    fontSize = 15.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.textPrimary
                 )
                 if (dateTimeLabel.isNotBlank()) {
                     Text(
                         text = dateTimeLabel,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         color = colors.textSecondary
                     )
                 }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = message,
-                    fontSize = 14.sp,
-                    color = colors.textSecondary,
-                    maxLines = 4,
-                    overflow = TextOverflow.Ellipsis
-                )
+                if (observation != null) {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = observation,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun DailyLogEntryRow(
-    entry: DailyLogDetailEntry,
-    showDivider: Boolean
-) {
+private fun DailyLogEntriesCard(entries: List<DailyLogDetailEntry>) {
     val colors = LocalComunicacaoEscolarColors.current
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.surface)
+            .padding(horizontal = 16.dp, vertical = 4.dp)
     ) {
-        Text(
-            text = entry.label,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = colors.textPrimary
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = entry.value,
-            fontSize = 13.sp,
-            color = colors.textSecondary
-        )
-        if (showDivider) {
-            HorizontalDivider(
-                color = colors.inputBorder,
-                thickness = 0.5.dp,
-                modifier = Modifier.padding(top = 14.dp)
-            )
+        entries.forEachIndexed { index, entry ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp)
+            ) {
+                Text(
+                    text = entry.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textSecondary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = entry.value,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.textPrimary
+                )
+            }
+            if (index != entries.lastIndex) {
+                HorizontalDivider(color = colors.inputBorder, thickness = 0.5.dp)
+            }
         }
     }
 }
 
 @Composable
-private fun DailyLogMessageComposer() {
+private fun DailyLogMessageComposer(
+    log: DailyLog,
+    schoolId: String,
+    onOpenConversation: (conversaId: String, titulo: String, avatarUrl: String?) -> Unit
+) {
     val colors = LocalComunicacaoEscolarColors.current
+    val scope = rememberCoroutineScope()
     var message by remember { mutableStateOf("") }
+    var isSending by remember { mutableStateOf(false) }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .imePadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        OutlinedTextField(
-            value = message,
-            onValueChange = { message = it },
-            modifier = Modifier.weight(1f),
-            textStyle = TextStyle(
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                color = colors.textPrimary
-            ),
-            placeholder = {
-                Text(
-                    text = "Escreva uma mensagem...",
-                    fontSize = 13.sp,
-                    color = colors.textSecondary
+    val canSend = !isSending && message.isNotBlank() &&
+        (log.conversationId.isNotBlank() || log.teacherId.isNotBlank()) &&
+        schoolId.isNotBlank()
+
+    fun sendMessage() {
+        if (!canSend) return
+        scope.launch {
+            isSending = true
+            try {
+                val token = TokenManager.getAccessToken() ?: return@launch
+                val auth = "Bearer $token"
+
+                val conversaId = if (log.conversationId.isNotBlank()) {
+                    log.conversationId
+                } else {
+                    val resp = RetrofitClient.conversaApi.findOrCreate(
+                        schoolId,
+                        CreateConversationRequest(participantId = log.teacherId)
+                    )
+                    resp.data?.id ?: return@launch
+                }
+
+                val encodedText = "[act_ref:${log.id}|${log.date}|${log.childName}]\n${message.trim()}"
+                RetrofitClient.conversaApi.send(
+                    conversaId,
+                    SendMessageRequest(text = encodedText)
                 )
-            },
-            shape = RoundedCornerShape(24.dp),
-            singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = colors.lightGray,
-                unfocusedBorderColor = colors.lightGray,
-                focusedContainerColor = colors.lightGray,
-                unfocusedContainerColor = colors.lightGray,
-                focusedTextColor = colors.textPrimary,
-                unfocusedTextColor = colors.textPrimary,
-                cursorColor = colors.primary
-            )
-        )
 
-        Spacer(modifier = Modifier.width(12.dp))
+                message = ""
+                val titulo = "Prof. ${log.teacherName.ifBlank { "Professor(a)" }}"
+                onOpenConversation(conversaId, titulo, log.teacherAvatarUrl)
+            } finally {
+                isSending = false
+            }
+        }
+    }
 
-        IconButton(
-            onClick = { },
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
             modifier = Modifier
-                .size(48.dp)
-                .clip(CircleShape)
-                .background(colors.textInput)
+                .fillMaxWidth()
+                .height(0.5.dp)
+                .background(colors.lightGray)
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(colors.background)
+                .imePadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Outlined.Send,
-                contentDescription = "Enviar mensagem",
-                tint = colors.textOnPrimary,
-                modifier = Modifier.size(20.dp)
+            OutlinedTextField(
+                value = message,
+                onValueChange = { message = it },
+                placeholder = {
+                    Text(
+                        "Escreva uma mensagem...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary
+                    )
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Send
+                ),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colors.focusedIndicator,
+                    unfocusedBorderColor = colors.inputBorder,
+                    focusedTextColor = colors.textInput,
+                    unfocusedTextColor = colors.textInput,
+                    cursorColor = colors.focusedIndicator,
+                    focusedContainerColor = colors.surface,
+                    unfocusedContainerColor = colors.surface
+                )
             )
+
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(if (canSend) colors.buttonContainer else colors.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                if (isSending) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        color = colors.buttonText,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    IconButton(
+                        onClick = ::sendMessage,
+                        modifier = Modifier.size(52.dp),
+                        enabled = canSend
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Send,
+                            contentDescription = "Enviar mensagem",
+                            tint = if (canSend) colors.buttonText else colors.textSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

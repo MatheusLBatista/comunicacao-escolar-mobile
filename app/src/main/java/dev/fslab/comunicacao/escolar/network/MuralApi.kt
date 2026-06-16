@@ -1,10 +1,12 @@
 package dev.fslab.comunicacao.escolar.network
 
+import dev.fslab.comunicacao.escolar.model.ApiResponse
 import dev.fslab.comunicacao.escolar.model.CreatePostRequest
 import dev.fslab.comunicacao.escolar.model.MuralRequest
 import dev.fslab.comunicacao.escolar.model.MuralResponse
 import dev.fslab.comunicacao.escolar.model.SinglePostResponse
 import dev.fslab.comunicacao.escolar.model.DeletePostResponse
+import dev.fslab.comunicacao.escolar.model.UpdatePostRequest
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.http.Body
@@ -41,6 +43,18 @@ interface MuralApi {
         @Part files: List<MultipartBody.Part>,
         @Query("notify") notify: Boolean = false
     ): SinglePostResponse
+
+    @PATCH("posts/{id}")
+    suspend fun updatePost(
+        @Path("id") postId: String,
+        @Body request: UpdatePostRequest
+    ): SinglePostResponse
+
+    @DELETE("posts/{postId}/attachments/{linkId}")
+    suspend fun deleteAttachment(
+        @Path("postId") postId: String,
+        @Path("linkId") linkId: String
+    ): ApiResponse<Any>
 
     @GET("attachments/{id}")
     suspend fun getAttachment(@Path("id") id: String): ResponseBody

@@ -132,14 +132,12 @@ fun AutorizacaoSaidaScreen(
                     onClick = { if (filtro !is AutorizacaoFiltro.Canceladas) viewModel.setFiltro(AutorizacaoFiltro.Canceladas) },
                     colors = colors
                 )
-                if (canRegisterSaida) {
-                    FiltroChip(
-                        label = "Saídas",
-                        selecionado = filtro is AutorizacaoFiltro.Saidas,
-                        onClick = { if (filtro !is AutorizacaoFiltro.Saidas) viewModel.setFiltro(AutorizacaoFiltro.Saidas) },
-                        colors = colors
-                    )
-                }
+                FiltroChip(
+                    label = "Saídas",
+                    selecionado = filtro is AutorizacaoFiltro.Saidas,
+                    onClick = { if (filtro !is AutorizacaoFiltro.Saidas) viewModel.setFiltro(AutorizacaoFiltro.Saidas) },
+                    colors = colors
+                )
             }
 
             if (filtro is AutorizacaoFiltro.Saidas) {
@@ -169,6 +167,7 @@ fun AutorizacaoSaidaScreen(
                         items(state.logs, key = { it.id }) { log ->
                             PickupLogCard(
                                 log = log,
+                                canReverter = canRegisterSaida,
                                 revertendo = revertendo == log.id,
                                 onReverter = { viewModel.reverterSaida(log.id, log.authorizationId) }
                             )
@@ -680,7 +679,7 @@ private fun NovaAutorizacaoSheet(
             Spacer(modifier = Modifier.height(20.dp))
 
             val isValid = alunoSelecionado != null && nome.isNotBlank() &&
-                    documento.isNotBlank() && relacao.isNotBlank() && validUntilMs > validFromMs
+                    documento.filter { it.isDigit() }.length == 11 && relacao.isNotBlank() && validUntilMs > validFromMs
             Button(
                 onClick = { alunoSelecionado?.id?.let { onCriar(nome, documento, relacao, validFromMs, validUntilMs, it) } },
                 enabled = isValid && !criando,
@@ -874,16 +873,26 @@ private fun AutorizacaoCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column {
                 Text(
                     text = autorizacao.studentName,
                     fontSize = 15.sp,
+                    lineHeight = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.textPrimary
                 )
+                if (autorizacao.className.isNotBlank()) {
+                    Text(
+                        text = autorizacao.className,
+                        fontSize = 12.sp,
+                        lineHeight = 15.sp,
+                        color = colors.textSecondary
+                    )
+                }
                 Text(
                     text = autorizacao.status,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp,
                     color = colors.textSecondary
                 )
             }
@@ -906,6 +915,9 @@ private fun AutorizacaoCard(
                 else
                     autorizacao.autorizadoPor
             )
+            if (autorizacao.autorizadoDocumento.isNotBlank()) {
+                InfoRow(label = "CPF", value = formatCpf(autorizacao.autorizadoDocumento))
+            }
             InfoRow(label = "Válido até", value = autorizacao.validAte)
         }
 
@@ -977,6 +989,12 @@ private fun AutorizacaoCard(
     }
 }
 
+private fun formatCpf(raw: String): String {
+    val digits = raw.filter { it.isDigit() }
+    if (digits.length != 11) return raw
+    return "${digits.substring(0, 3)}.${digits.substring(3, 6)}.${digits.substring(6, 9)}-${digits.substring(9)}"
+}
+
 @Composable
 private fun InfoRow(label: String, value: String) {
     val colors = LocalComunicacaoEscolarColors.current
@@ -1021,6 +1039,7 @@ private fun FiltroChip(
 @Composable
 private fun PickupLogCard(
     log: PickupLogUi,
+    canReverter: Boolean = false,
     revertendo: Boolean = false,
     onReverter: () -> Unit = {}
 ) {
@@ -1100,16 +1119,26 @@ private fun PickupLogCard(
                 )
             }
             Spacer(modifier = Modifier.width(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column {
                 Text(
                     text = log.studentName,
                     fontSize = 15.sp,
+                    lineHeight = 18.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.textPrimary
                 )
+                if (log.className.isNotBlank()) {
+                    Text(
+                        text = log.className,
+                        fontSize = 12.sp,
+                        lineHeight = 15.sp,
+                        color = colors.textSecondary
+                    )
+                }
                 Text(
                     text = log.departureTime,
-                    fontSize = 13.sp,
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp,
                     color = colors.textSecondary
                 )
             }
@@ -1124,39 +1153,48 @@ private fun PickupLogCard(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (log.pickedUpByName.isNotBlank()) {
-                InfoRow(label = "Buscado por", value = log.pickedUpByName)
+                val pickedUpByLabel = if (log.pickedUpByRelationship.isNotBlank())
+                    "${log.pickedUpByName} · ${log.pickedUpByRelationship}"
+                else
+                    log.pickedUpByName
+                InfoRow(label = "Buscado por", value = pickedUpByLabel)
+            }
+            if (log.pickedUpByDocument.isNotBlank()) {
+                InfoRow(label = "CPF", value = formatCpf(log.pickedUpByDocument))
             }
             if (log.verifiedByName.isNotBlank()) {
                 InfoRow(label = "Verificado por", value = log.verifiedByName)
             }
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .border(1.dp, colors.inputBorder, RoundedCornerShape(8.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    enabled = !revertendo,
-                    onClick = { showConfirmReverter = true }
-                )
-                .padding(vertical = 13.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            if (revertendo) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp,
-                    color = colors.textSecondary
-                )
-            } else {
-                Text(
-                    text = "Reverter saída",
-                    fontSize = 14.sp,
-                    color = colors.textSecondary
-                )
+        if (canReverter) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, colors.inputBorder, RoundedCornerShape(8.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = !revertendo,
+                        onClick = { showConfirmReverter = true }
+                    )
+                    .padding(vertical = 13.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (revertendo) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = colors.textSecondary
+                    )
+                } else {
+                    Text(
+                        text = "Reverter saída",
+                        fontSize = 14.sp,
+                        color = colors.textSecondary
+                    )
+                }
             }
         }
     }

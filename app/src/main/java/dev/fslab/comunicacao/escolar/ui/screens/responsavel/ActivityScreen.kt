@@ -1,5 +1,6 @@
 package dev.fslab.comunicacao.escolar.ui.screens.responsavel
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,6 +9,7 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,12 +30,13 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.Button
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
@@ -46,20 +49,64 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.fslab.comunicacao.escolar.model.DailyLog
+import dev.fslab.comunicacao.escolar.model.User
 import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
+import dev.fslab.comunicacao.escolar.ui.viewmodel.ConversaViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.DailyLogsUiState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.DailyLogsViewModel
+import dev.fslab.comunicacao.escolar.ui.screens.conversas.ConversaDetailScreen
+
+private data class ConversaAtividade(
+    val conversaId: String,
+    val titulo: String,
+    val avatarUrl: String?,
+    val log: DailyLog
+)
 
 @Composable
-fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
+fun ActivityScreen(
+    user: User,
+    pendingLogId: String? = null,
+    onPendingLogConsumed: () -> Unit = {},
+    viewModel: DailyLogsViewModel = viewModel()
+) {
     val colors = LocalComunicacaoEscolarColors.current
     val uiState by viewModel.uiState.collectAsState()
     var selectedLog by remember { mutableStateOf<DailyLog?>(null) }
     var showAutorizacoes by remember { mutableStateOf(false) }
+    var conversaAberta by remember { mutableStateOf<ConversaAtividade?>(null) }
+
+    LaunchedEffect(pendingLogId, uiState) {
+        if (pendingLogId != null && uiState is DailyLogsUiState.Content) {
+            val log = (uiState as DailyLogsUiState.Content).groups
+                .flatMap { it.logs }
+                .firstOrNull { it.id == pendingLogId }
+            if (log != null) {
+                selectedLog = log
+                onPendingLogConsumed()
+            }
+        }
+    }
+
+    BackHandler(enabled = conversaAberta != null) { conversaAberta = null }
+    BackHandler(enabled = showAutorizacoes) { showAutorizacoes = false }
+    BackHandler(enabled = selectedLog != null) { selectedLog = null }
+
+    if (conversaAberta != null) {
+        val ca = conversaAberta!!
+        AtividadeConversaScreen(
+            conversaId = ca.conversaId,
+            titulo = ca.titulo,
+            avatarUrl = ca.avatarUrl,
+            log = ca.log,
+            user = user,
+            onBack = { conversaAberta = null }
+        )
+        return
+    }
 
     if (showAutorizacoes) {
         AutorizacaoSaidaScreen(onBack = { showAutorizacoes = false })
@@ -67,9 +114,13 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
     }
 
     if (selectedLog != null) {
-        dev.fslab.comunicacao.escolar.ui.screens.responsavel.DailyLogDetailScreen(
+        DailyLogDetailScreen(
             log = selectedLog!!,
-            onBack = { selectedLog = null }
+            user = user,
+            onBack = { selectedLog = null },
+            onOpenConversation = { conversaId, titulo, avatarUrl ->
+                conversaAberta = ConversaAtividade(conversaId, titulo, avatarUrl, selectedLog!!)
+            }
         )
         return
     }
@@ -81,13 +132,7 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
     ) {
         AppHeader("Atividades")
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp)
-        ) {
-            when (uiState) {
-
+        when (uiState) {
             is DailyLogsUiState.Loading -> {
                 Box(
                     modifier = Modifier
@@ -95,33 +140,32 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
                         .padding(bottom = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Carregando atividades...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.textSecondary
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        color = colors.textSecondary,
+                        strokeWidth = 2.dp
                     )
                 }
             }
 
             is DailyLogsUiState.Error -> {
                 val message = (uiState as DailyLogsUiState.Error).message
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = 24.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(horizontal = 40.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = message,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = colors.textSecondary,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(onClick = { viewModel.loadDailyLogs() }) {
-                            Text(text = "Tentar novamente")
-                        }
+                    Text(
+                        text = message,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textSecondary,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Button(onClick = { viewModel.loadDailyLogs() }) {
+                        Text(text = "Tentar novamente")
                     }
                 }
             }
@@ -146,20 +190,21 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 20.dp, top = 16.dp, end = 20.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     item {
                         QuickAccessSection(onVerAutorizacoes = { showAutorizacoes = true })
-                        Spacer(modifier = Modifier.height(16.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                    groups.forEachIndexed { index, group ->
+                    groups.forEach { group ->
                         item {
                             Text(
                                 text = group.dateLabel,
-                                fontSize = 16.sp,
+                                style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = colors.textSecondary,
-                                modifier = Modifier.padding(top = 20.dp, bottom = 8.dp)
+                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
                             )
                         }
                         items(group.logs) { log ->
@@ -168,16 +213,34 @@ fun ActivityScreen(viewModel: DailyLogsViewModel = viewModel()) {
                                 onClick = { selectedLog = log }
                             )
                         }
-                        if (index != groups.lastIndex) {
-                            item { Spacer(modifier = Modifier.height(12.dp)) }
-                        }
                     }
-                    item { Spacer(modifier = Modifier.height(16.dp)) }
                 }
             }
         }
-        } // Box
     }
+}
+
+@Composable
+private fun AtividadeConversaScreen(
+    conversaId: String,
+    titulo: String,
+    avatarUrl: String?,
+    log: DailyLog,
+    user: User,
+    onBack: () -> Unit
+) {
+    val colors = LocalComunicacaoEscolarColors.current
+    val conversaViewModel: ConversaViewModel = viewModel(key = "atividade_$conversaId")
+
+    ConversaDetailScreen(
+        conversaId = conversaId,
+        titulo = titulo,
+        avatarUrl = avatarUrl,
+        user = user,
+        conversaViewModel = conversaViewModel,
+        onBack = onBack,
+        onActivityRefTapped = { onBack() }
+    )
 }
 
 @Composable
@@ -187,8 +250,8 @@ private fun QuickAccessSection(onVerAutorizacoes: () -> Unit) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "ACESSO RÁPIDO",
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
             color = colors.textSecondary,
             modifier = Modifier.padding(bottom = 8.dp)
         )
@@ -252,14 +315,14 @@ private fun QuickAccessCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    fontSize = 15.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = colors.textPrimary
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = colors.textSecondary
                 )
             }
@@ -276,94 +339,72 @@ private fun QuickAccessCard(
 @Composable
 private fun DailyLogCard(log: DailyLog, onClick: () -> Unit) {
     val colors = LocalComunicacaoEscolarColors.current
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
     val context = LocalContext.current
 
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Column(
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(72.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.surface)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(color = if (isPressed) colors.lightGray else colors.background)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    onClick = onClick
-                )
-                .padding(horizontal = 12.dp, vertical = 12.dp)
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(colors.lightGray),
+            contentAlignment = Alignment.Center
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
+            if (log.studentAvatarUrl != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(context)
+                        .data(log.studentAvatarUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = log.childName,
                     modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(colors.lightGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (log.studentAvatarUrl != null) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(log.studentAvatarUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = log.childName,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape),
-                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = null,
-                            tint = colors.iconGray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = log.childName,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colors.textPrimary
-                        )
-                        if (log.time.isNotBlank()) {
-                            Text(
-                                text = log.time,
-                                fontSize = 12.sp,
-                                color = colors.textSecondary
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = log.description,
-                        fontSize = 14.sp,
-                        color = colors.textSecondary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
+                        .size(40.dp)
+                        .clip(CircleShape),
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = colors.iconGray,
+                    modifier = Modifier.size(22.dp)
+                )
             }
         }
 
-        HorizontalDivider(
-            color = colors.inputBorder,
-            thickness = 1.dp,
-            modifier = Modifier.padding(top = 8.dp)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = log.childName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            val preview = if (log.time.isNotBlank()) "${log.time} • ${log.description}" else log.description
+            Text(
+                text = preview,
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.textSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Icon(
+            imageVector = Icons.Outlined.ChevronRight,
+            contentDescription = null,
+            tint = colors.textSecondary,
+            modifier = Modifier.size(18.dp)
         )
     }
 }

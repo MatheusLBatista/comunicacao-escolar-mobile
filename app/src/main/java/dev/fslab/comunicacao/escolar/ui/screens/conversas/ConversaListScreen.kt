@@ -24,10 +24,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -49,7 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.fslab.comunicacao.escolar.model.Conversation
@@ -76,7 +72,6 @@ fun ConversaListScreen(
     val lastMessages by conversaViewModel.lastMessages.collectAsState()
 
     var searchQuery by remember { mutableStateOf("") }
-    var showFilterMenu by remember { mutableStateOf(false) }
 
     LaunchedEffect(user.id, user.schoolId) {
         if (accessToken.isNotBlank()) SocketManager.connect(accessToken)
@@ -108,74 +103,33 @@ fun ConversaListScreen(
         ) {
             AppHeader("Conversas")
 
-            Row(
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                placeholder = {
+                    Text(
+                        "Buscar conversa...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.textSecondary
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    placeholder = {
-                        Text(
-                            "Buscar conversa...",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colors.textSecondary
-                        )
-                    },
-                    modifier = Modifier.weight(1f).height(52.dp),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = colors.focusedIndicator,
-                        unfocusedBorderColor = colors.inputBorder,
-                        focusedTextColor = colors.textInput,
-                        unfocusedTextColor = colors.textInput,
-                        cursorColor = colors.focusedIndicator,
-                        focusedContainerColor = colors.surface,
-                        unfocusedContainerColor = colors.surface
-                    )
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
+                    .height(52.dp),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colors.focusedIndicator,
+                    unfocusedBorderColor = colors.inputBorder,
+                    focusedTextColor = colors.textInput,
+                    unfocusedTextColor = colors.textInput,
+                    cursorColor = colors.focusedIndicator,
+                    focusedContainerColor = colors.surface,
+                    unfocusedContainerColor = colors.surface
                 )
-                Box {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(colors.surface)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { showFilterMenu = true },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.FilterList,
-                            contentDescription = "Filtrar",
-                            tint = colors.textTertiary
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = showFilterMenu,
-                        onDismissRequest = { showFilterMenu = false },
-                        offset = DpOffset(0.dp, 4.dp),
-                        modifier = Modifier.background(colors.surface)
-                    ) {
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    "Todos",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = colors.textPrimary
-                                )
-                            },
-                            onClick = { showFilterMenu = false }
-                        )
-                    }
-                }
-            }
+            )
 
             when {
                 isLoading -> {

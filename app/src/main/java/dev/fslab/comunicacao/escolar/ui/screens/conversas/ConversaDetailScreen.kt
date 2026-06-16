@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.Assignment
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.DoneAll
@@ -69,7 +70,9 @@ fun ConversaDetailScreen(
     avatarUrl: String? = null,
     user: User,
     conversaViewModel: ConversaViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    topContent: (@Composable () -> Unit)? = null,
+    onActivityRefTapped: ((logId: String) -> Unit)? = null
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val messages by conversaViewModel.messages.collectAsState()
@@ -103,6 +106,8 @@ fun ConversaDetailScreen(
             .imePadding()
     ) {
         ConversaHeader(titulo = titulo, avatarUrl = avatarUrl, onBack = onBack)
+
+        topContent?.invoke()
 
         Box(
             modifier = Modifier
@@ -151,7 +156,8 @@ fun ConversaDetailScreen(
                             MessageBubble(
                                 message = msg,
                                 currentUserId = user.id,
-                                showDateSeparator = currLabel.isNotBlank() && currLabel != prevLabel
+                                showDateSeparator = currLabel.isNotBlank() && currLabel != prevLabel,
+                                onActivityRefTapped = onActivityRefTapped
                             )
                         }
                     }
@@ -340,13 +346,22 @@ private fun conversaAvatarColor(nome: String): Color {
 }
 
 @Composable
-private fun MessageBubble(message: Message, currentUserId: String, showDateSeparator: Boolean) {
+private fun MessageBubble(
+    message: Message,
+    currentUserId: String,
+    showDateSeparator: Boolean,
+    onActivityRefTapped: ((logId: String) -> Unit)? = null
+) {
     val colors = LocalComunicacaoEscolarColors.current
     val isFromMe = message.isFromMe
     val isReadByOther = message.readBy.any { it != currentUserId }
 
     val bubbleSentBg = if (colors.isDark) Color(0xFFE0E0E0) else colors.primary
     val bubbleSentText = if (colors.isDark) Color(0xFF1A1A1A) else colors.textOnPrimary
+    val textColor = if (isFromMe) bubbleSentText else colors.textPrimary
+
+    val actRef = remember(message.id) { extractActivityRef(message.text) }
+    val displayText = actRef?.second ?: message.text
 
     if (showDateSeparator) {
         Box(
@@ -372,7 +387,7 @@ private fun MessageBubble(message: Message, currentUserId: String, showDateSepar
             horizontalAlignment = if (isFromMe) Alignment.End else Alignment.Start,
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
-            Box(
+            Column(
                 modifier = Modifier
                     .clip(
                         RoundedCornerShape(
@@ -383,12 +398,53 @@ private fun MessageBubble(message: Message, currentUserId: String, showDateSepar
                         )
                     )
                     .background(if (isFromMe) bubbleSentBg else colors.surface)
-                    .padding(horizontal = 14.dp, vertical = 10.dp)
             ) {
+                if (actRef != null) {
+                    val refBg = if (isFromMe)
+                        Color.Black.copy(alpha = 0.10f)
+                    else
+                        colors.lightGray
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(refBg)
+                            .then(
+                                if (onActivityRefTapped != null)
+                                    Modifier.clickable { onActivityRefTapped(actRef.first.logId) }
+                                else Modifier
+                            )
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Assignment,
+                            contentDescription = null,
+                            tint = textColor.copy(alpha = 0.65f),
+                            modifier = Modifier.size(13.dp)
+                        )
+                        Column {
+                            Text(
+                                text = "Atividade · ${actRef.first.date}",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = textColor.copy(alpha = 0.80f)
+                            )
+                            if (actRef.first.childName.isNotBlank()) {
+                                Text(
+                                    text = actRef.first.childName,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = textColor.copy(alpha = 0.65f)
+                                )
+                            }
+                        }
+                    }
+                }
                 Text(
-                    text = message.text,
+                    text = displayText,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (isFromMe) bubbleSentText else colors.textPrimary
+                    color = textColor,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
                 )
             }
 
@@ -414,4 +470,15 @@ private fun MessageBubble(message: Message, currentUserId: String, showDateSepar
             }
         }
     }
+}
+
+private data class ActivityRefData(val logId: String, val date: String, val childName: String)
+
+private val ACT_REF_REGEX = Regex("""^\[act_ref:([^|]+)\|([^|]+)\|([^\]]*)\]\n?""")
+
+private fun extractActivityRef(text: String): Pair<ActivityRefData, String>? {
+    val match = ACT_REF_REGEX.find(text) ?: return null
+    val (logId, date, childName) = match.destructured
+    val rest = text.removePrefix(match.value).trim()
+    return ActivityRefData(logId, date, childName) to rest
 }

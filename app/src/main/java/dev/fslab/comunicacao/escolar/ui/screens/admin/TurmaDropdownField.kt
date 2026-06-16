@@ -37,7 +37,7 @@ import dev.fslab.comunicacao.escolar.model.Turma
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 
 @Composable
-internal fun TurmaDropdownField(
+fun TurmaDropdownField(
     turmas: List<Turma>,
     selectedTurma: Turma?,
     onTurmaSelected: (Turma) -> Unit,

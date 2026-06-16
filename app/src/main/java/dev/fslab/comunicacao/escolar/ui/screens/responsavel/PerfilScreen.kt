@@ -367,7 +367,7 @@ fun PerfilScreen(
                     enabled = nomeTemp.trim().isNotEmpty() && !salvando
                 ) {
                     if (salvando) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = colors.buttonContainer)
                     } else {
                         Text("Salvar", fontWeight = FontWeight.Bold, color = colors.buttonContainer)
                     }
