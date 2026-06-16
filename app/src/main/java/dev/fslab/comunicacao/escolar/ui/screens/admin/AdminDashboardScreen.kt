@@ -151,6 +151,7 @@ fun AdminDashboardScreen(
     val schoolId = user.schoolId ?: ""
     var currentRoute by rememberSaveable { mutableStateOf(Screen.AdminHome.route) }
     val subScreenStack = remember { mutableStateListOf<AdminSubScreen>() }
+    val turmas by adminViewModel.turmas.collectAsState()
 
     LaunchedEffect(schoolId) {
         if (schoolId.isNotBlank()) {
@@ -373,7 +374,8 @@ fun AdminDashboardScreen(
                             schoolId = schoolId,
                             muralViewModel = muralViewModel,
                             onBack = { subScreenStack.removeLast() },
-                            onPostCreated = { subScreenStack.removeLast() }
+                            onPostCreated = { subScreenStack.removeLast() },
+                            turmas = turmas.map { it.toTurma() }
                         )
 
                     is AdminSubScreen.EditarPost ->
@@ -382,7 +384,8 @@ fun AdminDashboardScreen(
                             muralViewModel = muralViewModel,
                             onBack = { subScreenStack.removeLast() },
                             onPostCreated = { subScreenStack.removeLast() },
-                            postToEdit = (key.screen as AdminSubScreen.EditarPost).post
+                            postToEdit = (key.screen as AdminSubScreen.EditarPost).post,
+                            turmas = turmas.map { it.toTurma() }
                         )
 
                 }
