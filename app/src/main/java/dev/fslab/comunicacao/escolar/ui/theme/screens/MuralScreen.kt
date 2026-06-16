@@ -183,7 +183,10 @@ fun MuralScreen(
 				}
 				MuralState.Loading -> {
 					if (!isRefreshing) {
-						CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+						CircularProgressIndicator(
+							modifier = Modifier.align(Alignment.Center),
+							color = colors.textPrimary
+						)
 					}
 				}
 				is MuralState.Error -> {
@@ -376,6 +379,7 @@ fun AttachmentItem(
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val colors = LocalComunicacaoEscolarColors.current
 	val attachmentUrl = "${RetrofitClient.BASE_URL}attachments/$attachmentId"
 
     Box(
@@ -398,7 +402,7 @@ fun AttachmentItem(
 			modifier = Modifier.fillMaxSize(),
 			loading = {
 				Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-					CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+					CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp, color = colors.textSecondary)
 				}
 			},
 			error = {
@@ -593,7 +597,7 @@ fun MuralPostCard(
 				)
 				if (likeState is LikeState.Loading) {
 					Spacer(modifier = Modifier.width(8.dp))
-					CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+					CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = colors.textSecondary)
 				}
 			}
 

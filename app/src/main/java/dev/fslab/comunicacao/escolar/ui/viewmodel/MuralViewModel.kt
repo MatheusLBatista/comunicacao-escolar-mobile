@@ -1,13 +1,19 @@
 package dev.fslab.comunicacao.escolar.ui.viewmodel
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import java.io.ByteArrayOutputStream
 import dev.fslab.comunicacao.escolar.model.CreatePostRequest
 import dev.fslab.comunicacao.escolar.model.Docs
 import dev.fslab.comunicacao.escolar.model.MuralResponse
+import dev.fslab.comunicacao.escolar.model.PostTarget
 import dev.fslab.comunicacao.escolar.model.UpdatePostRequest
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -240,6 +246,7 @@ class MuralViewModel : ViewModel() {
         schoolId: String,
         title: String,
         content: String,
+        target: PostTarget = PostTarget("all", emptyList()),
         imageUris: List<Uri> = emptyList(),
         context: Context? = null
     ) {
@@ -249,24 +256,17 @@ class MuralViewModel : ViewModel() {
                 val hasImages = imageUris.isNotEmpty() && context != null
                 val response = RetrofitClient.muralApi.createPost(
                     schoolId,
-                    CreatePostRequest(title = title, content = content, waitAttachments = hasImages)
+                    CreatePostRequest(title = title, content = content, target = target, waitAttachments = hasImages)
                 )
                 var finalPost = response.data
 
                 if (hasImages && context != null) {
                     val parts = imageUris.mapIndexed { index, uri ->
-                        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-                        val bytes = context.contentResolver.openInputStream(uri)?.readBytes()
-                            ?: throw IllegalStateException("Não foi possível ler imagem $index")
-                        val ext = when (mimeType) {
-                            "image/png" -> "png"
-                            "image/webp" -> "webp"
-                            else -> "jpg"
-                        }
+                        val bytes = readImageWithRotationFix(context, uri)
                         MultipartBody.Part.createFormData(
                             name = "files",
-                            filename = "image_$index.$ext",
-                            body = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+                            filename = "image_$index.jpg",
+                            body = bytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
                         )
                     }
                     val uploadResponse = RetrofitClient.muralApi.uploadPostAttachments(
@@ -289,6 +289,7 @@ class MuralViewModel : ViewModel() {
         postId: String,
         title: String,
         content: String,
+        target: PostTarget = PostTarget("all", emptyList()),
         removedAttachmentIds: List<String> = emptyList(),
         newImageUris: List<Uri> = emptyList(),
         context: Context? = null
@@ -296,7 +297,7 @@ class MuralViewModel : ViewModel() {
         viewModelScope.launch {
             _editPostState.value = EditPostState.Loading
             try {
-                val response = RetrofitClient.muralApi.updatePost(postId, UpdatePostRequest(title, content))
+                val response = RetrofitClient.muralApi.updatePost(postId, UpdatePostRequest(title, content, target))
                 var updatedPost = response.data
 
                 for (attachmentId in removedAttachmentIds) {
@@ -309,18 +310,11 @@ class MuralViewModel : ViewModel() {
 
                 if (newImageUris.isNotEmpty() && context != null) {
                     val parts = newImageUris.mapIndexed { index, uri ->
-                        val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
-                        val bytes = context.contentResolver.openInputStream(uri)?.readBytes()
-                            ?: throw IllegalStateException("Não foi possível ler imagem $index")
-                        val ext = when (mimeType) {
-                            "image/png" -> "png"
-                            "image/webp" -> "webp"
-                            else -> "jpg"
-                        }
+                        val bytes = readImageWithRotationFix(context, uri)
                         MultipartBody.Part.createFormData(
                             name = "files",
-                            filename = "image_$index.$ext",
-                            body = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+                            filename = "image_$index.jpg",
+                            body = bytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
                         )
                     }
                     val uploadResponse = RetrofitClient.muralApi.uploadPostAttachments(postId, parts)
@@ -391,6 +385,35 @@ class MuralViewModel : ViewModel() {
                 Log.e(TAG, "Exceção ao deletar post", e)
                 _muralState.value = MuralState.Error(e.localizedMessage ?: "Erro ao processar exclusão")
             }
+        }
+    }
+
+    private fun readImageWithRotationFix(context: Context, uri: Uri): ByteArray {
+        val bitmap = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+            ?: throw IllegalStateException("Não foi possível ler imagem: $uri")
+
+        val degrees = context.contentResolver.openInputStream(uri)?.use { stream ->
+            val exif = ExifInterface(stream)
+            when (exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                else -> 0f
+            }
+        } ?: 0f
+
+        val finalBitmap = if (degrees != 0f) {
+            val matrix = Matrix().apply { postRotate(degrees) }
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                .also { bitmap.recycle() }
+        } else {
+            bitmap
+        }
+
+        return ByteArrayOutputStream().use { out ->
+            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            finalBitmap.recycle()
+            out.toByteArray()
         }
     }
 }
