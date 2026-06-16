@@ -9,6 +9,7 @@ data class DailyLog(
     val avatarRes: Int? = null,
     val timestamp: Long = 0L,
     val teacherName: String = "",
+    val teacherId: String = "",
     val observation: String = "",
     val isPresent: Boolean = true,
     val entries: List<DailyLogDetailEntry> = emptyList(),

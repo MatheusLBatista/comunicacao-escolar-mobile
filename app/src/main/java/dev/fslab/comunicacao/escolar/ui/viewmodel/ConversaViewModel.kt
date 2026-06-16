@@ -23,6 +23,7 @@ class ConversaViewModel : ViewModel() {
     companion object {
         private const val TAG = "ConversaViewModel"
         private const val PAGE_LIMIT = "50"
+        private val ACT_REF_PREFIX = Regex("""^\[act_ref:[^\]]+\]\n?""")
     }
 
     // Conversations list
@@ -84,7 +85,7 @@ class ConversaViewModel : ViewModel() {
                 _conversations.value = docs.map { it.toConversation(currentUserId) }
                 val previews = docs
                     .filter { !it.lastMessageText.isNullOrBlank() }
-                    .associate { it.id to it.lastMessageText!! }
+                    .associate { it.id to stripActRef(it.lastMessageText!!) }
                 _lastMessages.value = previews
                 val unreadFromApi = docs
                     .filter { it.unreadCount > 0 }
@@ -116,7 +117,7 @@ class ConversaViewModel : ViewModel() {
                 seenMessageIds.addAll(msgs.map { it.id })
                 _messages.value = msgs
                 msgs.lastOrNull()?.let { last ->
-                    _lastMessages.value = _lastMessages.value + (conversationId to last.text)
+                    _lastMessages.value = _lastMessages.value + (conversationId to stripActRef(last.text))
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "loadMessages error", e)
@@ -139,7 +140,7 @@ class ConversaViewModel : ViewModel() {
                 // Optimistic add with dedup — socket may deliver the same message
                 if (seenMessageIds.add(msg.id)) {
                     _messages.value = _messages.value + msg
-                    _lastMessages.value = _lastMessages.value + (conversationId to msg.text)
+                    _lastMessages.value = _lastMessages.value + (conversationId to stripActRef(msg.text))
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "sendMessage error", e)
@@ -266,11 +267,16 @@ class ConversaViewModel : ViewModel() {
             val current = _unreadCounts.value[msg.conversationId] ?: 0
             _unreadCounts.value = _unreadCounts.value + (msg.conversationId to current + 1)
         }
-        _lastMessages.value = _lastMessages.value + (msg.conversationId to msg.text)
+        _lastMessages.value = _lastMessages.value + (msg.conversationId to stripActRef(msg.text))
     }
 
     override fun onCleared() {
         super.onCleared()
         socketJob?.cancel()
+    }
+
+    private fun stripActRef(text: String): String {
+        val match = ACT_REF_PREFIX.find(text) ?: return text
+        return text.removePrefix(match.value).trim()
     }
 }

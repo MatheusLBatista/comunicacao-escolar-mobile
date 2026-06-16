@@ -464,6 +464,14 @@ fun MuralPostCard(
 	var likesCount by remember { mutableIntStateOf(post.likesCount ?: 0) }
 	var showDeleteDialog by remember { mutableStateOf(false) }
 
+	LaunchedEffect(likeState) {
+		if (likeState is LikeState.Success) {
+			val newLiked = !isLiked
+			likesCount += if (newLiked) 1 else -1
+			isLiked = newLiked
+		}
+	}
+
 	val author = authors[post.authorId]
 	val canManage = currentUser.role == UserRole.ADMIN ||
 		(currentUser.role == UserRole.PROFESSOR && post.authorId == currentUser.id)
@@ -519,10 +527,10 @@ fun MuralPostCard(
 					fontWeight = FontWeight.Medium,
 					color = colors.textPrimary
 				)
-				val timeAgo = DateUtils.getTimeAgo(post.createdAt)
-				if (timeAgo.isNotEmpty()) {
+				val publishedAt = DateUtils.getAuditFormat(post.createdAt)
+				if (publishedAt.isNotEmpty()) {
 					Text(
-						text = timeAgo,
+						text = publishedAt,
 						style = MaterialTheme.typography.labelSmall,
 						color = Color.Gray
 					)

@@ -97,6 +97,7 @@ fun ResponsavelDashboardScreen(
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     var currentRoute by rememberSaveable { mutableStateOf(Screen.Atividades.route) }
+    var pendingLogId by remember { mutableStateOf<String?>(null) }
 
     // Impede o back sair do app ao estar na aba principal
     BackHandler(enabled = currentRoute != Screen.Atividades.route) {
@@ -124,8 +125,20 @@ fun ResponsavelDashboardScreen(
             label = "responsavel_tab"
         ) { route ->
             when (route) {
-                Screen.Atividades.route -> AtividadesScreen(user = user, accessToken = accessToken)
-                Screen.Conversas.route  -> ConversasScreen(user = user, accessToken = accessToken)
+                Screen.Atividades.route -> AtividadesScreen(
+                    user = user,
+                    accessToken = accessToken,
+                    pendingLogId = pendingLogId,
+                    onPendingLogConsumed = { pendingLogId = null }
+                )
+                Screen.Conversas.route -> ConversasScreen(
+                    user = user,
+                    accessToken = accessToken,
+                    onActivityRefTapped = { logId ->
+                        pendingLogId = logId
+                        currentRoute = Screen.Atividades.route
+                    }
+                )
                 Screen.Mural.route      -> MuralScreenReal(
                     muralViewModel = viewModel(),
                     authViewModel = authViewModel,
@@ -146,20 +159,32 @@ fun ResponsavelDashboardScreen(
 
 // Telas do Responsável
 @Composable
-fun AtividadesScreen(user: User, accessToken: String) {
-    val colors = LocalComunicacaoEscolarColors.current
+fun AtividadesScreen(
+    user: User,
+    accessToken: String,
+    pendingLogId: String? = null,
+    onPendingLogConsumed: () -> Unit = {}
+) {
     if (user.schoolId == null) {
         SemEscolaVinculada(
             icon = Icons.AutoMirrored.Outlined.Assignment,
             nomeTela = "Atividades"
         )
     } else {
-        ActivityScreen()
+        ActivityScreen(
+            user = user,
+            pendingLogId = pendingLogId,
+            onPendingLogConsumed = onPendingLogConsumed
+        )
     }
 }
 
 @Composable
-fun ConversasScreen(user: User, accessToken: String) {
+fun ConversasScreen(
+    user: User,
+    accessToken: String,
+    onActivityRefTapped: (logId: String) -> Unit = {}
+) {
     if (user.schoolId == null) {
         SemEscolaVinculada(
             icon = Icons.AutoMirrored.Outlined.Chat,
@@ -191,7 +216,8 @@ fun ConversasScreen(user: User, accessToken: String) {
             avatarUrl = screen.avatarUrl,
             user = user,
             conversaViewModel = conversaViewModel,
-            onBack = { subScreen = null }
+            onBack = { subScreen = null },
+            onActivityRefTapped = onActivityRefTapped
         )
         is ConversasSubScreen.NovaConversa -> NovaConversaScreen(
             user = user,

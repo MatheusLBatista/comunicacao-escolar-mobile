@@ -116,6 +116,7 @@ class DailyLogsViewModel : ViewModel() {
             avatarRes = null,
             timestamp = parsedDate?.time ?: 0L,
             teacherName = teacherName,
+            teacherId = teacher?.id.orEmpty(),
             observation = observation,
             isPresent = isPresent,
             entries = detailEntries,
@@ -152,8 +153,19 @@ class DailyLogsViewModel : ViewModel() {
     }
 
     private fun formatFallbackLabel(fieldKey: String): String {
-        return fieldKey
-            .trim()
+        val translations = mapOf(
+            "absence_reason" to "Motivo da falta",
+            "mood" to "Humor",
+            "food" to "Alimentação",
+            "sleep" to "Sono",
+            "activity" to "Atividade",
+            "observation" to "Observação",
+            "participation" to "Participação",
+            "behavior" to "Comportamento",
+            "note" to "Anotação"
+        )
+        val key = fieldKey.trim()
+        return translations[key] ?: key
             .replace("_", " ")
             .replaceFirstChar { char ->
                 if (char.isLowerCase()) char.titlecase(Locale.getDefault()) else char.toString()
