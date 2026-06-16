@@ -77,8 +77,8 @@ import dev.fslab.comunicacao.escolar.ui.screens.conversas.NovaConversaScreen
 import dev.fslab.comunicacao.escolar.ui.screens.mural.NovoPostScreen
 import dev.fslab.comunicacao.escolar.ui.screens.responsavel.AgendaScreen
 import dev.fslab.comunicacao.escolar.ui.screens.responsavel.PerfilScreen
-import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.theme.screens.MuralScreen
+import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AdminViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ConversaViewModel

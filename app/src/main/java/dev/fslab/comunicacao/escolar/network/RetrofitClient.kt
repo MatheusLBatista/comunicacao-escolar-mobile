@@ -3,6 +3,10 @@ package dev.fslab.comunicacao.escolar.network
 import com.google.gson.GsonBuilder
 import dev.fslab.comunicacao.escolar.model.ApiAssociatedStudent
 import dev.fslab.comunicacao.escolar.model.ApiAssociatedStudentDeserializer
+import dev.fslab.comunicacao.escolar.model.PickupLogAuthorization
+import dev.fslab.comunicacao.escolar.model.PickupLogAuthorizationDeserializer
+import dev.fslab.comunicacao.escolar.model.PickupLogVerifiedBy
+import dev.fslab.comunicacao.escolar.model.PickupLogVerifiedByDeserializer
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -11,11 +15,14 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    const val BASE_URL = "http://localhost:3011/"
+    const val BASE_URL = "http://localhost:3010/"
 
     private val gson = GsonBuilder()
         .setLenient()
+        .serializeNulls()
         .registerTypeAdapter(ApiAssociatedStudent::class.java, ApiAssociatedStudentDeserializer())
+        .registerTypeAdapter(PickupLogAuthorization::class.java, PickupLogAuthorizationDeserializer())
+        .registerTypeAdapter(PickupLogVerifiedBy::class.java, PickupLogVerifiedByDeserializer())
         .create()
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

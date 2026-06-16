@@ -468,22 +468,6 @@ fun MuralPostCard(
 		muralViewModel.fetchAuthor(post.authorId)
 	}
 
-	LaunchedEffect(likeState) {
-		if (likeState is LikeState.Success) {
-			val response = (likeState as LikeState.Success).like
-			val newlyLiked = response.data?.id != null
-			
-			if (newlyLiked != isLiked) {
-				isLiked = newlyLiked
-				if (newlyLiked) {
-					likesCount++
-				} else {
-					if (likesCount > 0) likesCount--
-				}
-			}
-		}
-	}
-
 	Column(modifier = Modifier
 		.fillMaxWidth()
 		.border(1.dp, colors.lightGray, RoundedCornerShape(12.dp))

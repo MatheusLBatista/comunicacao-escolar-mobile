@@ -42,6 +42,7 @@ sealed class PickupLogsUiState {
     object Loading : PickupLogsUiState()
     object Empty : PickupLogsUiState()
     data class Content(val logs: List<PickupLogUi>) : PickupLogsUiState()
+    data class Error(val message: String) : PickupLogsUiState()
 }
 
 class AutorizacaoSaidaViewModel : ViewModel() {
@@ -133,8 +134,8 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                 ).data?.docs.orEmpty()
                 _pickupLogsState.value = if (docs.isEmpty()) PickupLogsUiState.Empty
                 else PickupLogsUiState.Content(docs.map { it.toPickupLogUi() })
-            } catch (_: Exception) {
-                _pickupLogsState.value = PickupLogsUiState.Empty
+            } catch (e: Exception) {
+                _pickupLogsState.value = PickupLogsUiState.Error(e.message ?: "Erro ao carregar saídas.")
             }
         }
     }
@@ -328,6 +329,7 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                     )
                 )
                 loadAutorizacoes()
+                loadPickupLogs()
             } catch (_: Exception) {
             } finally {
                 _registrando.value = null

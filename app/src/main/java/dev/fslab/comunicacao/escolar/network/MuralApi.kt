@@ -5,6 +5,7 @@ import dev.fslab.comunicacao.escolar.model.CreatePostRequest
 import dev.fslab.comunicacao.escolar.model.MuralRequest
 import dev.fslab.comunicacao.escolar.model.MuralResponse
 import dev.fslab.comunicacao.escolar.model.SinglePostResponse
+import dev.fslab.comunicacao.escolar.model.DeletePostResponse
 import dev.fslab.comunicacao.escolar.model.UpdatePostRequest
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
@@ -49,9 +50,6 @@ interface MuralApi {
         @Body request: UpdatePostRequest
     ): SinglePostResponse
 
-    @DELETE("posts/{id}")
-    suspend fun deletePost(@Path("id") postId: String): ApiResponse<Any>
-
     @DELETE("posts/{postId}/attachments/{linkId}")
     suspend fun deleteAttachment(
         @Path("postId") postId: String,
@@ -60,5 +58,8 @@ interface MuralApi {
 
     @GET("attachments/{id}")
     suspend fun getAttachment(@Path("id") id: String): ResponseBody
+
+    @DELETE("posts/{id}")
+    suspend fun deletePost(@Path("id") id: String): DeletePostResponse
 
 }

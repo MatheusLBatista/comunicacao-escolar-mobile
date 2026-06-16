@@ -24,6 +24,7 @@ interface AutorizacaoSaidaApi {
     @GET("pickup-authorizations")
     suspend fun getAutorizacoes(
         @Header("Authorization") token: String,
+        @Query("school_id") schoolId: String? = null,
         @Query("active") active: Boolean? = null,
         @Query("used") used: Boolean? = null,
         @Query("student_id") studentId: String? = null
@@ -48,17 +49,17 @@ interface AutorizacaoSaidaApi {
         @Body body: PatchAutorizacaoRequest
     ): Response<Unit>
 
+    @GET("pickup-logs")
+    suspend fun getPickupLogs(
+        @Header("Authorization") token: String,
+        @Query("school_id") schoolId: String? = null
+    ): PickupLogsResponse
+
     @POST("pickup-logs")
     suspend fun criarPickupLog(
         @Header("Authorization") token: String,
         @Body request: CreatePickupLogRequest
     ): CreatePickupLogResponse
-
-    @GET("pickup-logs")
-    suspend fun getPickupLogs(
-        @Header("Authorization") token: String,
-        @Query("limit") limit: Int = 100
-    ): PickupLogsResponse
 
     @DELETE("pickup-logs/{id}")
     suspend fun deletarPickupLog(
