@@ -94,27 +94,7 @@ class AutorizacaoSaidaViewModel : ViewModel() {
         if (!json.isNullOrBlank()) {
             try {
                 val type = object : TypeToken<List<ApiAssociatedStudent>>() {}.type
-                val parsed = Gson().fromJson<List<ApiAssociatedStudent>>(json, type)
-                if (parsed.isNotEmpty()) {
-                    _alunos.value = parsed
-                    return
-                }
-            } catch (_: Exception) {}
-        }
-        val schoolId = TokenManager.getSavedUser()?.schoolId ?: return
-        viewModelScope.launch {
-            try {
-                val docs = RetrofitClient.adminApi.listUsers(
-                    schoolId,
-                    mapOf("role" to "student", "limit" to "100")
-                ).data?.docs.orEmpty()
-                _alunos.value = docs.map { u ->
-                    ApiAssociatedStudent(
-                        id = u.id,
-                        fullName = u.fullName,
-                        classId = u.memberships.find { it.role == "student" }?.classId
-                    )
-                }
+                _alunos.value = Gson().fromJson(json, type)
             } catch (_: Exception) {}
         }
     }
