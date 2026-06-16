@@ -7,6 +7,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,6 +92,7 @@ fun ProfessorDashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
                 .background(colors.background),
             transitionSpec = { fadeIn(tween(220)) togetherWith fadeOut(tween(220)) },
             label = "professor_tab"
@@ -209,7 +213,14 @@ private fun ProfessorMuralScreen(
     authViewModel: AuthViewModel
 ) {
     val muralViewModel: MuralViewModel = viewModel()
+    val professorInicioViewModel: dev.fslab.comunicacao.escolar.ui.viewmodel.ProfessorInicioViewModel = viewModel()
+    val turmas by professorInicioViewModel.turmas.collectAsState()
     var subScreen by remember { mutableStateOf<ProfessorMuralSubScreen?>(null) }
+
+    LaunchedEffect(user.schoolId, user.id) {
+        val schoolId = user.schoolId ?: return@LaunchedEffect
+        professorInicioViewModel.loadStats(schoolId, user.id)
+    }
 
     BackHandler(enabled = subScreen != null) {
         subScreen = null
@@ -227,14 +238,16 @@ private fun ProfessorMuralScreen(
             schoolId = user.schoolId ?: "",
             muralViewModel = muralViewModel,
             onBack = { subScreen = null },
-            onPostCreated = { subScreen = null }
+            onPostCreated = { subScreen = null },
+            turmas = turmas
         )
         is ProfessorMuralSubScreen.EditarPost -> NovoPostScreen(
             schoolId = user.schoolId ?: "",
             muralViewModel = muralViewModel,
             onBack = { subScreen = null },
             onPostCreated = { subScreen = null },
-            postToEdit = screen.post
+            postToEdit = screen.post,
+            turmas = turmas
         )
     }
 }
