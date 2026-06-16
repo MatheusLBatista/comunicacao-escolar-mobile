@@ -344,6 +344,7 @@ private fun DailyLogCard(log: DailyLog, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(72.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(colors.surface)
             .clickable(onClick = onClick)
@@ -353,7 +354,7 @@ private fun DailyLogCard(log: DailyLog, onClick: () -> Unit) {
     ) {
         Box(
             modifier = Modifier
-                .size(44.dp)
+                .size(40.dp)
                 .clip(CircleShape)
                 .background(colors.lightGray),
             contentAlignment = Alignment.Center
@@ -366,7 +367,7 @@ private fun DailyLogCard(log: DailyLog, onClick: () -> Unit) {
                         .build(),
                     contentDescription = log.childName,
                     modifier = Modifier
-                        .size(44.dp)
+                        .size(40.dp)
                         .clip(CircleShape),
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop
                 )
@@ -375,7 +376,7 @@ private fun DailyLogCard(log: DailyLog, onClick: () -> Unit) {
                     imageVector = Icons.Default.Person,
                     contentDescription = null,
                     tint = colors.iconGray,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
@@ -385,22 +386,16 @@ private fun DailyLogCard(log: DailyLog, onClick: () -> Unit) {
                 text = log.childName,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = colors.textPrimary
+                color = colors.textPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
-            if (log.time.isNotBlank()) {
-                Text(
-                    text = log.time,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.textSecondary
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
+            val preview = if (log.time.isNotBlank()) "${log.time} • ${log.description}" else log.description
             Text(
-                text = log.description,
+                text = preview,
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.textSecondary,
-                minLines = 2,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
