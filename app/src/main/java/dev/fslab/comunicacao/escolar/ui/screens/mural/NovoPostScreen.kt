@@ -25,15 +25,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -54,6 +61,8 @@ import coil.compose.AsyncImage
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import dev.fslab.comunicacao.escolar.model.Docs
+import dev.fslab.comunicacao.escolar.model.PostTarget
+import dev.fslab.comunicacao.escolar.model.Turma
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import dev.fslab.comunicacao.escolar.network.TokenManager
 import dev.fslab.comunicacao.escolar.ui.components.AppHeader
@@ -68,7 +77,8 @@ fun NovoPostScreen(
     muralViewModel: MuralViewModel,
     onBack: () -> Unit,
     onPostCreated: () -> Unit,
-    postToEdit: Docs? = null
+    postToEdit: Docs? = null,
+    turmas: List<Turma> = emptyList()
 ) {
     val isEditMode = postToEdit != null
     val colors = LocalComunicacaoEscolarColors.current
@@ -79,6 +89,13 @@ fun NovoPostScreen(
     var title by remember { mutableStateOf(postToEdit?.title ?: "") }
     var content by remember { mutableStateOf(postToEdit?.content ?: "") }
     var submitted by remember { mutableStateOf(false) }
+    val turmasSelecionadas = remember {
+        mutableStateListOf<String>().also { list ->
+            if (postToEdit?.target?.scope == "class") {
+                list.addAll(postToEdit.target.targetIds)
+            }
+        }
+    }
     val selectedImages = remember { mutableStateListOf<Uri>() }
     val removedAttachmentIds = remember { mutableStateListOf<String>() }
     val token = remember { TokenManager.getAccessToken() }
@@ -145,11 +162,17 @@ fun NovoPostScreen(
                     TextButton(onClick = {
                         submitted = true
                         if (title.isNotBlank() && content.isNotBlank()) {
+                            val target = if (turmasSelecionadas.isEmpty()) {
+                                PostTarget("all", emptyList())
+                            } else {
+                                PostTarget("class", turmasSelecionadas.toList())
+                            }
                             if (isEditMode) {
                                 muralViewModel.updatePost(
                                     postId = postToEdit!!.id,
                                     title = title,
                                     content = content,
+                                    target = target,
                                     removedAttachmentIds = removedAttachmentIds.toList(),
                                     newImageUris = selectedImages.toList(),
                                     context = context
@@ -159,6 +182,7 @@ fun NovoPostScreen(
                                     schoolId = schoolId,
                                     title = title,
                                     content = content,
+                                    target = target,
                                     imageUris = selectedImages.toList(),
                                     context = context
                                 )
@@ -239,6 +263,26 @@ fun NovoPostScreen(
                 )
             }
 
+            if (turmas.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "DESTINATÁRIOS",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.textSecondary
+                    )
+                    PostTurmaMultiSelect(
+                        turmas = turmas.map { it.id to it.nome },
+                        selecionadas = turmasSelecionadas,
+                        onToggle = { id ->
+                            if (id in turmasSelecionadas) turmasSelecionadas.remove(id)
+                            else turmasSelecionadas.add(id)
+                        },
+                        onSelecionarTodas = { turmasSelecionadas.clear() }
+                    )
+                }
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     text = "IMAGENS",
@@ -255,6 +299,7 @@ fun NovoPostScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .height(56.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .border(1.dp, colors.inputBorder, RoundedCornerShape(12.dp))
                         .background(colors.surface)
@@ -266,7 +311,7 @@ fun NovoPostScreen(
                                 PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                             )
                         }
-                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                        .padding(horizontal = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -386,6 +431,133 @@ fun NovoPostScreen(
             }
 
             Spacer(modifier = Modifier.height(40.dp))
+        }
+    }
+}
+
+@Composable
+private fun PostTurmaMultiSelect(
+    turmas: List<Pair<String, String>>,
+    selecionadas: List<String>,
+    onToggle: (String) -> Unit,
+    onSelecionarTodas: () -> Unit
+) {
+    val colors = LocalComunicacaoEscolarColors.current
+    var showMenu by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val turmasFiltradas by remember(turmas, searchQuery) {
+        derivedStateOf {
+            if (searchQuery.isBlank()) turmas
+            else turmas.filter { it.second.contains(searchQuery, ignoreCase = true) }
+        }
+    }
+
+    val displayText = when {
+        selecionadas.isEmpty() -> "Todas as turmas"
+        selecionadas.size == 1 -> turmas.firstOrNull { it.first == selecionadas[0] }?.second ?: "1 turma"
+        selecionadas.size == 2 -> turmas.filter { it.first in selecionadas }.joinToString(", ") { it.second }
+        else -> "${selecionadas.size} turmas selecionadas"
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(colors.surface)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                    showMenu = !showMenu
+                    if (!showMenu) searchQuery = ""
+                }
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = displayText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (selecionadas.isEmpty()) colors.textSecondary else colors.textPrimary
+            )
+            Icon(imageVector = Icons.Outlined.KeyboardArrowDown, contentDescription = null, tint = colors.textSecondary)
+        }
+
+        if (showMenu) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(colors.surface)
+            ) {
+                Box(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Buscar turma...", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary) },
+                        leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null, tint = colors.textSecondary, modifier = Modifier.size(18.dp)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        shape = RoundedCornerShape(8.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colors.focusedIndicator,
+                            unfocusedBorderColor = colors.inputBorder,
+                            focusedTextColor = colors.textInput,
+                            unfocusedTextColor = colors.textInput,
+                            cursorColor = colors.focusedIndicator,
+                            focusedContainerColor = colors.surface,
+                            unfocusedContainerColor = colors.surface
+                        )
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 260.dp)
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 4.dp)
+                ) {
+                    if (searchQuery.isBlank()) {
+                        DropdownMenuItem(
+                            text = {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        "Todas as turmas",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (selecionadas.isEmpty()) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = if (selecionadas.isEmpty()) colors.buttonContainer else colors.textSecondary
+                                    )
+                                    if (selecionadas.isEmpty()) {
+                                        Icon(imageVector = Icons.Outlined.Check, contentDescription = null, tint = colors.buttonContainer, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            },
+                            onClick = { onSelecionarTodas(); showMenu = false; searchQuery = "" }
+                        )
+                        HorizontalDivider(color = colors.inputBorder, thickness = 0.5.dp)
+                    }
+
+                    turmasFiltradas.forEach { (id, nome) ->
+                        val selecionada = id in selecionadas
+                        DropdownMenuItem(
+                            text = {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        nome,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = if (selecionada) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = if (selecionada) colors.buttonContainer else colors.textPrimary
+                                    )
+                                    if (selecionada) {
+                                        Icon(imageVector = Icons.Outlined.Check, contentDescription = null, tint = colors.buttonContainer, modifier = Modifier.size(16.dp))
+                                    }
+                                }
+                            },
+                            onClick = { onToggle(id) }
+                        )
+                    }
+                }
+            }
         }
     }
 }
