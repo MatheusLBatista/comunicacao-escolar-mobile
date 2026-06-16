@@ -84,9 +84,27 @@ class AutorizacaoSaidaViewModel : ViewModel() {
     }
     private val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
 
+    private var classNameById: Map<String, String> = emptyMap()
+
     init {
         loadAlunos()
-        loadAutorizacoes()
+        val user = TokenManager.getSavedUser()
+        if (user?.role == "teacher") {
+            viewModelScope.launch {
+                runCatching {
+                    val schoolId = user.schoolId ?: return@runCatching
+                    val token = TokenManager.getAccessToken() ?: return@runCatching
+                    val classes = RetrofitClient.adminApi.listClasses(
+                        schoolId,
+                        mapOf("teacher_id" to user.id, "limit" to "100")
+                    ).data?.docs.orEmpty()
+                    classNameById = classes.associate { it.id to it.name }
+                }
+                loadAutorizacoes()
+            }
+        } else {
+            loadAutorizacoes()
+        }
     }
 
     private fun loadAlunos() {
@@ -266,6 +284,7 @@ class AutorizacaoSaidaViewModel : ViewModel() {
         val firstName = student?.fullName?.trim()?.split(" ")?.firstOrNull() ?: "Aluno"
         val validAte = runCatching { isoFormatter.parse(validUntil)?.let { dateFormatter.format(it) } }
             .getOrNull() ?: validUntil
+        val classId = student?.memberships?.firstOrNull { it.role == "student" }?.classId.orEmpty()
 
         return AutorizacaoSaida(
             id = id,
@@ -273,6 +292,7 @@ class AutorizacaoSaidaViewModel : ViewModel() {
             studentId = student?.id.orEmpty(),
             studentName = firstName,
             studentAvatarUrl = student?.avatarUrl?.takeIf { it.isNotBlank() },
+            className = classNameById[classId].orEmpty(),
             status = status,
             autorizadoPor = authorizedPerson?.name.orEmpty(),
             autorizadoDocumento = authorizedPerson?.document.orEmpty(),
@@ -302,7 +322,8 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                         method = "manual",
                         pickedUpBy = PickedUpBy(
                             name = autorizacao.autorizadoPor,
-                            document = autorizacao.autorizadoDocumento
+                            document = autorizacao.autorizadoDocumento,
+                            relationship = autorizacao.relacao.takeIf { it.isNotBlank() }
                         ),
                         verifiedBy = savedUser.id,
                         departureTime = isoFormatter.format(java.util.Date())
@@ -349,11 +370,15 @@ class AutorizacaoSaidaViewModel : ViewModel() {
             val local = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR"))
             iso.parse(departureTime)?.let { local.format(it) }
         }.getOrNull() ?: departureTime
+        val classId = student?.memberships?.firstOrNull { it.role == "student" }?.classId.orEmpty()
         return PickupLogUi(
             id = id,
             authorizationId = authorization?.id.orEmpty(),
             studentName = student?.fullName?.trim()?.split(" ")?.firstOrNull() ?: "Aluno",
+            className = classNameById[classId].orEmpty(),
             pickedUpByName = pickedUpBy?.name.orEmpty(),
+            pickedUpByDocument = pickedUpBy?.document.orEmpty(),
+            pickedUpByRelationship = pickedUpBy?.relationship.orEmpty(),
             departureTime = hora,
             verifiedByName = verifiedBy?.fullName.orEmpty()
         )
