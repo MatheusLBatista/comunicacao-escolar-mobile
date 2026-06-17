@@ -108,7 +108,7 @@ fun ProfessorDashboardScreen(
                         currentRoute = ROUTE_CONVERSAS
                     }
                 )
-                ROUTE_DIARIO    -> DiarioDeBordoScreen()
+                ROUTE_DIARIO    -> ProfessorDiarioScreen()
                 ROUTE_CONVERSAS -> ProfessorConversasScreen(
                     user = user,
                     accessToken = accessToken,
@@ -193,6 +193,11 @@ private fun ProfessorConversasScreen(
     }
 }
 
+private sealed class ProfessorDiarioSubScreen {
+    object List : ProfessorDiarioSubScreen()
+    data class Edit(val classId: String, val className: String) : ProfessorDiarioSubScreen()
+}
+
 private sealed class ProfessorMuralSubScreen {
     object NovoPost : ProfessorMuralSubScreen()
     data class EditarPost(val post: dev.fslab.comunicacao.escolar.model.Docs) : ProfessorMuralSubScreen()
@@ -205,6 +210,34 @@ private sealed class ProfessorConversasSubScreen {
         val avatarUrl: String?
     ) : ProfessorConversasSubScreen()
     object NovaConversa : ProfessorConversasSubScreen()
+}
+
+@Composable
+private fun ProfessorDiarioScreen() {
+    val listViewModel: dev.fslab.comunicacao.escolar.ui.viewmodel.DiarioDeBordoListViewModel = viewModel()
+    var subScreen by remember { mutableStateOf<ProfessorDiarioSubScreen>(ProfessorDiarioSubScreen.List) }
+
+    BackHandler(enabled = subScreen is ProfessorDiarioSubScreen.Edit) {
+        subScreen = ProfessorDiarioSubScreen.List
+        listViewModel.load()
+    }
+
+    when (val screen = subScreen) {
+        is ProfessorDiarioSubScreen.List -> DiarioDeBordoListScreen(
+            viewModel = listViewModel,
+            onOpenDiario = { classId, className ->
+                subScreen = ProfessorDiarioSubScreen.Edit(classId, className)
+            }
+        )
+        is ProfessorDiarioSubScreen.Edit -> DiarioDeBordoScreen(
+            classId = screen.classId,
+            className = screen.className,
+            onBack = {
+                subScreen = ProfessorDiarioSubScreen.List
+                listViewModel.load()
+            }
+        )
+    }
 }
 
 @Composable

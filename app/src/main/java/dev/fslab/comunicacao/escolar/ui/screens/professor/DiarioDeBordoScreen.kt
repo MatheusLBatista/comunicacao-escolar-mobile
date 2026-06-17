@@ -1,5 +1,6 @@
 package dev.fslab.comunicacao.escolar.ui.screens.professor
 
+import android.app.DatePickerDialog
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -26,7 +27,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.ChevronLeft
+import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Refresh
@@ -36,6 +40,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -48,6 +53,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,7 +68,6 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
-import dev.fslab.comunicacao.escolar.model.ApiClass
 import dev.fslab.comunicacao.escolar.model.ApiTemplateField
 import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.components.AppToast
@@ -72,14 +77,33 @@ import dev.fslab.comunicacao.escolar.ui.viewmodel.DiarioDeBordoUiState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.DiarioDeBordoViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.StudentDailyLogState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.SubmitState
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 @Composable
 fun DiarioDeBordoScreen(
+    classId: String,
+    className: String,
+    onBack: () -> Unit,
     viewModel: DiarioDeBordoViewModel = viewModel()
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val uiState by viewModel.uiState.collectAsState()
     val toastState = rememberAppToastState()
+
+    var selectedCalendar by rememberSaveable {
+        mutableStateOf(Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 12)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        })
+    }
+
+    LaunchedEffect(classId, selectedCalendar) {
+        viewModel.load(classId, selectedCalendar.timeInMillis)
+    }
 
     LaunchedEffect(uiState) {
         val state = uiState as? DiarioDeBordoUiState.Content ?: return@LaunchedEffect
@@ -101,31 +125,157 @@ fun DiarioDeBordoScreen(
             .fillMaxSize()
             .background(colors.background)
     ) {
-        when (val state = uiState) {
-            is DiarioDeBordoUiState.Loading -> DiarioLoadingContent()
-            is DiarioDeBordoUiState.Error -> DiarioErrorContent(
-                message = state.message,
-                onRetry = { viewModel.load() }
+        Column(modifier = Modifier.fillMaxSize()) {
+            AppHeader(title = className, onBack = onBack)
+
+            DateNavigatorRow(
+                calendar = selectedCalendar,
+                onPrev = {
+                    selectedCalendar = (selectedCalendar.clone() as Calendar).apply {
+                        add(Calendar.DAY_OF_MONTH, -1)
+                    }
+                },
+                onNext = {
+                    val next = (selectedCalendar.clone() as Calendar).apply {
+                        add(Calendar.DAY_OF_MONTH, 1)
+                    }
+                    if (!isFuture(next)) selectedCalendar = next
+                },
+                onPickDate = { newMs ->
+                    selectedCalendar = Calendar.getInstance().apply {
+                        timeInMillis = newMs
+                        set(Calendar.HOUR_OF_DAY, 12)
+                        set(Calendar.MINUTE, 0)
+                        set(Calendar.SECOND, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                },
+                canGoNext = !isFuture(
+                    (selectedCalendar.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 1) }
+                )
             )
-            is DiarioDeBordoUiState.Content -> DiarioContent(
-                state = state,
-                onSelectClass = { viewModel.selectClass(it) },
-                onTogglePresence = { viewModel.togglePresence(it) },
-                onUpdateField = { studentId, key, value -> viewModel.updateField(studentId, key, value) },
-                onSubmit = { viewModel.submit() }
-            )
+
+            when (val state = uiState) {
+                is DiarioDeBordoUiState.Loading -> DiarioLoadingContent()
+                is DiarioDeBordoUiState.Error -> DiarioErrorContent(
+                    message = state.message,
+                    onRetry = { viewModel.load(classId, selectedCalendar.timeInMillis) }
+                )
+                is DiarioDeBordoUiState.Content -> DiarioContent(
+                    state = state,
+                    onSelectTemplate = { viewModel.selectTemplate(it) },
+                    onTogglePresence = { viewModel.togglePresence(it) },
+                    onUpdateField = { studentId, key, value -> viewModel.updateField(studentId, key, value) },
+                    onSubmit = { viewModel.submit() }
+                )
+            }
         }
         AppToast(toastState)
     }
 }
 
 @Composable
+private fun DateNavigatorRow(
+    calendar: Calendar,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onPickDate: (Long) -> Unit,
+    canGoNext: Boolean
+) {
+    val colors = LocalComunicacaoEscolarColors.current
+    val context = LocalContext.current
+    val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR")) }
+
+    val label = when {
+        isToday(calendar) -> "Hoje"
+        isYesterday(calendar) -> "Ontem"
+        else -> dateFormatter.format(calendar.time)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        IconButton(onClick = onPrev, modifier = Modifier.size(36.dp)) {
+            Icon(
+                imageVector = Icons.Outlined.ChevronLeft,
+                contentDescription = "Dia anterior",
+                tint = colors.textSecondary,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(4.dp))
+
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(10.dp))
+                .background(colors.surface)
+                .border(1.dp, colors.inputBorder, RoundedCornerShape(10.dp))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) {
+                    val cal = calendar
+                    DatePickerDialog(
+                        context,
+                        { _, year, month, day ->
+                            val picked = Calendar.getInstance().apply {
+                                set(year, month, day, 12, 0, 0)
+                                set(Calendar.MILLISECOND, 0)
+                            }
+                            if (!isFuture(picked)) onPickDate(picked.timeInMillis)
+                        },
+                        cal.get(Calendar.YEAR),
+                        cal.get(Calendar.MONTH),
+                        cal.get(Calendar.DAY_OF_MONTH)
+                    ).show()
+                }
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.CalendarMonth,
+                    contentDescription = null,
+                    tint = colors.textSecondary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.textPrimary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(4.dp))
+
+        IconButton(
+            onClick = onNext,
+            enabled = canGoNext,
+            modifier = Modifier.size(36.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.ChevronRight,
+                contentDescription = "Próximo dia",
+                tint = if (canGoNext) colors.textSecondary else colors.lightGray,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
 private fun DiarioLoadingContent() {
     val colors = LocalComunicacaoEscolarColors.current
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         CircularProgressIndicator(
             modifier = Modifier.size(32.dp),
             color = colors.primary,
@@ -166,7 +316,7 @@ private fun DiarioErrorContent(message: String, onRetry: () -> Unit) {
 @Composable
 private fun DiarioContent(
     state: DiarioDeBordoUiState.Content,
-    onSelectClass: (String) -> Unit,
+    onSelectTemplate: (String) -> Unit,
     onTogglePresence: (String) -> Unit,
     onUpdateField: (String, String, String) -> Unit,
     onSubmit: () -> Unit
@@ -175,24 +325,43 @@ private fun DiarioContent(
     val isSubmitting = state.submitState is SubmitState.Submitting
 
     Column(modifier = Modifier.fillMaxSize()) {
-        AppHeader("Diário de Bordo")
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
                 .background(colors.background),
             contentPadding = PaddingValues(
-                start = 20.dp, end = 20.dp, top = 16.dp, bottom = 16.dp
+                start = 20.dp, end = 20.dp, top = 8.dp, bottom = 16.dp
             ),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            item {
-                Spacer(modifier = Modifier.height(20.dp))
-                ClassTabRow(
-                    classes = state.classes,
-                    selectedClassId = state.selectedClassId,
-                    onSelect = onSelectClass
-                )
-                Spacer(modifier = Modifier.height(20.dp))
+            if (state.templates.size > 1) {
+                item {
+                    FilterChipRow(
+                        items = state.templates.map { it.id to (it.name.ifBlank { "Template" }) },
+                        selectedId = state.selectedTemplateId,
+                        onSelect = onSelectTemplate
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+
+            if (!state.isEditable) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(colors.lightGray)
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = "Visualização — edição disponível apenas no dia de hoje.",
+                            fontSize = 13.sp,
+                            color = colors.textSecondary
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
             }
 
             if (state.students.isEmpty()) {
@@ -215,6 +384,7 @@ private fun DiarioContent(
                     StudentCard(
                         student = student,
                         templateFields = state.templateFields,
+                        isEditable = state.isEditable,
                         onTogglePresence = { onTogglePresence(student.studentId) },
                         onUpdateField = { key, value -> onUpdateField(student.studentId, key, value) }
                     )
@@ -223,38 +393,40 @@ private fun DiarioContent(
             }
         }
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = colors.background,
-            shadowElevation = 8.dp
-        ) {
-            Button(
-                onClick = onSubmit,
-                enabled = !isSubmitting,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp)
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colors.buttonContainer,
-                    contentColor = colors.buttonText,
-                    disabledContainerColor = colors.mediumGray,
-                    disabledContentColor = Color.White
-                )
+        if (state.isEditable) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = colors.background,
+                shadowElevation = 8.dp
             ) {
-                if (isSubmitting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
+                Button(
+                    onClick = onSubmit,
+                    enabled = !isSubmitting,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
+                        .height(52.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colors.buttonContainer,
+                        contentColor = colors.buttonText,
+                        disabledContainerColor = colors.mediumGray,
+                        disabledContentColor = Color.White
                     )
-                } else {
-                    Text(
-                        text = "Finalizar e Enviar Diário",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                ) {
+                    if (isSubmitting) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = "Finalizar e Enviar Diário",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
@@ -262,9 +434,9 @@ private fun DiarioContent(
 }
 
 @Composable
-private fun ClassTabRow(
-    classes: List<ApiClass>,
-    selectedClassId: String,
+private fun FilterChipRow(
+    items: List<Pair<String, String>>,
+    selectedId: String,
     onSelect: (String) -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
@@ -274,30 +446,30 @@ private fun ClassTabRow(
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        classes.forEach { cls ->
-            val isSelected = cls.id == selectedClassId
+        items.forEach { (id, label) ->
+            val isSelected = id == selectedId
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(if (isSelected) colors.buttonContainer else Color.Transparent)
+                    .background(if (isSelected) colors.surface else colors.background)
                     .border(
                         width = 1.dp,
-                        color = if (isSelected) Color.Transparent else colors.inputBorder,
+                        color = if (isSelected) colors.focusedIndicator else colors.inputBorder,
                         shape = RoundedCornerShape(20.dp)
                     )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = { onSelect(cls.id) }
+                        onClick = { onSelect(id) }
                     )
-                    .padding(horizontal = 18.dp, vertical = 8.dp),
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = cls.name,
-                    fontSize = 14.sp,
-                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                    color = if (isSelected) colors.buttonText else colors.textPrimary
+                    text = label,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isSelected) colors.textPrimary else colors.textSecondary
                 )
             }
         }
@@ -308,89 +480,86 @@ private fun ClassTabRow(
 private fun StudentCard(
     student: StudentDailyLogState,
     templateFields: List<ApiTemplateField>,
+    isEditable: Boolean,
     onTogglePresence: () -> Unit,
     onUpdateField: (String, String) -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val context = LocalContext.current
 
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = colors.surface,
-        tonalElevation = 0.dp,
-        shadowElevation = 1.dp
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .border(1.dp, colors.inputBorder, RoundedCornerShape(16.dp))
+            .background(colors.background)
+            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, colors.inputBorder, RoundedCornerShape(16.dp))
-                .padding(horizontal = 16.dp, vertical = 14.dp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(colors.lightGray),
+                contentAlignment = Alignment.Center
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(colors.lightGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (!student.avatarUrl.isNullOrBlank()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(context)
-                                .data(student.avatarUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = student.studentName,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Outlined.Person,
-                            contentDescription = null,
-                            tint = colors.iconGray,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                if (!student.avatarUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(student.avatarUrl)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = student.studentName,
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Person,
+                        contentDescription = null,
+                        tint = colors.iconGray,
+                        modifier = Modifier.size(24.dp)
+                    )
                 }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Text(
-                    text = student.studentName,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.textPrimary,
-                    modifier = Modifier.weight(1f)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                PresenceToggle(
-                    isPresent = student.isPresent,
-                    onToggle = onTogglePresence
-                )
             }
 
-            AnimatedVisibility(
-                visible = student.isPresent,
-                enter = expandVertically(),
-                exit = shrinkVertically()
-            ) {
-                if (templateFields.isNotEmpty()) {
-                    Column(modifier = Modifier.padding(top = 12.dp)) {
-                        TemplateFieldsSection(
-                            fields = templateFields,
-                            fieldValues = student.fieldValues,
-                            onUpdateField = onUpdateField
-                        )
-                    }
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Text(
+                text = student.studentName,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary,
+                modifier = Modifier.weight(1f)
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            PresenceToggle(
+                isPresent = student.isPresent,
+                enabled = isEditable,
+                onToggle = onTogglePresence
+            )
+        }
+
+        AnimatedVisibility(
+            visible = student.isPresent,
+            enter = expandVertically(),
+            exit = shrinkVertically()
+        ) {
+            if (templateFields.isNotEmpty()) {
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    TemplateFieldsSection(
+                        fields = templateFields,
+                        fieldValues = student.fieldValues,
+                        isEditable = isEditable,
+                        onUpdateField = onUpdateField
+                    )
                 }
             }
         }
@@ -398,22 +567,29 @@ private fun StudentCard(
 }
 
 @Composable
-private fun PresenceToggle(isPresent: Boolean, onToggle: () -> Unit) {
+private fun PresenceToggle(isPresent: Boolean, enabled: Boolean, onToggle: () -> Unit) {
     val colors = LocalComunicacaoEscolarColors.current
     Box(
         modifier = Modifier
             .size(32.dp)
             .clip(CircleShape)
-            .background(if (isPresent) colors.buttonContainer else Color.Transparent)
+            .background(
+                when {
+                    isPresent -> colors.buttonContainer
+                    else -> Color.Transparent
+                }
+            )
             .border(
                 width = 1.5.dp,
                 color = if (isPresent) Color.Transparent else colors.inputBorder,
                 shape = CircleShape
             )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onToggle
+            .then(
+                if (enabled) Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onToggle
+                ) else Modifier
             ),
         contentAlignment = Alignment.Center
     ) {
@@ -455,6 +631,7 @@ private fun isCompactTemplateField(field: ApiTemplateField): Boolean =
 private fun TemplateFieldsSection(
     fields: List<ApiTemplateField>,
     fieldValues: Map<String, String>,
+    isEditable: Boolean,
     onUpdateField: (String, String) -> Unit
 ) {
     val groups = remember(fields) { groupTemplateFields(fields) }
@@ -468,6 +645,7 @@ private fun TemplateFieldsSection(
                     TemplateField(
                         field = field,
                         value = fieldValues[field.key] ?: "",
+                        isEditable = isEditable,
                         onUpdateField = { v -> onUpdateField(field.key, v) },
                         modifier = if (group.size > 1) Modifier.weight(1f) else Modifier.fillMaxWidth()
                     )
@@ -481,6 +659,7 @@ private fun TemplateFieldsSection(
 private fun TemplateField(
     field: ApiTemplateField,
     value: String,
+    isEditable: Boolean,
     onUpdateField: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -488,18 +667,21 @@ private fun TemplateField(
         field.type == "select" && field.options.isNotEmpty() -> SelectFieldDropdown(
             field = field,
             selectedValue = value,
+            isEditable = isEditable,
             onSelect = onUpdateField,
             modifier = modifier
         )
         field.type == "boolean" -> BooleanFieldToggle(
             field = field,
             selectedValue = value,
+            isEditable = isEditable,
             onSelect = onUpdateField,
             modifier = modifier
         )
         else -> TextTemplateField(
             field = field,
             value = value,
+            isEditable = isEditable,
             onValueChange = onUpdateField,
             modifier = modifier
         )
@@ -510,6 +692,7 @@ private fun TemplateField(
 private fun SelectFieldDropdown(
     field: ApiTemplateField,
     selectedValue: String,
+    isEditable: Boolean,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -523,10 +706,12 @@ private fun SelectFieldDropdown(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .border(1.dp, colors.inputBorder, RoundedCornerShape(8.dp))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = { expanded = true }
+                .then(
+                    if (isEditable) Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { expanded = true }
+                    ) else Modifier
                 )
                 .padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -539,33 +724,30 @@ private fun SelectFieldDropdown(
                 modifier = Modifier.weight(1f),
                 maxLines = 1
             )
-            Icon(
-                imageVector = Icons.Outlined.KeyboardArrowDown,
-                contentDescription = null,
-                tint = colors.textSecondary,
-                modifier = Modifier.size(16.dp)
-            )
+            if (isEditable) {
+                Icon(
+                    imageVector = Icons.Outlined.KeyboardArrowDown,
+                    contentDescription = null,
+                    tint = colors.textSecondary,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
         }
 
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.background(colors.surface)
-        ) {
-            field.options.forEach { option ->
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            text = option,
-                            fontSize = 13.sp,
-                            color = colors.textPrimary
-                        )
-                    },
-                    onClick = {
-                        onSelect(option)
-                        expanded = false
-                    }
-                )
+        if (isEditable) {
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false },
+                modifier = Modifier.background(colors.surface)
+            ) {
+                field.options.forEach { option ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(text = option, fontSize = 13.sp, color = colors.textPrimary)
+                        },
+                        onClick = { onSelect(option); expanded = false }
+                    )
+                }
             }
         }
     }
@@ -575,6 +757,7 @@ private fun SelectFieldDropdown(
 private fun BooleanFieldToggle(
     field: ApiTemplateField,
     selectedValue: String,
+    isEditable: Boolean,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -582,11 +765,7 @@ private fun BooleanFieldToggle(
     val options = if (field.options.size >= 2) field.options.take(2) else listOf("Sim", "Não")
 
     Column(modifier = modifier) {
-        Text(
-            text = field.label,
-            fontSize = 11.sp,
-            color = colors.textSecondary
-        )
+        Text(text = field.label, fontSize = 11.sp, color = colors.textSecondary)
         Spacer(modifier = Modifier.height(4.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -604,10 +783,12 @@ private fun BooleanFieldToggle(
                             color = if (isSelected) Color.Transparent else colors.inputBorder,
                             shape = RoundedCornerShape(8.dp)
                         )
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onSelect(option) }
+                        .then(
+                            if (isEditable) Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { onSelect(option) } else Modifier
+                        )
                         .padding(vertical = 8.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -627,16 +808,18 @@ private fun BooleanFieldToggle(
 private fun TextTemplateField(
     field: ApiTemplateField,
     value: String,
+    isEditable: Boolean,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     OutlinedTextField(
         value = value,
-        onValueChange = onValueChange,
+        onValueChange = { if (isEditable) onValueChange(it) },
         label = { Text(text = field.label, fontSize = 12.sp) },
         modifier = modifier,
         singleLine = true,
+        readOnly = !isEditable,
         shape = RoundedCornerShape(8.dp),
         textStyle = MaterialTheme.typography.bodyMedium.copy(
             color = colors.textPrimary,
@@ -652,4 +835,23 @@ private fun TextTemplateField(
             unfocusedLabelColor = colors.textSecondary
         )
     )
+}
+
+private fun isToday(cal: Calendar): Boolean {
+    val now = Calendar.getInstance()
+    return cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
+            cal.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)
+}
+
+private fun isYesterday(cal: Calendar): Boolean {
+    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, -1) }
+    return cal.get(Calendar.YEAR) == yesterday.get(Calendar.YEAR) &&
+            cal.get(Calendar.DAY_OF_YEAR) == yesterday.get(Calendar.DAY_OF_YEAR)
+}
+
+private fun isFuture(cal: Calendar): Boolean {
+    val now = Calendar.getInstance()
+    return cal.get(Calendar.YEAR) > now.get(Calendar.YEAR) ||
+            (cal.get(Calendar.YEAR) == now.get(Calendar.YEAR) &&
+                    cal.get(Calendar.DAY_OF_YEAR) > now.get(Calendar.DAY_OF_YEAR))
 }

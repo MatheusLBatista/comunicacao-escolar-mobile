@@ -2,9 +2,10 @@ package dev.fslab.comunicacao.escolar.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.fslab.comunicacao.escolar.model.ApiClass
+import dev.fslab.comunicacao.escolar.model.ApiDailyLogTemplate
 import dev.fslab.comunicacao.escolar.model.ApiTemplateField
 import dev.fslab.comunicacao.escolar.model.CreateDailyLogRequest
+import dev.fslab.comunicacao.escolar.model.DailyLogDoc
 import dev.fslab.comunicacao.escolar.model.DailyLogEntryRequest
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import dev.fslab.comunicacao.escolar.network.TokenManager
@@ -42,10 +43,11 @@ sealed class DiarioDeBordoUiState {
     object Loading : DiarioDeBordoUiState()
     data class Error(val message: String) : DiarioDeBordoUiState()
     data class Content(
-        val classes: List<ApiClass>,
-        val selectedClassId: String,
         val students: List<StudentDailyLogState>,
         val templateFields: List<ApiTemplateField>,
+        val templates: List<ApiDailyLogTemplate> = emptyList(),
+        val selectedTemplateId: String = "",
+        val isEditable: Boolean = true,
         val submitState: SubmitState = SubmitState.Idle
     ) : DiarioDeBordoUiState()
 }
@@ -55,28 +57,27 @@ class DiarioDeBordoViewModel : ViewModel() {
     private val _uiState = MutableStateFlow<DiarioDeBordoUiState>(DiarioDeBordoUiState.Loading)
     val uiState: StateFlow<DiarioDeBordoUiState> = _uiState.asStateFlow()
 
-    private val teacherId: String
-    private val schoolId: String
-
-    private var allStudentsCache: List<dev.fslab.comunicacao.escolar.model.ApiSchoolUser> = emptyList()
-    private var allClassesCache: List<ApiClass> = emptyList()
-    private var templateId: String = ""
-    private var templateFieldsCache: List<ApiTemplateField> = emptyList()
-    private var existingLogIdByStudent: Map<String, String> = emptyMap()
-    private var existingLogByStudent: Map<String, dev.fslab.comunicacao.escolar.model.DailyLogDoc> = emptyMap()
-
     private val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
 
-    init {
-        val user = TokenManager.getSavedUser()
-        teacherId = user?.id ?: ""
-        schoolId = user?.schoolId ?: ""
-        load()
-    }
+    private var currentClassId: String = ""
+    private var currentDateMs: Long = System.currentTimeMillis()
 
-    fun load() {
+    private val teacherId: String get() = TokenManager.getSavedUser()?.id ?: ""
+    private val schoolId: String get() = TokenManager.getSavedUser()?.schoolId ?: ""
+
+    private var allStudentsCache: List<dev.fslab.comunicacao.escolar.model.ApiSchoolUser> = emptyList()
+    private var allTemplatesCache: List<ApiDailyLogTemplate> = emptyList()
+    private var templateId: String = ""
+    private var templateFieldsCache: List<ApiTemplateField> = emptyList()
+    private var existingLogIdByStudent: Map<String, String> = emptyMap()
+    private var existingLogByStudent: Map<String, DailyLogDoc> = emptyMap()
+
+    fun load(classId: String, dateMs: Long) {
+        currentClassId = classId
+        currentDateMs = dateMs
+
         viewModelScope.launch {
             _uiState.value = DiarioDeBordoUiState.Loading
             if (teacherId.isBlank() || schoolId.isBlank()) {
@@ -84,14 +85,9 @@ class DiarioDeBordoViewModel : ViewModel() {
                 return@launch
             }
             try {
-                val (dateFrom, dateTo) = todayRange()
+                val (dateFrom, dateTo) = dateRange(dateMs)
+                val isEditable = isToday(dateMs)
 
-                val classesDeferred = async {
-                    RetrofitClient.adminApi.listClasses(
-                        schoolId,
-                        mapOf("teacher_id" to teacherId, "limit" to "100")
-                    )
-                }
                 val studentsDeferred = async {
                     RetrofitClient.adminApi.listUsers(
                         schoolId,
@@ -100,7 +96,7 @@ class DiarioDeBordoViewModel : ViewModel() {
                 }
                 val templateDeferred = async {
                     RetrofitClient.adminApi.listTemplates(
-                        mapOf("school_id" to schoolId, "limit" to "10")
+                        mapOf("school_id" to schoolId, "limit" to "20")
                     )
                 }
                 val logsDeferred = async {
@@ -114,10 +110,10 @@ class DiarioDeBordoViewModel : ViewModel() {
                     )
                 }
 
-                allClassesCache = classesDeferred.await().data?.docs.orEmpty()
                 allStudentsCache = studentsDeferred.await().data?.docs.orEmpty()
+                allTemplatesCache = templateDeferred.await().data?.docs.orEmpty()
 
-                val template = templateDeferred.await().data?.docs?.firstOrNull()
+                val template = allTemplatesCache.firstOrNull()
                 templateId = template?.id ?: ""
                 templateFieldsCache = template?.fields ?: emptyList()
 
@@ -129,17 +125,12 @@ class DiarioDeBordoViewModel : ViewModel() {
                     .filter { it.student?.id?.isNotBlank() == true }
                     .associateBy { it.student!!.id }
 
-                if (allClassesCache.isEmpty()) {
-                    _uiState.value = DiarioDeBordoUiState.Error("Nenhuma turma encontrada.")
-                    return@launch
-                }
-
-                val selectedClassId = allClassesCache.first().id
                 _uiState.value = DiarioDeBordoUiState.Content(
-                    classes = allClassesCache,
-                    selectedClassId = selectedClassId,
-                    students = buildStudentStates(selectedClassId),
-                    templateFields = templateFieldsCache
+                    students = buildStudentStates(classId),
+                    templateFields = templateFieldsCache,
+                    templates = allTemplatesCache,
+                    selectedTemplateId = templateId,
+                    isEditable = isEditable
                 )
             } catch (_: java.net.UnknownHostException) {
                 _uiState.value = DiarioDeBordoUiState.Error("Sem conexão com a internet.")
@@ -151,11 +142,15 @@ class DiarioDeBordoViewModel : ViewModel() {
         }
     }
 
-    fun selectClass(classId: String) {
+    fun selectTemplate(id: String) {
         val state = _uiState.value as? DiarioDeBordoUiState.Content ?: return
+        val template = allTemplatesCache.find { it.id == id } ?: return
+        templateId = id
+        templateFieldsCache = template.fields
         _uiState.value = state.copy(
-            selectedClassId = classId,
-            students = buildStudentStates(classId)
+            selectedTemplateId = id,
+            templateFields = templateFieldsCache,
+            students = state.students.map { it.copy(fieldValues = emptyMap()) }
         )
     }
 
@@ -180,7 +175,7 @@ class DiarioDeBordoViewModel : ViewModel() {
         val state = _uiState.value as? DiarioDeBordoUiState.Content ?: return
         if (templateId.isBlank()) {
             _uiState.value = state.copy(
-                submitState = SubmitState.Error("Nenhum template de diário configurado para esta escola.")
+                submitState = SubmitState.Error("Nenhum template de diário configurado.")
             )
             return
         }
@@ -260,8 +255,9 @@ class DiarioDeBordoViewModel : ViewModel() {
         )
     }
 
-    private fun todayRange(): Pair<String, String> {
+    private fun dateRange(dateMs: Long): Pair<String, String> {
         val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+        cal.timeInMillis = dateMs
         cal.set(Calendar.HOUR_OF_DAY, 0)
         cal.set(Calendar.MINUTE, 0)
         cal.set(Calendar.SECOND, 0)
@@ -271,8 +267,14 @@ class DiarioDeBordoViewModel : ViewModel() {
         cal.set(Calendar.MINUTE, 59)
         cal.set(Calendar.SECOND, 59)
         cal.set(Calendar.MILLISECOND, 999)
-        val to = isoFormatter.format(cal.time)
-        return from to to
+        return from to isoFormatter.format(cal.time)
+    }
+
+    private fun isToday(dateMs: Long): Boolean {
+        val calDate = Calendar.getInstance().apply { timeInMillis = dateMs }
+        val calNow = Calendar.getInstance()
+        return calDate.get(Calendar.YEAR) == calNow.get(Calendar.YEAR) &&
+                calDate.get(Calendar.DAY_OF_YEAR) == calNow.get(Calendar.DAY_OF_YEAR)
     }
 
     private fun nowIso(): String = isoFormatter.format(Date())
