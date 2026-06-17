@@ -496,7 +496,7 @@ fun MuralPostCard(
 				.background(Color.LightGray)
 
 			if (author?.avatarUrl != null) {
-				val avatarUrl = author.avatarUrl.replace("localhost", "10.0.2.2")
+				val avatarUrl = author.avatarUrl.replace("localhost", "34.194.113.240")
 				AsyncImage(
 					model = ImageRequest.Builder(context)
 						.data(avatarUrl)
