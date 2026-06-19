@@ -22,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Pending
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.CircularProgressIndicator
@@ -53,6 +52,7 @@ import dev.fslab.comunicacao.escolar.ui.viewmodel.DiarioDeBordoListViewModel
 
 @Composable
 fun DiarioDeBordoListScreen(
+    onBack: () -> Unit,
     onOpenDiario: (classId: String, className: String) -> Unit,
     viewModel: DiarioDeBordoListViewModel = viewModel()
 ) {
@@ -65,7 +65,7 @@ fun DiarioDeBordoListScreen(
             .fillMaxSize()
             .background(colors.background)
     ) {
-        AppHeader("Diário de Bordo")
+        AppHeader("Diário de Bordo", onBack = onBack)
 
         when (val state = uiState) {
             is DiarioDeBordoListUiState.Loading -> {
@@ -216,59 +216,52 @@ private fun TurmaCard(
     onClick: () -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .border(1.dp, colors.inputBorder, RoundedCornerShape(16.dp))
-            .background(colors.background)
+            .clip(RoundedCornerShape(12.dp))
+            .background(colors.surface)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onClick
             )
-            .padding(16.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = status.className,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.textPrimary
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 Text(
-                    text = status.className,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = colors.textPrimary
+                    text = "${status.studentCount} aluno${if (status.studentCount != 1) "s" else ""}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.textSecondary
                 )
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Group,
-                        contentDescription = null,
-                        tint = colors.textSecondary,
-                        modifier = Modifier.size(14.dp)
-                    )
+                if (status.logCount > 0) {
+                    Text(text = "·", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
                     Text(
-                        text = "${status.studentCount} aluno${if (status.studentCount != 1) "s" else ""}",
-                        fontSize = 13.sp,
-                        color = colors.textSecondary
+                        text = "${status.logCount}/${status.studentCount} registrados",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (status.isDone) colors.primary else colors.textSecondary
                     )
-                    if (status.logCount > 0) {
-                        Text(text = "·", fontSize = 13.sp, color = colors.textSecondary)
-                        Text(
-                            text = "${status.logCount}/${status.studentCount} registrados",
-                            fontSize = 13.sp,
-                            color = if (status.isDone) colors.primary else colors.textSecondary
-                        )
-                    }
                 }
             }
-            Icon(
-                imageVector = Icons.Outlined.ChevronRight,
-                contentDescription = null,
-                tint = colors.textSecondary,
-                modifier = Modifier.size(20.dp)
-            )
         }
+        Icon(
+            imageVector = Icons.Outlined.ChevronRight,
+            contentDescription = null,
+            tint = colors.textSecondary,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }

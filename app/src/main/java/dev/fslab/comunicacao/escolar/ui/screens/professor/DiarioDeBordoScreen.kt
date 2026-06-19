@@ -7,7 +7,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,14 +22,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.ChevronLeft
-import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Refresh
@@ -40,7 +36,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -60,7 +55,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -128,19 +125,9 @@ fun DiarioDeBordoScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             AppHeader(title = className, onBack = onBack)
 
-            DateNavigatorRow(
+            val contentState = uiState as? DiarioDeBordoUiState.Content
+            DiarioControlsRow(
                 calendar = selectedCalendar,
-                onPrev = {
-                    selectedCalendar = (selectedCalendar.clone() as Calendar).apply {
-                        add(Calendar.DAY_OF_MONTH, -1)
-                    }
-                },
-                onNext = {
-                    val next = (selectedCalendar.clone() as Calendar).apply {
-                        add(Calendar.DAY_OF_MONTH, 1)
-                    }
-                    if (!isFuture(next)) selectedCalendar = next
-                },
                 onPickDate = { newMs ->
                     selectedCalendar = Calendar.getInstance().apply {
                         timeInMillis = newMs
@@ -150,9 +137,9 @@ fun DiarioDeBordoScreen(
                         set(Calendar.MILLISECOND, 0)
                     }
                 },
-                canGoNext = !isFuture(
-                    (selectedCalendar.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 1) }
-                )
+                templates = contentState?.templates.orEmpty(),
+                selectedTemplateId = contentState?.selectedTemplateId ?: "",
+                onSelectTemplate = { viewModel.selectTemplate(it) }
             )
 
             when (val state = uiState) {
@@ -163,7 +150,6 @@ fun DiarioDeBordoScreen(
                 )
                 is DiarioDeBordoUiState.Content -> DiarioContent(
                     state = state,
-                    onSelectTemplate = { viewModel.selectTemplate(it) },
                     onTogglePresence = { viewModel.togglePresence(it) },
                     onUpdateField = { studentId, key, value -> viewModel.updateField(studentId, key, value) },
                     onSubmit = { viewModel.submit() }
@@ -175,51 +161,42 @@ fun DiarioDeBordoScreen(
 }
 
 @Composable
-private fun DateNavigatorRow(
+private fun DiarioControlsRow(
     calendar: Calendar,
-    onPrev: () -> Unit,
-    onNext: () -> Unit,
     onPickDate: (Long) -> Unit,
-    canGoNext: Boolean
+    templates: List<dev.fslab.comunicacao.escolar.model.ApiDailyLogTemplate>,
+    selectedTemplateId: String,
+    onSelectTemplate: (String) -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val context = LocalContext.current
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR")) }
-
-    val label = when {
+    val dateLabel = when {
         isToday(calendar) -> "Hoje"
         isYesterday(calendar) -> "Ontem"
         else -> dateFormatter.format(calendar.time)
     }
+    var templateExpanded by remember { mutableStateOf(false) }
+    val templateLabel = templates.find { it.id == selectedTemplateId }
+        ?.name?.ifBlank { "Template" } ?: "Template"
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+            .padding(horizontal = 20.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onPrev, modifier = Modifier.size(36.dp)) {
-            Icon(
-                imageVector = Icons.Outlined.ChevronLeft,
-                contentDescription = "Dia anterior",
-                tint = colors.textSecondary,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        Box(
+        Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(10.dp))
+                .weight(1f)
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, colors.inputBorder, RoundedCornerShape(12.dp))
                 .background(colors.surface)
-                .border(1.dp, colors.inputBorder, RoundedCornerShape(10.dp))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) {
-                    val cal = calendar
                     DatePickerDialog(
                         context,
                         { _, year, month, day ->
@@ -229,45 +206,85 @@ private fun DateNavigatorRow(
                             }
                             if (!isFuture(picked)) onPickDate(picked.timeInMillis)
                         },
-                        cal.get(Calendar.YEAR),
-                        cal.get(Calendar.MONTH),
-                        cal.get(Calendar.DAY_OF_MONTH)
+                        calendar.get(Calendar.YEAR),
+                        calendar.get(Calendar.MONTH),
+                        calendar.get(Calendar.DAY_OF_MONTH)
                     ).show()
                 }
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.CalendarMonth,
-                    contentDescription = null,
-                    tint = colors.textSecondary,
-                    modifier = Modifier.size(14.dp)
-                )
-                Text(
-                    text = label,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = colors.textPrimary
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        IconButton(
-            onClick = onNext,
-            enabled = canGoNext,
-            modifier = Modifier.size(36.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Icon(
-                imageVector = Icons.Outlined.ChevronRight,
-                contentDescription = "Próximo dia",
-                tint = if (canGoNext) colors.textSecondary else colors.lightGray,
+                imageVector = Icons.Outlined.CalendarMonth,
+                contentDescription = null,
+                tint = colors.textSecondary,
                 modifier = Modifier.size(20.dp)
             )
+            Text(
+                text = dateLabel,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textInput,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        if (templates.size > 1) {
+            var templateDropdownWidth by remember { mutableStateOf(0) }
+            val density = LocalDensity.current
+            Box(modifier = Modifier.weight(1f).onSizeChanged { templateDropdownWidth = it.width }) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, colors.inputBorder, RoundedCornerShape(12.dp))
+                        .background(colors.surface)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { templateExpanded = true }
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = templateLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textInput,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1
+                    )
+                    Icon(
+                        imageVector = Icons.Outlined.KeyboardArrowDown,
+                        contentDescription = null,
+                        tint = colors.textSecondary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                DropdownMenu(
+                    expanded = templateExpanded,
+                    onDismissRequest = { templateExpanded = false },
+                    modifier = Modifier
+                        .width(with(density) { templateDropdownWidth.toDp() })
+                        .background(colors.surface)
+                ) {
+                    templates.forEach { template ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = template.name.ifBlank { "Template" },
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = colors.textPrimary
+                                )
+                            },
+                            onClick = {
+                                onSelectTemplate(template.id)
+                                templateExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -316,7 +333,6 @@ private fun DiarioErrorContent(message: String, onRetry: () -> Unit) {
 @Composable
 private fun DiarioContent(
     state: DiarioDeBordoUiState.Content,
-    onSelectTemplate: (String) -> Unit,
     onTogglePresence: (String) -> Unit,
     onUpdateField: (String, String, String) -> Unit,
     onSubmit: () -> Unit
@@ -334,17 +350,6 @@ private fun DiarioContent(
             ),
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
-            if (state.templates.size > 1) {
-                item {
-                    FilterChipRow(
-                        items = state.templates.map { it.id to (it.name.ifBlank { "Template" }) },
-                        selectedId = state.selectedTemplateId,
-                        onSelect = onSelectTemplate
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-            }
-
             if (!state.isEditable) {
                 item {
                     Box(
@@ -428,49 +433,6 @@ private fun DiarioContent(
                         )
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun FilterChipRow(
-    items: List<Pair<String, String>>,
-    selectedId: String,
-    onSelect: (String) -> Unit
-) {
-    val colors = LocalComunicacaoEscolarColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        items.forEach { (id, label) ->
-            val isSelected = id == selectedId
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(if (isSelected) colors.surface else colors.background)
-                    .border(
-                        width = 1.dp,
-                        color = if (isSelected) colors.focusedIndicator else colors.inputBorder,
-                        shape = RoundedCornerShape(20.dp)
-                    )
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { onSelect(id) }
-                    )
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = label,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = if (isSelected) colors.textPrimary else colors.textSecondary
-                )
             }
         }
     }
@@ -699,13 +661,16 @@ private fun SelectFieldDropdown(
     val colors = LocalComunicacaoEscolarColors.current
     var expanded by remember { mutableStateOf(false) }
     val displayText = selectedValue.ifBlank { field.label }
+    var dropdownWidth by remember { mutableStateOf(0) }
+    val density = LocalDensity.current
 
-    Box(modifier = modifier) {
+    Box(modifier = modifier.onSizeChanged { dropdownWidth = it.width }) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
-                .border(1.dp, colors.inputBorder, RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, colors.inputBorder, RoundedCornerShape(12.dp))
+                .background(colors.surface)
                 .then(
                     if (isEditable) Modifier.clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -713,14 +678,14 @@ private fun SelectFieldDropdown(
                         onClick = { expanded = true }
                     ) else Modifier
                 )
-                .padding(horizontal = 10.dp, vertical = 8.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = displayText,
-                fontSize = 12.sp,
-                color = if (selectedValue.isBlank()) colors.textSecondary else colors.textPrimary,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (selectedValue.isBlank()) colors.textSecondary else colors.textInput,
                 modifier = Modifier.weight(1f),
                 maxLines = 1
             )
@@ -729,7 +694,7 @@ private fun SelectFieldDropdown(
                     imageVector = Icons.Outlined.KeyboardArrowDown,
                     contentDescription = null,
                     tint = colors.textSecondary,
-                    modifier = Modifier.size(16.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -738,12 +703,14 @@ private fun SelectFieldDropdown(
             DropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false },
-                modifier = Modifier.background(colors.surface)
+                modifier = Modifier
+                    .width(with(density) { dropdownWidth.toDp() })
+                    .background(colors.surface)
             ) {
                 field.options.forEach { option ->
                     DropdownMenuItem(
                         text = {
-                            Text(text = option, fontSize = 13.sp, color = colors.textPrimary)
+                            Text(text = option, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
                         },
                         onClick = { onSelect(option); expanded = false }
                     )
@@ -764,41 +731,37 @@ private fun BooleanFieldToggle(
     val colors = LocalComunicacaoEscolarColors.current
     val options = if (field.options.size >= 2) field.options.take(2) else listOf("Sim", "Não")
 
-    Column(modifier = modifier) {
-        Text(text = field.label, fontSize = 11.sp, color = colors.textSecondary)
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            options.forEach { option ->
-                val isSelected = selectedValue == option
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) colors.buttonContainer else Color.Transparent)
-                        .border(
-                            width = 1.dp,
-                            color = if (isSelected) Color.Transparent else colors.inputBorder,
-                            shape = RoundedCornerShape(8.dp)
-                        )
-                        .then(
-                            if (isEditable) Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) { onSelect(option) } else Modifier
-                        )
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = option,
-                        fontSize = 12.sp,
-                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isSelected) colors.buttonText else colors.textPrimary
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        options.forEach { option ->
+            val isSelected = selectedValue == option
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(if (isSelected) colors.buttonContainer else colors.surface)
+                    .border(
+                        width = 1.dp,
+                        color = if (isSelected) Color.Transparent else colors.inputBorder,
+                        shape = RoundedCornerShape(12.dp)
                     )
-                }
+                    .then(
+                        if (isEditable) Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onSelect(option) } else Modifier
+                    )
+                    .padding(vertical = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = option,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                    color = if (isSelected) colors.buttonText else colors.textPrimary
+                )
             }
         }
     }
@@ -816,23 +779,26 @@ private fun TextTemplateField(
     OutlinedTextField(
         value = value,
         onValueChange = { if (isEditable) onValueChange(it) },
-        label = { Text(text = field.label, fontSize = 12.sp) },
-        modifier = modifier,
+        placeholder = {
+            Text(
+                text = field.label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.textSecondary
+            )
+        },
+        modifier = modifier.fillMaxWidth(),
         singleLine = true,
         readOnly = !isEditable,
-        shape = RoundedCornerShape(8.dp),
-        textStyle = MaterialTheme.typography.bodyMedium.copy(
-            color = colors.textPrimary,
-            fontSize = 13.sp
-        ),
+        shape = RoundedCornerShape(12.dp),
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.textInput),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = colors.focusedIndicator,
             unfocusedBorderColor = colors.inputBorder,
-            focusedContainerColor = colors.background,
-            unfocusedContainerColor = colors.background,
+            focusedContainerColor = colors.surface,
+            unfocusedContainerColor = colors.surface,
             cursorColor = colors.focusedIndicator,
-            focusedLabelColor = colors.focusedIndicator,
-            unfocusedLabelColor = colors.textSecondary
+            focusedTextColor = colors.textInput,
+            unfocusedTextColor = colors.textInput
         )
     )
 }
