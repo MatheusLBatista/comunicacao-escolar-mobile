@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 
 object RetrofitClient {
 
-    const val BASE_URL = "http://34.194.113.240:3010/"
+    const val BASE_URL = "http://localhost:3011/"
 
     private val gson = GsonBuilder()
         .setLenient()
@@ -29,7 +29,7 @@ object RetrofitClient {
         level = HttpLoggingInterceptor.Level.BODY
     }
 
-    private val okHttpClient = OkHttpClient.Builder()
+    val okHttpClient = OkHttpClient.Builder()
         .addInterceptor(AuthInterceptor())
         .addInterceptor(loggingInterceptor)
         .authenticator(TokenAuthenticator())

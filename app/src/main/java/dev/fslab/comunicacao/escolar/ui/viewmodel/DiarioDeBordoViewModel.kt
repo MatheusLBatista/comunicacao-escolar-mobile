@@ -279,5 +279,5 @@ class DiarioDeBordoViewModel : ViewModel() {
 
     private fun nowIso(): String = isoFormatter.format(Date())
 
-    private fun String.fixLocalhostUrl(): String = replace("://localhost", "://34.194.113.240")
+    private fun String.fixLocalhostUrl(): String = this
 }
