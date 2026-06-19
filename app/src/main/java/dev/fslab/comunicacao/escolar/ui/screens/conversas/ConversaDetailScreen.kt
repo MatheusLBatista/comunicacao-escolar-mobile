@@ -54,6 +54,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationManagerCompat
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import dev.fslab.comunicacao.escolar.model.Message
@@ -75,6 +76,7 @@ fun ConversaDetailScreen(
     onActivityRefTapped: ((logId: String) -> Unit)? = null
 ) {
     val colors = LocalComunicacaoEscolarColors.current
+    val context = LocalContext.current
     val messages by conversaViewModel.messages.collectAsState()
     val isLoading by conversaViewModel.messagesLoading.collectAsState()
     val isSending by conversaViewModel.isSending.collectAsState()
@@ -86,6 +88,8 @@ fun ConversaDetailScreen(
         conversaViewModel.openConversation(conversaId)
         conversaViewModel.loadMessages(conversaId, user.id)
         conversaViewModel.markRead(conversaId)
+        // Remove a notificação dessa conversa da bandeja (id usado no service é o hashCode)
+        NotificationManagerCompat.from(context).cancel(conversaId.hashCode())
     }
 
     DisposableEffect(conversaId) {

@@ -1,8 +1,15 @@
 package dev.fslab.comunicacao.escolar.network
 
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import dev.fslab.comunicacao.escolar.MainActivity
+import dev.fslab.comunicacao.escolar.R
 import dev.fslab.comunicacao.escolar.model.FcmTokenRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,18 +18,13 @@ import kotlinx.coroutines.launch
 
 class MyFirebaseMessagingService : FirebaseMessagingService() {
 
-    // Escopo de corrotina vinculado ao ciclo de vida do serviço
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d("FCM", "Novo token recebido: $token")
-        
-        // Salva o token localmente de forma segura
         TokenManager.saveFcmToken(token)
-        
-        // Se o usuário já estiver logado, envia para a API imediatamente
         if (TokenManager.isAuthenticated()) {
             enviarTokenParaServidor(token)
         }
@@ -46,33 +48,61 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
 
         val data = remoteMessage.data
         val type = data["type"]
-        val postId = data["postId"]
 
-        // Se for um novo post, notificamos o sistema interno
-        if (type == "announcement" && postId != null) {
-            scope.launch {
-                FCMEventManager.emitNewPost(postId)
+        when (type) {
+            "announcement" -> {
+                val postId = data["postId"] ?: return
+                scope.launch { FCMEventManager.emitNewPost(postId) }
             }
-        } else if (type == "delete_post" && postId != null) {
-            scope.launch {
-                FCMEventManager.emitDeletePost(postId)
+            "delete_post" -> {
+                val postId = data["postId"] ?: return
+                scope.launch { FCMEventManager.emitDeletePost(postId) }
+            }
+            "new_message" -> {
+                val conversationId = data["conversationId"] ?: return
+                val messageId = data["messageId"] ?: return
+                scope.launch { FCMEventManager.emitNewMessage(conversationId, messageId) }
+                // Não notifica se o usuário já está visualizando essa conversa.
+                if (conversationId != FCMEventManager.activeConversationId) {
+                    mostrarNotificacaoChat(conversationId, data)
+                }
             }
         }
+    }
 
-        // Se a mensagem contiver uma notificação, e NÃO for um post (ou quisermos mostrar sempre no sistema)
-        // No Android, se o app está em foreground, a notificação do sistema NÃO aparece automaticamente.
-        // Se quisermos que apareça, teríamos que criar uma notificação manualmente aqui.
-        // Como o usuário quer que seja "internamente sem aparecer na notificação", não fazemos nada se for post.
-        
-        remoteMessage.notification?.let {
-            Log.d("FCM", "Corpo da notificação: ${it.body}")
-            // Se não for um anúncio, ou se você quiser mostrar outras notificações mesmo em foreground:
-            // if (type != "announcement") { ... mostrar notificação manual ... }
+    private fun mostrarNotificacaoChat(conversationId: String, data: Map<String, String>) {
+        val titulo = data["senderName"] ?: "Nova mensagem"
+        val corpo = data["messageText"] ?: "Você recebeu uma nova mensagem"
+
+        val tapIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(EXTRA_CONVERSATION_ID, conversationId)
         }
+        val pendingIntent = PendingIntent.getActivity(
+            this, conversationId.hashCode(), tapIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_CHAT)
+            .setSmallIcon(R.mipmap.ic_launcher)
+            .setContentTitle(titulo)
+            .setContentText(corpo)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.notify(conversationId.hashCode(), notification)
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        job.cancel() // Cancela corrotinas pendentes quando o serviço for destruído
+        job.cancel()
+    }
+
+    companion object {
+        const val CHANNEL_CHAT = "chat_messages"
+        const val EXTRA_CONVERSATION_ID = "conversationId"
     }
 }

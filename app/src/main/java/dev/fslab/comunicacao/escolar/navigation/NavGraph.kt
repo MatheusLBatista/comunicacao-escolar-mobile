@@ -17,6 +17,8 @@ import androidx.navigation.compose.composable
 import dev.fslab.comunicacao.escolar.network.TokenManager
 import dev.fslab.comunicacao.escolar.ui.screens.auth.CadastroScreen
 import dev.fslab.comunicacao.escolar.ui.screens.auth.LoginScreen
+import dev.fslab.comunicacao.escolar.ui.screens.auth.RecuperarSenhaScreen
+import dev.fslab.comunicacao.escolar.ui.screens.auth.RedefinirSenhaScreen
 import dev.fslab.comunicacao.escolar.ui.screens.common.HomeScreen
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
@@ -32,6 +34,8 @@ sealed class Screen(val route: String) {
     // Auth (público)
     object Login : Screen("login")
     object Cadastro : Screen("cadastro")
+    object RecuperarSenha : Screen("recuperar_senha")
+    object RedefinirSenha : Screen("redefinir_senha")
     object Home : Screen("home")
 
     // Responsável
@@ -113,6 +117,9 @@ fun NavGraph(
                 onNavigateToCadastro = {
                     navController.navigateSafely(Screen.Cadastro.route)
                 },
+                onNavigateToRecuperarSenha = {
+                    navController.navigateSafely(Screen.RecuperarSenha.route)
+                },
                 onLoginSuccess = {
                     navController.navigateSafely(Screen.Home.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
@@ -129,6 +136,31 @@ fun NavGraph(
                 },
                 onCadastroSuccess = {
                     navController.popBackStackSafely()
+                }
+            )
+        }
+
+        composable(Screen.RecuperarSenha.route) {
+            RecuperarSenhaScreen(
+                authViewModel = authViewModel,
+                onNavigateBack = {
+                    navController.popBackStackSafely()
+                },
+                onNavigateToReset = {
+                    navController.navigateSafely(Screen.RedefinirSenha.route) {
+                        popUpTo(Screen.RecuperarSenha.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.RedefinirSenha.route) {
+            RedefinirSenhaScreen(
+                authViewModel = authViewModel,
+                onNavigateToLogin = {
+                    navController.navigateSafely(Screen.Login.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
                 }
             )
         }
