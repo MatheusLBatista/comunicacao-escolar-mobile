@@ -46,9 +46,12 @@ import dev.fslab.comunicacao.escolar.ui.components.BottomNavItem
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ThemeViewModel
 import dev.fslab.comunicacao.escolar.ui.theme.screens.MuralScreen as MuralScreenReal
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import dev.fslab.comunicacao.escolar.network.FCMEventManager
 import dev.fslab.comunicacao.escolar.ui.screens.conversas.ConversaDetailScreen
 import dev.fslab.comunicacao.escolar.ui.screens.conversas.ConversaListScreen
 import dev.fslab.comunicacao.escolar.ui.screens.conversas.NovaConversaScreen
@@ -98,6 +101,26 @@ fun ResponsavelDashboardScreen(
     val colors = LocalComunicacaoEscolarColors.current
     var currentRoute by rememberSaveable { mutableStateOf(Screen.Atividades.route) }
     var pendingLogId by remember { mutableStateOf<String?>(null) }
+    var pendingConversaId by remember { mutableStateOf<String?>(null) }
+
+    val conversaViewModel: ConversaViewModel = viewModel()
+    val unreadCounts by conversaViewModel.unreadCounts.collectAsState()
+    val totalUnread = unreadCounts.values.sum()
+    val navItems = remember(totalUnread) {
+        responsavelNavItems.map { item ->
+            if (item.route == Screen.Conversas.route) item.copy(badgeCount = totalUnread)
+            else item
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        FCMEventManager.navigateToConversationEvent.collect { conversationId ->
+            if (conversationId == null) return@collect
+            pendingConversaId = conversationId
+            currentRoute = Screen.Conversas.route
+            FCMEventManager.consumeNavigateToConversation()
+        }
+    }
 
     // Impede o back sair do app ao estar na aba principal
     BackHandler(enabled = currentRoute != Screen.Atividades.route) {
@@ -108,7 +131,7 @@ fun ResponsavelDashboardScreen(
         containerColor = colors.background,
         bottomBar = {
             BottomNavBar(
-                items = responsavelNavItems,
+                items = navItems,
                 currentRoute = currentRoute,
                 onItemClick = { currentRoute = it.route }
             )
@@ -134,6 +157,9 @@ fun ResponsavelDashboardScreen(
                 Screen.Conversas.route -> ConversasScreen(
                     user = user,
                     accessToken = accessToken,
+                    conversaViewModel = conversaViewModel,
+                    pendingConversaId = pendingConversaId,
+                    onPendingConversaConsumed = { pendingConversaId = null },
                     onActivityRefTapped = { logId ->
                         pendingLogId = logId
                         currentRoute = Screen.Atividades.route
@@ -183,6 +209,9 @@ fun AtividadesScreen(
 fun ConversasScreen(
     user: User,
     accessToken: String,
+    conversaViewModel: ConversaViewModel = viewModel(),
+    pendingConversaId: String? = null,
+    onPendingConversaConsumed: () -> Unit = {},
     onActivityRefTapped: (logId: String) -> Unit = {}
 ) {
     if (user.schoolId == null) {
@@ -193,8 +222,18 @@ fun ConversasScreen(
         return
     }
 
-    val conversaViewModel: ConversaViewModel = viewModel()
     var subScreen by remember { mutableStateOf<ConversasSubScreen?>(null) }
+
+    val conversations by conversaViewModel.conversations.collectAsState()
+    LaunchedEffect(pendingConversaId, conversations) {
+        val id = pendingConversaId ?: return@LaunchedEffect
+        if (conversations.isEmpty()) return@LaunchedEffect
+        val conv = conversations.find { it.id == id }
+        if (conv != null) {
+            subScreen = ConversasSubScreen.Detail(id, conv.otherParticipant.fullName, conv.avatarUrl)
+            onPendingConversaConsumed()
+        }
+    }
 
     BackHandler(enabled = subScreen != null) {
         subScreen = null

@@ -1,6 +1,10 @@
 package dev.fslab.comunicacao.escolar
 
 import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.os.Build
@@ -22,6 +26,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import dev.fslab.comunicacao.escolar.navigation.NavGraph
+import dev.fslab.comunicacao.escolar.network.FCMEventManager
+import dev.fslab.comunicacao.escolar.network.MyFirebaseMessagingService
 import dev.fslab.comunicacao.escolar.network.TokenManager
 import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
@@ -46,7 +52,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         TokenManager.init(applicationContext)
+        criarCanalNotificacaoChat()
         askNotificationPermission()
+        handleNotificationIntent(intent)
 
         lifecycleScope.launch {
             themeViewModel.themeMode.collect { mode ->
@@ -66,6 +74,32 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             ComunicacaoEscolarApp(themeViewModel = themeViewModel)
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: Intent?) {
+        val conversationId = intent?.getStringExtra(MyFirebaseMessagingService.EXTRA_CONVERSATION_ID)
+        if (conversationId != null) {
+            FCMEventManager.emitNavigateToConversation(conversationId)
+        }
+    }
+
+    private fun criarCanalNotificacaoChat() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                MyFirebaseMessagingService.CHANNEL_CHAT,
+                "Mensagens de Chat",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notificações de novas mensagens de chat"
+            }
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.createNotificationChannel(channel)
         }
     }
 
