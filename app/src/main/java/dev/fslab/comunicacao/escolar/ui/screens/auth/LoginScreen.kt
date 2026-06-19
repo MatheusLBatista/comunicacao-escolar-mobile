@@ -83,6 +83,7 @@ fun LoginScreen(
     authViewModel: AuthViewModel,
     themeViewModel: ThemeViewModel,
     onNavigateToCadastro: () -> Unit = {},
+    onNavigateToRecuperarSenha: () -> Unit = {},
     onLoginSuccess: () -> Unit = {}
 ) {
     val colors = LocalComunicacaoEscolarColors.current
@@ -251,7 +252,7 @@ fun LoginScreen(
                     color = colors.textSecondary,
                     fontWeight = FontWeight.Medium,
                     textDecoration = TextDecoration.Underline,
-                    modifier = Modifier.clickable { /* TODO: tela de recuperação */ }
+                    modifier = Modifier.clickable { onNavigateToRecuperarSenha() }
                 )
             }
 
