@@ -96,7 +96,14 @@ class AgendaViewModel : ViewModel() {
         if (schoolId.isBlank() || _turmas.value.isNotEmpty()) return
         viewModelScope.launch {
             try {
-                val response = RetrofitClient.adminApi.listClasses(schoolId, mapOf("limit" to "100"))
+                val user = dev.fslab.comunicacao.escolar.network.TokenManager.getSavedUser()
+                val params = buildMap<String, String> {
+                    put("limit", "100")
+                    if (user?.role == "teacher" && user.id.isNotBlank()) {
+                        put("teacher_id", user.id)
+                    }
+                }
+                val response = RetrofitClient.adminApi.listClasses(schoolId, params)
                 if (!response.error) {
                     _turmas.value = response.data?.docs?.map { it.toTurma() } ?: emptyList()
                 }

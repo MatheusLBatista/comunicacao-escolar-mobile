@@ -82,6 +82,7 @@ import java.util.Locale
 fun DiarioDeBordoScreen(
     classId: String,
     className: String,
+    initialDateMs: Long = 0L,
     onBack: () -> Unit,
     viewModel: DiarioDeBordoViewModel = viewModel()
 ) {
@@ -91,6 +92,7 @@ fun DiarioDeBordoScreen(
 
     var selectedCalendar by rememberSaveable {
         mutableStateOf(Calendar.getInstance().apply {
+            if (initialDateMs > 0L) timeInMillis = initialDateMs
             set(Calendar.HOUR_OF_DAY, 12)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
@@ -105,10 +107,7 @@ fun DiarioDeBordoScreen(
     LaunchedEffect(uiState) {
         val state = uiState as? DiarioDeBordoUiState.Content ?: return@LaunchedEffect
         when (val submit = state.submitState) {
-            is SubmitState.Success -> {
-                toastState.showSuccess("Diário enviado com sucesso!")
-                viewModel.resetSubmitState()
-            }
+            is SubmitState.Success -> onBack()
             is SubmitState.Error -> {
                 toastState.showError(submit.message)
                 viewModel.resetSubmitState()
@@ -156,7 +155,8 @@ fun DiarioDeBordoScreen(
                 )
             }
         }
-        AppToast(toastState)
+        val isEditable = (uiState as? DiarioDeBordoUiState.Content)?.isEditable == true
+        AppToast(toastState, bottomPadding = if (isEditable) 96.dp else 20.dp)
     }
 }
 
@@ -520,10 +520,20 @@ private fun StudentCard(
                         fields = templateFields,
                         fieldValues = student.fieldValues,
                         isEditable = isEditable,
+                        hasValidationError = student.hasValidationError,
                         onUpdateField = onUpdateField
                     )
                 }
             }
+        }
+
+        if (student.hasValidationError) {
+            Text(
+                text = "Preencha todos os campos antes de enviar.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colors.error,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
     }
 }
@@ -587,13 +597,14 @@ private fun groupTemplateFields(fields: List<ApiTemplateField>): List<List<ApiTe
 }
 
 private fun isCompactTemplateField(field: ApiTemplateField): Boolean =
-    (field.type == "select" && field.options.isNotEmpty()) || field.type == "boolean"
+    field.type == "boolean"
 
 @Composable
 private fun TemplateFieldsSection(
     fields: List<ApiTemplateField>,
     fieldValues: Map<String, String>,
     isEditable: Boolean,
+    hasValidationError: Boolean = false,
     onUpdateField: (String, String) -> Unit
 ) {
     val groups = remember(fields) { groupTemplateFields(fields) }
@@ -604,10 +615,12 @@ private fun TemplateFieldsSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 group.forEach { field ->
+                    val value = fieldValues[field.key] ?: ""
                     TemplateField(
                         field = field,
-                        value = fieldValues[field.key] ?: "",
+                        value = value,
                         isEditable = isEditable,
+                        isError = hasValidationError && value.isBlank(),
                         onUpdateField = { v -> onUpdateField(field.key, v) },
                         modifier = if (group.size > 1) Modifier.weight(1f) else Modifier.fillMaxWidth()
                     )
@@ -622,31 +635,44 @@ private fun TemplateField(
     field: ApiTemplateField,
     value: String,
     isEditable: Boolean,
+    isError: Boolean = false,
     onUpdateField: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    when {
-        field.type == "select" && field.options.isNotEmpty() -> SelectFieldDropdown(
-            field = field,
-            selectedValue = value,
-            isEditable = isEditable,
-            onSelect = onUpdateField,
-            modifier = modifier
+    val colors = LocalComunicacaoEscolarColors.current
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = field.label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = if (isError) colors.error else colors.textSecondary
         )
-        field.type == "boolean" -> BooleanFieldToggle(
-            field = field,
-            selectedValue = value,
-            isEditable = isEditable,
-            onSelect = onUpdateField,
-            modifier = modifier
-        )
-        else -> TextTemplateField(
-            field = field,
-            value = value,
-            isEditable = isEditable,
-            onValueChange = onUpdateField,
-            modifier = modifier
-        )
+        when {
+            field.type == "select" && field.options.isNotEmpty() -> SelectFieldDropdown(
+                field = field,
+                selectedValue = value,
+                isEditable = isEditable,
+                isError = isError,
+                onSelect = onUpdateField,
+                modifier = Modifier.fillMaxWidth()
+            )
+            field.type == "boolean" -> BooleanFieldToggle(
+                field = field,
+                selectedValue = value,
+                isEditable = isEditable,
+                isError = isError,
+                onSelect = onUpdateField,
+                modifier = Modifier.fillMaxWidth()
+            )
+            else -> TextTemplateField(
+                field = field,
+                value = value,
+                isEditable = isEditable,
+                isError = isError,
+                onValueChange = onUpdateField,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
     }
 }
 
@@ -655,12 +681,13 @@ private fun SelectFieldDropdown(
     field: ApiTemplateField,
     selectedValue: String,
     isEditable: Boolean,
+    isError: Boolean = false,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     var expanded by remember { mutableStateOf(false) }
-    val displayText = selectedValue.ifBlank { field.label }
+    val displayText = selectedValue.ifBlank { "Selecionar..." }
     var dropdownWidth by remember { mutableStateOf(0) }
     val density = LocalDensity.current
 
@@ -669,7 +696,7 @@ private fun SelectFieldDropdown(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .border(1.dp, colors.inputBorder, RoundedCornerShape(12.dp))
+                .border(1.dp, if (isError) colors.error else colors.inputBorder, RoundedCornerShape(12.dp))
                 .background(colors.surface)
                 .then(
                     if (isEditable) Modifier.clickable(
@@ -725,6 +752,7 @@ private fun BooleanFieldToggle(
     field: ApiTemplateField,
     selectedValue: String,
     isEditable: Boolean,
+    isError: Boolean = false,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -744,7 +772,11 @@ private fun BooleanFieldToggle(
                     .background(if (isSelected) colors.buttonContainer else colors.surface)
                     .border(
                         width = 1.dp,
-                        color = if (isSelected) Color.Transparent else colors.inputBorder,
+                        color = when {
+                            isSelected -> Color.Transparent
+                            isError -> colors.error
+                            else -> colors.inputBorder
+                        },
                         shape = RoundedCornerShape(12.dp)
                     )
                     .then(
@@ -772,6 +804,7 @@ private fun TextTemplateField(
     field: ApiTemplateField,
     value: String,
     isEditable: Boolean,
+    isError: Boolean = false,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -779,26 +812,24 @@ private fun TextTemplateField(
     OutlinedTextField(
         value = value,
         onValueChange = { if (isEditable) onValueChange(it) },
-        placeholder = {
-            Text(
-                text = field.label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = colors.textSecondary
-            )
-        },
         modifier = modifier.fillMaxWidth(),
         singleLine = true,
         readOnly = !isEditable,
+        isError = isError,
         shape = RoundedCornerShape(12.dp),
         textStyle = MaterialTheme.typography.bodyMedium.copy(color = colors.textInput),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = colors.focusedIndicator,
             unfocusedBorderColor = colors.inputBorder,
+            errorBorderColor = colors.error,
             focusedContainerColor = colors.surface,
             unfocusedContainerColor = colors.surface,
+            errorContainerColor = colors.surface,
             cursorColor = colors.focusedIndicator,
+            errorCursorColor = colors.error,
             focusedTextColor = colors.textInput,
-            unfocusedTextColor = colors.textInput
+            unfocusedTextColor = colors.textInput,
+            errorTextColor = colors.textInput
         )
     )
 }

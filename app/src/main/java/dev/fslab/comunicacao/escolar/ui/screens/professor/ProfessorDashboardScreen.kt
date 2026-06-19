@@ -197,7 +197,7 @@ private fun ProfessorConversasScreen(
 
 private sealed class ProfessorDiarioSubScreen {
     object List : ProfessorDiarioSubScreen()
-    data class Edit(val classId: String, val className: String) : ProfessorDiarioSubScreen()
+    data class Edit(val classId: String, val className: String, val dateMs: Long = 0L) : ProfessorDiarioSubScreen()
 }
 
 private sealed class ProfessorMuralSubScreen {
@@ -218,6 +218,7 @@ private sealed class ProfessorConversasSubScreen {
 private fun ProfessorDiarioScreen(onNavigateToInicio: () -> Unit) {
     val listViewModel: dev.fslab.comunicacao.escolar.ui.viewmodel.DiarioDeBordoListViewModel = viewModel()
     var subScreen by remember { mutableStateOf<ProfessorDiarioSubScreen>(ProfessorDiarioSubScreen.List) }
+    var abaAtual by remember { mutableStateOf(AbaListaDiario.PENDENTES) }
 
     BackHandler(enabled = subScreen is ProfessorDiarioSubScreen.Edit) {
         subScreen = ProfessorDiarioSubScreen.List
@@ -228,13 +229,16 @@ private fun ProfessorDiarioScreen(onNavigateToInicio: () -> Unit) {
         is ProfessorDiarioSubScreen.List -> DiarioDeBordoListScreen(
             viewModel = listViewModel,
             onBack = onNavigateToInicio,
-            onOpenDiario = { classId, className ->
-                subScreen = ProfessorDiarioSubScreen.Edit(classId, className)
-            }
+            onOpenDiario = { classId, className, dateMs ->
+                subScreen = ProfessorDiarioSubScreen.Edit(classId, className, dateMs)
+            },
+            abaAtual = abaAtual,
+            onAbaChange = { abaAtual = it }
         )
         is ProfessorDiarioSubScreen.Edit -> DiarioDeBordoScreen(
             classId = screen.classId,
             className = screen.className,
+            initialDateMs = screen.dateMs,
             onBack = {
                 subScreen = ProfessorDiarioSubScreen.List
                 listViewModel.load()

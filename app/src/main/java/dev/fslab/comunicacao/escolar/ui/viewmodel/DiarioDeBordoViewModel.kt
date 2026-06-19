@@ -29,7 +29,8 @@ data class StudentDailyLogState(
     val existingLogId: String? = null,
     val isPresent: Boolean = false,
     val fieldValues: Map<String, String> = emptyMap(),
-    val observation: String = ""
+    val observation: String = "",
+    val hasValidationError: Boolean = false
 )
 
 sealed class SubmitState {
@@ -155,11 +156,13 @@ class DiarioDeBordoViewModel : ViewModel() {
     }
 
     fun togglePresence(studentId: String) {
-        updateStudent(studentId) { it.copy(isPresent = !it.isPresent) }
+        updateStudent(studentId) { it.copy(isPresent = !it.isPresent, hasValidationError = false) }
     }
 
     fun updateField(studentId: String, fieldKey: String, value: String) {
-        updateStudent(studentId) { s -> s.copy(fieldValues = s.fieldValues + (fieldKey to value)) }
+        updateStudent(studentId) { s ->
+            s.copy(fieldValues = s.fieldValues + (fieldKey to value), hasValidationError = false)
+        }
     }
 
     fun updateObservation(studentId: String, text: String) {
@@ -179,9 +182,22 @@ class DiarioDeBordoViewModel : ViewModel() {
             )
             return
         }
+
+        val requiredKeys = templateFieldsCache.map { it.key }
+        val validatedStudents = state.students.map { student ->
+            val missingFields = student.isPresent && requiredKeys.any { key ->
+                student.fieldValues[key].isNullOrBlank()
+            }
+            student.copy(hasValidationError = missingFields)
+        }
+        if (validatedStudents.any { it.hasValidationError }) {
+            _uiState.value = state.copy(students = validatedStudents)
+            return
+        }
+
         viewModelScope.launch {
             _uiState.value = state.copy(submitState = SubmitState.Submitting)
-            val now = nowIso()
+            val date = isoFormatter.format(java.util.Date(currentDateMs))
             try {
                 val currentState = _uiState.value as? DiarioDeBordoUiState.Content ?: return@launch
                 coroutineScope {
@@ -192,7 +208,7 @@ class DiarioDeBordoViewModel : ViewModel() {
                                 studentId = student.studentId,
                                 teacherId = teacherId,
                                 dailyLogTemplateId = templateId,
-                                date = now,
+                                date = date,
                                 isPresent = student.isPresent,
                                 entries = if (student.isPresent) {
                                     student.fieldValues

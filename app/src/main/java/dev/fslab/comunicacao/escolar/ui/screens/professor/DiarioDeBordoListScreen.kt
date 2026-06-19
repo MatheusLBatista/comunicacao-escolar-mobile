@@ -1,7 +1,6 @@
 package dev.fslab.comunicacao.escolar.ui.screens.professor
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,18 +47,20 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.fslab.comunicacao.escolar.ui.components.AppHeader
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ClassDiarioStatus
+import dev.fslab.comunicacao.escolar.ui.viewmodel.DiarioDateGroup
 import dev.fslab.comunicacao.escolar.ui.viewmodel.DiarioDeBordoListUiState
 import dev.fslab.comunicacao.escolar.ui.viewmodel.DiarioDeBordoListViewModel
 
 @Composable
 fun DiarioDeBordoListScreen(
     onBack: () -> Unit,
-    onOpenDiario: (classId: String, className: String) -> Unit,
+    onOpenDiario: (classId: String, className: String, dateMs: Long) -> Unit,
+    abaAtual: AbaListaDiario = AbaListaDiario.PENDENTES,
+    onAbaChange: (AbaListaDiario) -> Unit = {},
     viewModel: DiarioDeBordoListViewModel = viewModel()
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val uiState by viewModel.uiState.collectAsState()
-    var abaAtual by rememberSaveable { mutableStateOf(AbaListaDiario.PENDENTES) }
 
     Column(
         modifier = Modifier
@@ -106,67 +108,100 @@ fun DiarioDeBordoListScreen(
             }
 
             is DiarioDeBordoListUiState.Content -> {
-                val listaAtual = if (abaAtual == AbaListaDiario.PENDENTES) state.pendentes else state.concluidas
                 val totalPendentes = state.pendentes.size
-                val totalConcluidas = state.concluidas.size
+                val totalConcluidas = state.concluidasPorData.sumOf { it.turmas.size }
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(colors.surface),
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    AbaChip(
-                        label = "Pendentes",
-                        count = totalPendentes,
-                        selecionada = abaAtual == AbaListaDiario.PENDENTES,
-                        onClick = { abaAtual = AbaListaDiario.PENDENTES }
-                    )
-                    AbaChip(
-                        label = "Concluídas",
-                        count = totalConcluidas,
-                        selecionada = abaAtual == AbaListaDiario.CONCLUIDAS,
-                        onClick = { abaAtual = AbaListaDiario.CONCLUIDAS }
-                    )
-                }
-
-                if (listaAtual.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = if (abaAtual == AbaListaDiario.PENDENTES)
-                                    Icons.Outlined.CheckCircle else Icons.Outlined.Pending,
-                                contentDescription = null,
-                                tint = colors.textSecondary,
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
+                    listOf(
+                        AbaListaDiario.PENDENTES to "Pendentes ($totalPendentes)",
+                        AbaListaDiario.CONCLUIDAS to "Concluídas ($totalConcluidas)"
+                    ).forEach { (aba, label) ->
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(if (abaAtual == aba) colors.buttonContainer else androidx.compose.ui.graphics.Color.Transparent)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { onAbaChange(aba) }
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                text = if (abaAtual == AbaListaDiario.PENDENTES)
-                                    "Todos os diários foram concluídos!" else "Nenhum diário concluído hoje.",
-                                fontSize = 14.sp,
-                                color = colors.textSecondary,
-                                textAlign = TextAlign.Center
+                                text = label,
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = if (abaAtual == aba) FontWeight.SemiBold else FontWeight.Normal,
+                                color = if (abaAtual == aba) colors.buttonText else colors.textSecondary
                             )
                         }
                     }
-                } else {
-                    LazyColumn(
-                        contentPadding = PaddingValues(
-                            start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        items(listaAtual, key = { it.classId }) { status ->
-                            TurmaCard(
-                                status = status,
-                                onClick = { onOpenDiario(status.classId, status.className) }
+                }
+
+                when (abaAtual) {
+                    AbaListaDiario.PENDENTES -> {
+                        if (state.pendentes.isEmpty()) {
+                            EmptyState(
+                                icon = Icons.Outlined.CheckCircle,
+                                message = "Todos os diários foram concluídos!"
                             )
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(
+                                    start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                items(state.pendentes, key = { it.classId }) { status ->
+                                    TurmaCard(
+                                        status = status,
+                                        onClick = { onOpenDiario(status.classId, status.className, 0L) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    AbaListaDiario.CONCLUIDAS -> {
+                        if (state.concluidasPorData.isEmpty()) {
+                            EmptyState(
+                                icon = Icons.Outlined.Pending,
+                                message = "Nenhum diário concluído ainda."
+                            )
+                        } else {
+                            LazyColumn(
+                                contentPadding = PaddingValues(
+                                    start = 20.dp, end = 20.dp, top = 4.dp, bottom = 24.dp
+                                ),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                state.concluidasPorData.forEach { group ->
+                                    item(key = "header_${group.dateLabel}") {
+                                        Text(
+                                            text = group.dateLabel,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colors.textSecondary,
+                                            modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                                        )
+                                    }
+                                    items(
+                                        group.turmas,
+                                        key = { "${group.dateLabel}_${it.classId}" }
+                                    ) { status ->
+                                        TurmaCard(
+                                            status = status,
+                                            onClick = { onOpenDiario(status.classId, status.className, group.dateMs) }
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -175,38 +210,30 @@ fun DiarioDeBordoListScreen(
     }
 }
 
-private enum class AbaListaDiario { PENDENTES, CONCLUIDAS }
+enum class AbaListaDiario { PENDENTES, CONCLUIDAS }
 
 @Composable
-private fun AbaChip(
-    label: String,
-    count: Int,
-    selecionada: Boolean,
-    onClick: () -> Unit
-) {
+private fun EmptyState(icon: ImageVector, message: String) {
     val colors = LocalComunicacaoEscolarColors.current
     Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (selecionada) colors.surface else colors.background)
-            .border(
-                1.dp,
-                if (selecionada) colors.focusedIndicator else colors.inputBorder,
-                RoundedCornerShape(20.dp)
-            )
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+        modifier = Modifier.fillMaxSize().padding(bottom = 32.dp),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "$label ($count)",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            color = if (selecionada) colors.textPrimary else colors.textSecondary
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = colors.textSecondary,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = message,
+                fontSize = 14.sp,
+                color = colors.textSecondary,
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
@@ -245,14 +272,14 @@ private fun TurmaCard(
                 Text(
                     text = "${status.studentCount} aluno${if (status.studentCount != 1) "s" else ""}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = colors.textSecondary
+                    color = colors.textPrimary
                 )
                 if (status.logCount > 0) {
                     Text(text = "·", style = MaterialTheme.typography.bodySmall, color = colors.textSecondary)
                     Text(
                         text = "${status.logCount}/${status.studentCount} registrados",
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (status.isDone) colors.primary else colors.textSecondary
+                        color = colors.textSecondary
                     )
                 }
             }
