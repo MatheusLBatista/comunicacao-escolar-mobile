@@ -10,6 +10,7 @@ import dev.fslab.comunicacao.escolar.model.Message
 import dev.fslab.comunicacao.escolar.model.SendMessageRequest
 import dev.fslab.comunicacao.escolar.model.toConversation
 import dev.fslab.comunicacao.escolar.model.toMessage
+import dev.fslab.comunicacao.escolar.network.FCMEventManager
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import dev.fslab.comunicacao.escolar.network.SocketManager
 import kotlinx.coroutines.Job
@@ -70,6 +71,23 @@ class ConversaViewModel : ViewModel() {
     private var currentUserId: String = ""
     private val seenMessageIds = mutableSetOf<String>()
     private var socketJob: Job? = null
+
+    init {
+        viewModelScope.launch {
+            FCMEventManager.newMessageEvent.collect { event ->
+                // Ignora se o socket já entregou essa mensagem em tempo real
+                if (seenMessageIds.contains(event.messageId)) return@collect
+                // Ignora se o usuário já está nessa conversa (Socket.IO atualiza as mensagens)
+                if (event.conversationId == _currentConversationId.value) return@collect
+                // Marca como visto para evitar contagem dupla caso o socket entregue a
+                // mesma mensagem. Ao abrir a conversa, loadMessages limpa esse conjunto
+                // e recarrega da API, então a mensagem continua sendo exibida.
+                seenMessageIds.add(event.messageId)
+                val current = _unreadCounts.value[event.conversationId] ?: 0
+                _unreadCounts.value = _unreadCounts.value + (event.conversationId to current + 1)
+            }
+        }
+    }
 
     fun loadConversations(schoolId: String, currentUserId: String) {
         if (schoolId.isBlank()) return
@@ -169,12 +187,14 @@ class ConversaViewModel : ViewModel() {
 
     fun openConversation(conversationId: String) {
         _currentConversationId.value = conversationId
+        FCMEventManager.activeConversationId = conversationId
         SocketManager.joinConversation(conversationId)
         startObservingSocket()
     }
 
     fun closeConversation() {
         _currentConversationId.value?.let { SocketManager.leaveConversation(it) }
+        FCMEventManager.activeConversationId = null
         _currentConversationId.value = null
         _messages.value = emptyList()
         seenMessageIds.clear()

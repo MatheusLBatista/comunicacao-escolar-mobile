@@ -79,6 +79,7 @@ import dev.fslab.comunicacao.escolar.ui.screens.responsavel.AgendaScreen
 import dev.fslab.comunicacao.escolar.ui.screens.responsavel.PerfilScreen
 import dev.fslab.comunicacao.escolar.ui.theme.screens.MuralScreen
 import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
+import dev.fslab.comunicacao.escolar.network.FCMEventManager
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AdminViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AuthViewModel
 import dev.fslab.comunicacao.escolar.ui.viewmodel.ConversaViewModel
@@ -152,6 +153,34 @@ fun AdminDashboardScreen(
     var currentRoute by rememberSaveable { mutableStateOf(Screen.AdminHome.route) }
     val subScreenStack = remember { mutableStateListOf<AdminSubScreen>() }
     val turmas by adminViewModel.turmas.collectAsState()
+    val unreadCounts by conversaViewModel.unreadCounts.collectAsState()
+    val totalUnread = unreadCounts.values.sum()
+    val navItems = remember(totalUnread) {
+        adminNavItems.map { item ->
+            if (item.route == Screen.Conversas.route) item.copy(badgeCount = totalUnread)
+            else item
+        }
+    }
+    var pendingConversaId by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        FCMEventManager.navigateToConversationEvent.collect { conversationId ->
+            if (conversationId == null) return@collect
+            subScreenStack.clear()
+            pendingConversaId = conversationId
+            currentRoute = Screen.Conversas.route
+            FCMEventManager.consumeNavigateToConversation()
+        }
+    }
+
+    val conversations by conversaViewModel.conversations.collectAsState()
+    LaunchedEffect(pendingConversaId, conversations) {
+        val id = pendingConversaId ?: return@LaunchedEffect
+        if (conversations.isEmpty()) return@LaunchedEffect
+        val conv = conversations.find { it.id == id } ?: return@LaunchedEffect
+        subScreenStack.add(AdminSubScreen.ConversaDetail(id, conv.otherParticipant.fullName, conv.avatarUrl))
+        pendingConversaId = null
+    }
 
     LaunchedEffect(schoolId) {
         if (schoolId.isNotBlank()) {
@@ -172,7 +201,7 @@ fun AdminDashboardScreen(
         bottomBar = {
             if (subScreenStack.lastOrNull() !is AdminSubScreen.ConversaDetail) {
                 BottomNavBar(
-                    items = adminNavItems,
+                    items = navItems,
                     currentRoute = currentRoute,
                     onItemClick = {
                         subScreenStack.clear()

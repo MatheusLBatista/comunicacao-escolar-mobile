@@ -22,6 +22,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import dev.fslab.comunicacao.escolar.network.FCMEventManager
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -72,6 +73,26 @@ fun ProfessorDashboardScreen(
     var pendingChatUserId by remember { mutableStateOf<String?>(null) }
     var pendingChatNome by remember { mutableStateOf<String?>(null) }
     var pendingChatAvatarUrl by remember { mutableStateOf<String?>(null) }
+    var pendingConversaId by remember { mutableStateOf<String?>(null) }
+
+    val conversaViewModel: ConversaViewModel = viewModel()
+    val unreadCounts by conversaViewModel.unreadCounts.collectAsState()
+    val totalUnread = unreadCounts.values.sum()
+    val navItems = remember(totalUnread) {
+        professorNavItems.map { item ->
+            if (item.route == ROUTE_CONVERSAS) item.copy(badgeCount = totalUnread)
+            else item
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        FCMEventManager.navigateToConversationEvent.collect { conversationId ->
+            if (conversationId == null) return@collect
+            pendingConversaId = conversationId
+            currentRoute = ROUTE_CONVERSAS
+            FCMEventManager.consumeNavigateToConversation()
+        }
+    }
 
     BackHandler(enabled = currentRoute != ROUTE_INICIO) {
         currentRoute = ROUTE_INICIO
@@ -81,7 +102,7 @@ fun ProfessorDashboardScreen(
         containerColor = colors.background,
         bottomBar = {
             BottomNavBar(
-                items = professorNavItems,
+                items = navItems,
                 currentRoute = currentRoute,
                 onItemClick = { currentRoute = it.route }
             )
@@ -112,13 +133,16 @@ fun ProfessorDashboardScreen(
                 ROUTE_CONVERSAS -> ProfessorConversasScreen(
                     user = user,
                     accessToken = accessToken,
+                    conversaViewModel = conversaViewModel,
                     targetUserId = pendingChatUserId,
                     targetUserNome = pendingChatNome,
                     targetUserAvatarUrl = pendingChatAvatarUrl,
+                    pendingConversaId = pendingConversaId,
                     onPendingConsumed = {
                         pendingChatUserId = null
                         pendingChatNome = null
                         pendingChatAvatarUrl = null
+                        pendingConversaId = null
                     }
                 )
                 ROUTE_MURAL     -> ProfessorMuralScreen(user = user, authViewModel = authViewModel)
@@ -142,12 +166,13 @@ fun ProfessorDashboardScreen(
 private fun ProfessorConversasScreen(
     user: User,
     accessToken: String,
+    conversaViewModel: ConversaViewModel = viewModel(),
     targetUserId: String? = null,
     targetUserNome: String? = null,
     targetUserAvatarUrl: String? = null,
+    pendingConversaId: String? = null,
     onPendingConsumed: () -> Unit = {}
 ) {
-    val conversaViewModel: ConversaViewModel = viewModel()
     var subScreen by remember { mutableStateOf<ProfessorConversasSubScreen?>(null) }
 
     LaunchedEffect(targetUserId) {
@@ -157,6 +182,17 @@ private fun ProfessorConversasScreen(
             conversaViewModel.findOrCreateConversation(schoolId, targetUserId) { conversaId ->
                 subScreen = ProfessorConversasSubScreen.Detail(conversaId, targetUserNome ?: "", targetUserAvatarUrl)
             }
+        }
+    }
+
+    val conversations by conversaViewModel.conversations.collectAsState()
+    LaunchedEffect(pendingConversaId, conversations) {
+        val id = pendingConversaId ?: return@LaunchedEffect
+        if (conversations.isEmpty()) return@LaunchedEffect
+        val conv = conversations.find { it.id == id }
+        if (conv != null) {
+            subScreen = ProfessorConversasSubScreen.Detail(id, conv.otherParticipant.fullName, conv.avatarUrl)
+            onPendingConsumed()
         }
     }
 
