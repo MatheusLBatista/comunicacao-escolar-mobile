@@ -17,7 +17,8 @@ data class AutorizacaoSaida(
     val autorizadoPor: String,
     val autorizadoDocumento: String,
     val relacao: String,
-    val validAte: String
+    val validAte: String,
+    val autorizadoPhotoUrl: String? = null
 )
 
 data class AutorizacoesSaidaResponse(

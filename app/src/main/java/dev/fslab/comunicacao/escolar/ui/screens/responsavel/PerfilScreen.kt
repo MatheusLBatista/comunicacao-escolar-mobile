@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -98,6 +99,7 @@ fun PerfilScreen(
     var showThemeDialog by remember { mutableStateOf(false) }
     var nomeTemp by remember { mutableStateOf(user.nome) }
     var showAvatarLightbox by remember { mutableStateOf(false) }
+    var showTimezoneDialog by remember { mutableStateOf(false) }
 
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -241,7 +243,7 @@ fun PerfilScreen(
                 PrefsRow(
                     label = "Fuso Horário",
                     value = fusoHorarioLabel(user.fusoHorario),
-                    onClick = { /* TODO: seletor de fuso horário */ }
+                    onClick = { showTimezoneDialog = true }
                 )
             }
 
@@ -453,6 +455,87 @@ fun PerfilScreen(
             }
         }
     }
+
+    // Seletor de fuso horário
+    if (showTimezoneDialog) {
+        Dialog(onDismissRequest = { showTimezoneDialog = false }) {
+            val view = LocalView.current
+            SideEffect {
+                val window = (view.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+                if (window != null) {
+                    window.navigationBarColor = colors.background.toArgb()
+                    androidx.core.view.WindowCompat.getInsetsController(window, view)
+                        .isAppearanceLightNavigationBars = !colors.isDark
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(colors.surface)
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    "Fuso horário",
+                    fontWeight = FontWeight.Bold,
+                    color = colors.textPrimary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Column(
+                    modifier = Modifier
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                TIMEZONES.forEach { (tz, label) ->
+                    val selected = user.fusoHorario == tz
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable {
+                                if (!selected) {
+                                    perfilViewModel.updateTimezone(tz) { updatedUser ->
+                                        authViewModel.updateCurrentUser(updatedUser)
+                                    }
+                                }
+                                showTimezoneDialog = false
+                            },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = selected,
+                            onClick = {
+                                if (!selected) {
+                                    perfilViewModel.updateTimezone(tz) { updatedUser ->
+                                        authViewModel.updateCurrentUser(updatedUser)
+                                    }
+                                }
+                                showTimezoneDialog = false
+                            },
+                            colors = RadioButtonDefaults.colors(
+                                selectedColor = colors.buttonContainer,
+                                unselectedColor = colors.textSecondary
+                            )
+                        )
+                        Text(
+                            text = label,
+                            fontSize = 14.sp,
+                            color = if (selected) colors.textPrimary else colors.textSecondary,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
+                }
+                } // end scrollable Column
+                TextButton(
+                    onClick = { showTimezoneDialog = false },
+                    modifier = Modifier.align(Alignment.End)
+                ) {
+                    Text("Cancelar", color = colors.textSecondary)
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -542,20 +625,20 @@ private fun PrefsRow(label: String, value: String, onClick: () -> Unit) {
     }
 }
 
-private fun fusoHorarioLabel(fusoHorario: String): String {
-    return when (fusoHorario) {
-        "America/Manaus"     -> "Horário Padrão do Amazonas (GMT-4)"
-        "America/Sao_Paulo"  -> "Horário de Brasília (GMT-3)"
-        "America/Belem"      -> "Horário de Belém (GMT-3)"
-        "America/Fortaleza"  -> "Horário de Fortaleza (GMT-3)"
-        "America/Recife"     -> "Horário de Recife (GMT-3)"
-        "America/Maceio"     -> "Horário de Maceió (GMT-3)"
-        "America/Bahia"      -> "Horário da Bahia (GMT-3)"
-        "America/Cuiaba"     -> "Horário do Mato Grosso (GMT-4)"
-        "America/Porto_Velho" -> "Horário de Porto Velho (GMT-4)"
-        "America/Boa_Vista"  -> "Horário de Boa Vista (GMT-4)"
-        "America/Rio_Branco" -> "Horário do Acre (GMT-5)"
-        "America/Noronha"    -> "Horário de Fernando de Noronha (GMT-2)"
-        else                 -> fusoHorario
-    }
-}
+private val TIMEZONES = listOf(
+    "America/Manaus"      to "Horário do Amazonas (GMT-4)",
+    "America/Sao_Paulo"   to "Horário de Brasília (GMT-3)",
+    "America/Belem"       to "Horário de Belém (GMT-3)",
+    "America/Fortaleza"   to "Horário de Fortaleza (GMT-3)",
+    "America/Recife"      to "Horário de Recife (GMT-3)",
+    "America/Maceio"      to "Horário de Maceió (GMT-3)",
+    "America/Bahia"       to "Horário da Bahia (GMT-3)",
+    "America/Cuiaba"      to "Horário do Mato Grosso (GMT-4)",
+    "America/Porto_Velho" to "Horário de Porto Velho (GMT-4)",
+    "America/Boa_Vista"   to "Horário de Boa Vista (GMT-4)",
+    "America/Rio_Branco"  to "Horário do Acre (GMT-5)",
+    "America/Noronha"     to "Horário de Fernando de Noronha (GMT-2)",
+)
+
+private fun fusoHorarioLabel(fusoHorario: String): String =
+    TIMEZONES.firstOrNull { it.first == fusoHorario }?.second ?: fusoHorario

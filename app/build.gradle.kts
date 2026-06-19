@@ -27,9 +27,11 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("boolean", "DEV_LOGIN_ENABLED", "false")
         }
         debug {
             isMinifyEnabled = false
+            buildConfigField("boolean", "DEV_LOGIN_ENABLED", "true")
         }
     }
     compileOptions {
@@ -38,6 +40,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

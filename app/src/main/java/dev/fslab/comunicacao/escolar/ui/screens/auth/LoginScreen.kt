@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -63,6 +64,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.fslab.comunicacao.escolar.BuildConfig
 import dev.fslab.comunicacao.escolar.R
 
 import dev.fslab.comunicacao.escolar.ui.theme.ComunicacaoEscolarTheme
@@ -106,11 +108,13 @@ fun LoginScreen(
     var senha by remember { mutableStateOf("") }
     var senhaVisivel by remember { mutableStateOf(false) }
     var lembrarMe by remember { mutableStateOf(false) }
+    var showDevSheet by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(colors.background)
+            .navigationBarsPadding()
             .imePadding()
     ) {
         Column(
@@ -365,6 +369,22 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(32.dp))
         }
 
+        if (BuildConfig.DEV_LOGIN_ENABLED) {
+            androidx.compose.material3.TextButton(
+                onClick = { showDevSheet = true },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 8.dp)
+            ) {
+                Text(
+                    text = "DEV",
+                    style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textSecondary
+                )
+            }
+        }
+
         IconButton(
             onClick = {
                 themeViewModel.setThemeMode(
@@ -381,6 +401,17 @@ fun LoginScreen(
                 tint = colors.textSecondary
             )
         }
+    }
+
+    if (BuildConfig.DEV_LOGIN_ENABLED && showDevSheet) {
+        DevLoginSheet(
+            onDismiss = { showDevSheet = false },
+            onSelectUser = { devEmail, devPassword ->
+                email = devEmail
+                senha = devPassword
+                authViewModel.loginUser(devEmail, devPassword)
+            }
+        )
     }
 }
 

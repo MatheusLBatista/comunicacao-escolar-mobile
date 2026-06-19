@@ -184,5 +184,5 @@ class ProfessorInicioViewModel : ViewModel() {
     }
 
     private fun String.fixLocalhostUrl(): String =
-        replace("://localhost", "://34.194.113.240")
+        replace("://localhost", "://localhost")
 }

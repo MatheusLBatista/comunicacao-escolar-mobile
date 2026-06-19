@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +54,7 @@ class AppToastState {
 fun rememberAppToastState() = remember { AppToastState() }
 
 @Composable
-fun BoxScope.AppToast(state: AppToastState) {
+fun BoxScope.AppToast(state: AppToastState, bottomPadding: Dp = 20.dp) {
     val colors = LocalComunicacaoEscolarColors.current
     val message = state.message
 
@@ -77,7 +78,7 @@ fun BoxScope.AppToast(state: AppToastState) {
         modifier = Modifier
             .align(Alignment.BottomCenter)
             .navigationBarsPadding()
-            .padding(start = 16.dp, end = 16.dp, bottom = 20.dp)
+            .padding(start = 16.dp, end = 16.dp, bottom = bottomPadding)
     ) {
         val isError = state.type == ToastType.ERROR
         val iconTint = if (isError) colors.error else colors.textSecondary

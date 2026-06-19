@@ -1,6 +1,10 @@
 package dev.fslab.comunicacao.escolar.ui.screens.responsavel
 
 import android.app.DatePickerDialog
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,6 +32,7 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material3.AlertDialog
@@ -74,6 +79,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import dev.fslab.comunicacao.escolar.model.ApiAssociatedStudent
+import dev.fslab.comunicacao.escolar.network.RetrofitClient
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaida
 import dev.fslab.comunicacao.escolar.model.PickupLogUi
 import dev.fslab.comunicacao.escolar.ui.components.AppHeader
@@ -262,13 +268,14 @@ fun AutorizacaoSaidaScreen(
     }
 
     if (canCreate && showSheet) {
+        val context = LocalContext.current
         NovaAutorizacaoSheet(
             alunos = alunos,
             criando = criando,
             erro = criarErro,
             onDismiss = { viewModel.fecharNovaAutorizacao() },
-            onCriar = { nome, documento, relacao, fromMs, untilMs, studentId ->
-                viewModel.criarAutorizacao(nome, documento, relacao, fromMs, untilMs, studentId)
+            onCriar = { nome, documento, relacao, fromMs, untilMs, studentId, photoUri ->
+                viewModel.criarAutorizacao(nome, documento, relacao, fromMs, untilMs, studentId, photoUri, context)
             }
         )
     }
@@ -282,7 +289,7 @@ private fun NovaAutorizacaoSheet(
     criando: Boolean,
     erro: String?,
     onDismiss: () -> Unit,
-    onCriar: (nome: String, documento: String, relacao: String, fromMs: Long, untilMs: Long, studentId: String) -> Unit
+    onCriar: (nome: String, documento: String, relacao: String, fromMs: Long, untilMs: Long, studentId: String, photoUri: Uri?) -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val context = LocalContext.current
@@ -302,6 +309,10 @@ private fun NovaAutorizacaoSheet(
             Calendar.getInstance().apply { add(Calendar.DAY_OF_MONTH, 30) }.timeInMillis
         )
     }
+    var photoUri by remember { mutableStateOf<Uri?>(null) }
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri -> photoUri = uri }
 
     val validFromText = remember(validFromMs) { dateFormatter.format(Date(validFromMs)) }
     val validUntilText = remember(validUntilMs) { dateFormatter.format(Date(validUntilMs)) }
@@ -587,6 +598,79 @@ private fun NovaAutorizacaoSheet(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "FOTO (OPCIONAL)",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.textSecondary
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .border(1.dp, colors.inputBorder, RoundedCornerShape(12.dp))
+                        .background(colors.surface)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            photoPickerLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (photoUri != null) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(photoUri)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Foto da pessoa autorizada",
+                            modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopEnd) {
+                            IconButton(
+                                onClick = { photoUri = null },
+                                modifier = Modifier.padding(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Remover foto",
+                                    tint = Color.White,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .background(Color.Black.copy(alpha = 0.4f), CircleShape)
+                                        .padding(3.dp)
+                                )
+                            }
+                        }
+                    } else {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.AddPhotoAlternate,
+                                contentDescription = null,
+                                tint = colors.textSecondary,
+                                modifier = Modifier.size(28.dp)
+                            )
+                            Text(
+                                text = "Toque para adicionar foto",
+                                fontSize = 12.sp,
+                                color = colors.textSecondary
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Datas
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
@@ -681,7 +765,7 @@ private fun NovaAutorizacaoSheet(
             val isValid = alunoSelecionado != null && nome.isNotBlank() &&
                     documento.filter { it.isDigit() }.length == 11 && relacao.isNotBlank() && validUntilMs > validFromMs
             Button(
-                onClick = { alunoSelecionado?.id?.let { onCriar(nome, documento, relacao, validFromMs, validUntilMs, it) } },
+                onClick = { alunoSelecionado?.id?.let { onCriar(nome, documento, relacao, validFromMs, validUntilMs, it, photoUri) } },
                 enabled = isValid && !criando,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -900,6 +984,51 @@ private fun AutorizacaoCard(
 
         Spacer(modifier = Modifier.height(12.dp))
 
+        var showFotoViewer by remember { mutableStateOf(false) }
+        val fotoUrl = autorizacao.autorizadoPhotoUrl?.let {
+            "${RetrofitClient.BASE_URL}attachments/$it"
+        }
+        val authImageLoader = remember(context) {
+            coil.ImageLoader.Builder(context)
+                .okHttpClient(RetrofitClient.okHttpClient)
+                .build()
+        }
+
+        if (showFotoViewer && fotoUrl != null) {
+            AlertDialog(
+                onDismissRequest = { showFotoViewer = false },
+                shape = RoundedCornerShape(16.dp),
+                containerColor = colors.background,
+                title = {
+                    Text(
+                        text = autorizacao.autorizadoPor,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.textPrimary
+                    )
+                },
+                text = {
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(fotoUrl)
+                            .crossfade(true)
+                            .build(),
+                        imageLoader = authImageLoader,
+                        contentDescription = "Foto de ${autorizacao.autorizadoPor}",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp)),
+                        contentScale = ContentScale.FillWidth
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { showFotoViewer = false }) {
+                        Text("Fechar", color = colors.textSecondary)
+                    }
+                }
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -908,17 +1037,46 @@ private fun AutorizacaoCard(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            InfoRow(
-                label = "Pessoa autorizada",
-                value = if (autorizacao.relacao.isNotBlank())
-                    "${autorizacao.autorizadoPor} · ${autorizacao.relacao}"
-                else
-                    autorizacao.autorizadoPor
-            )
-            if (autorizacao.autorizadoDocumento.isNotBlank()) {
-                InfoRow(label = "CPF", value = formatCpf(autorizacao.autorizadoDocumento))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    InfoRow(
+                        label = "Pessoa autorizada",
+                        value = if (autorizacao.relacao.isNotBlank())
+                            "${autorizacao.autorizadoPor} · ${autorizacao.relacao}"
+                        else
+                            autorizacao.autorizadoPor
+                    )
+                    if (autorizacao.autorizadoDocumento.isNotBlank()) {
+                        InfoRow(label = "CPF", value = formatCpf(autorizacao.autorizadoDocumento))
+                    }
+                    InfoRow(label = "Válido até", value = autorizacao.validAte)
+                }
+                if (fotoUrl != null) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { showFotoViewer = true }
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(fotoUrl)
+                                .crossfade(true)
+                                .build(),
+                            imageLoader = authImageLoader,
+                            contentDescription = "Foto de ${autorizacao.autorizadoPor}",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
+                }
             }
-            InfoRow(label = "Válido até", value = autorizacao.validAte)
         }
 
         if (autorizacao.status == "Aguardando saída") {
