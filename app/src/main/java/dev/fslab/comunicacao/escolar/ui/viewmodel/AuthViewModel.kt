@@ -106,7 +106,7 @@ class AuthViewModel : ViewModel() {
                         }
                         TokenManager.saveTokens(
                             apiUser.accessToken, apiUser.refreshToken,
-                            TokenManager.UserInfo(user.id, user.nome, user.email, roleToString(user.role), user.schoolId)
+                            TokenManager.UserInfo(user.id, user.nome, user.email, roleToString(user.role), user.schoolId, user.fusoHorario)
                         )
                         val students = apiUser.memberships.flatMap { it.associatedStudents }.distinctBy { it.id }
                         TokenManager.saveStudentsJson(gson.toJson(students))
@@ -205,6 +205,7 @@ class AuthViewModel : ViewModel() {
 
     fun updateCurrentUser(user: User) {
         _currentUser.value = user
+        TokenManager.updateTimezone(user.fusoHorario)
     }
 
     fun loginWithGoogle(idToken: String) {
@@ -232,7 +233,7 @@ class AuthViewModel : ViewModel() {
                         }
                         TokenManager.saveTokens(
                             apiUser.accessToken, apiUser.refreshToken,
-                            TokenManager.UserInfo(user.id, user.nome, user.email, roleToString(user.role), user.schoolId)
+                            TokenManager.UserInfo(user.id, user.nome, user.email, roleToString(user.role), user.schoolId, user.fusoHorario)
                         )
                         val students = apiUser.memberships.flatMap { it.associatedStudents }.distinctBy { it.id }
                         TokenManager.saveStudentsJson(gson.toJson(students))

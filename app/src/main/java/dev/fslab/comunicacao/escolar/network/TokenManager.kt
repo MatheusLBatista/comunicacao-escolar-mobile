@@ -18,6 +18,7 @@ object TokenManager {
     private const val KEY_SCHOOL_ID = "school_id"
     private const val KEY_STUDENTS = "students_json"
     private const val KEY_FCM_TOKEN = "fcm_token"
+    private const val KEY_TIMEZONE = "user_timezone"
 
     @Volatile private var accessToken: String? = null
     @Volatile private var refreshToken: String? = null
@@ -28,6 +29,7 @@ object TokenManager {
     @Volatile private var schoolId: String? = null
     @Volatile private var studentsJson: String? = null
     @Volatile private var fcmToken: String? = null
+    @Volatile private var userTimezone: String = "America/Manaus"
     private var prefs: SharedPreferences? = null
 
     var onSessionExpired: (() -> Unit)? = null
@@ -71,6 +73,7 @@ object TokenManager {
         schoolId = prefs?.getString(KEY_SCHOOL_ID, null)
         studentsJson = prefs?.getString(KEY_STUDENTS, null)
         fcmToken = prefs?.getString(KEY_FCM_TOKEN, null)
+        userTimezone = prefs?.getString(KEY_TIMEZONE, "America/Manaus") ?: "America/Manaus"
         Log.d(TAG, "TokenManager init. Autenticado: ${isAuthenticated()}")
     }
 
@@ -79,7 +82,8 @@ object TokenManager {
         val name: String,
         val email: String,
         val role: String,
-        val schoolId: String?
+        val schoolId: String?,
+        val timezone: String = "America/Manaus"
     )
 
     @Synchronized
@@ -96,10 +100,12 @@ object TokenManager {
                     userName = user.name
                     userRole = user.role
                     schoolId = user.schoolId
+                    userTimezone = user.timezone
                     editor.putString(KEY_EMAIL, user.email)
                     editor.putString(KEY_USER_ID, user.id)
                     editor.putString(KEY_USER_NAME, user.name)
                     editor.putString(KEY_USER_ROLE, user.role)
+                    editor.putString(KEY_TIMEZONE, user.timezone)
                     if (user.schoolId != null) editor.putString(KEY_SCHOOL_ID, user.schoolId)
                     else editor.remove(KEY_SCHOOL_ID)
                 }
@@ -138,8 +144,17 @@ object TokenManager {
         val name = userName ?: return null
         val email = userEmail ?: return null
         val role = userRole ?: return null
-        return UserInfo(id, name, email, role, schoolId)
+        return UserInfo(id, name, email, role, schoolId, userTimezone)
     }
+
+    @Synchronized
+    fun updateTimezone(timezone: String) {
+        userTimezone = timezone
+        prefs?.edit()?.putString(KEY_TIMEZONE, timezone)?.apply()
+    }
+
+    @Synchronized
+    fun getUserTimezone(): String = userTimezone
 
     @Synchronized
     fun clearTokens() {

@@ -1,6 +1,8 @@
 package dev.fslab.comunicacao.escolar.network
 
 import dev.fslab.comunicacao.escolar.model.FcmTokenRequest
+import dev.fslab.comunicacao.escolar.model.MeUpdateRequest
+import dev.fslab.comunicacao.escolar.model.TimezoneUpdateRequest
 import dev.fslab.comunicacao.escolar.model.UpdateUserRequest
 import dev.fslab.comunicacao.escolar.model.UserResponse
 import okhttp3.MultipartBody
@@ -14,6 +16,12 @@ import retrofit2.http.Part
 import retrofit2.http.Path
 
 interface UserApi {
+
+    @PATCH("me")
+    suspend fun updateMe(@Body request: MeUpdateRequest): UserResponse
+
+    @PATCH("me")
+    suspend fun updateTimezone(@Body request: TimezoneUpdateRequest): UserResponse
 
     @POST("users/update-fcm-token")
     suspend fun updateFcmToken(@Body request: FcmTokenRequest): UserResponse

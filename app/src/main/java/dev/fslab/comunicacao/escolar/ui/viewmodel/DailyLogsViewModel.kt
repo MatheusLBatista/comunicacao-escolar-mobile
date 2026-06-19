@@ -36,8 +36,12 @@ class DailyLogsViewModel : ViewModel() {
     private val isoFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }
-    private val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR"))
-    private val timeFormatter = SimpleDateFormat("HH:mm", Locale.forLanguageTag("pt-BR"))
+    private val dateFormatter = SimpleDateFormat("dd/MM/yyyy", Locale.forLanguageTag("pt-BR")).apply {
+        timeZone = TimeZone.getTimeZone(dev.fslab.comunicacao.escolar.network.TokenManager.getUserTimezone())
+    }
+    private val timeFormatter = SimpleDateFormat("HH:mm", Locale.forLanguageTag("pt-BR")).apply {
+        timeZone = TimeZone.getTimeZone(dev.fslab.comunicacao.escolar.network.TokenManager.getUserTimezone())
+    }
 
     init {
         loadDailyLogs()

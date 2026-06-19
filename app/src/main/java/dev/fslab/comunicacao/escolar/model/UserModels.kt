@@ -6,6 +6,15 @@ data class UpdateUserRequest(
     @SerializedName("full_name") val fullName: String? = null
 )
 
+data class MeUpdateRequest(
+    @SerializedName("full_name") val fullName: String? = null,
+    @SerializedName("timezone") val timezone: String? = null
+)
+
+data class TimezoneUpdateRequest(
+    @SerializedName("timezone") val timezone: String
+)
+
 data class FcmTokenRequest(
     @SerializedName("fcm_token") val fcmToken: String
 )
@@ -26,6 +35,7 @@ data class ApiUser(
     @SerializedName("active") val active: Boolean = true,
     @SerializedName("auth_provider") val authProvider: String = "local",
     @SerializedName("avatar_url") val avatarUrl: String? = null,
+    @SerializedName("timezone") val timezone: String? = null,
     @SerializedName("memberships") val memberships: List<ApiMembership> = emptyList(),
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null
@@ -44,6 +54,7 @@ data class ApiUser(
             email = email ?: "",
             role = userRole,
             avatar = avatarUrl,
+            fusoHorario = timezone ?: "America/Manaus",
             schoolId = activeMembership?.schoolId?.ifEmpty { null }
         )
     }

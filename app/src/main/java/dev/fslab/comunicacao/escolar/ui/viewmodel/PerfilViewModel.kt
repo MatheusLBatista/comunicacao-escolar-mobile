@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.fslab.comunicacao.escolar.model.TimezoneUpdateRequest
 import dev.fslab.comunicacao.escolar.model.UpdateUserRequest
 import dev.fslab.comunicacao.escolar.model.User
 import dev.fslab.comunicacao.escolar.network.RetrofitClient
@@ -75,6 +76,34 @@ class PerfilViewModel : ViewModel() {
             } catch (e: Exception) {
                 _uiState.value = PerfilUiState.Error("Erro: ${e.localizedMessage ?: "Tente novamente"}")
                 Log.e(TAG, "Erro ao salvar nome", e)
+            } finally {
+                _salvando.value = false
+            }
+        }
+    }
+
+    fun updateTimezone(timezone: String, onSuccess: (User) -> Unit) {
+        viewModelScope.launch {
+            _salvando.value = true
+            try {
+                val response = RetrofitClient.userApi.updateTimezone(
+                    request = TimezoneUpdateRequest(timezone = timezone)
+                )
+                if (response.isSuccess()) {
+                    val updatedUser = response.data?.toUser()
+                    if (updatedUser != null) {
+                        onSuccess(updatedUser)
+                        _uiState.value = PerfilUiState.Success("Fuso horário atualizado com sucesso!")
+                    }
+                } else {
+                    _uiState.value = PerfilUiState.Error(response.getErrorMessage())
+                }
+            } catch (e: retrofit2.HttpException) {
+                _uiState.value = PerfilUiState.Error("Erro ao atualizar fuso horário (${e.code()}).")
+                Log.e(TAG, "Erro HTTP ao atualizar timezone", e)
+            } catch (e: Exception) {
+                _uiState.value = PerfilUiState.Error("Erro: ${e.localizedMessage ?: "Tente novamente"}")
+                Log.e(TAG, "Erro ao atualizar timezone", e)
             } finally {
                 _salvando.value = false
             }

@@ -2,6 +2,7 @@ package dev.fslab.comunicacao.escolar.model
 
 import com.google.gson.JsonElement
 import com.google.gson.annotations.SerializedName
+import dev.fslab.comunicacao.escolar.network.TokenManager
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -114,8 +115,9 @@ private fun formatMessageTime(isoString: String?): String {
     if (isoString.isNullOrBlank()) return ""
     return try {
         val instant = Instant.parse(isoString)
-        val zoned = instant.atZone(ZoneId.systemDefault())
-        val today = LocalDate.now(ZoneId.systemDefault())
+        val zone = try { ZoneId.of(TokenManager.getUserTimezone()) } catch (_: Exception) { ZoneId.systemDefault() }
+        val zoned = instant.atZone(zone)
+        val today = LocalDate.now(zone)
         when (zoned.toLocalDate()) {
             today -> zoned.format(DateTimeFormatter.ofPattern("HH:mm"))
             today.minusDays(1) -> "ontem"
@@ -130,8 +132,9 @@ fun formatMessageDateSeparator(isoString: String?): String {
     if (isoString.isNullOrBlank()) return ""
     return try {
         val instant = Instant.parse(isoString)
-        val zoned = instant.atZone(ZoneId.systemDefault())
-        val today = LocalDate.now(ZoneId.systemDefault())
+        val zone = try { ZoneId.of(TokenManager.getUserTimezone()) } catch (_: Exception) { ZoneId.systemDefault() }
+        val zoned = instant.atZone(zone)
+        val today = LocalDate.now(zone)
         when (zoned.toLocalDate()) {
             today -> "Hoje"
             today.minusDays(1) -> "Ontem"

@@ -1,5 +1,6 @@
 package dev.fslab.comunicacao.escolar.util
 
+import dev.fslab.comunicacao.escolar.network.TokenManager
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -7,6 +8,13 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 object DateUtils {
+
+    private fun userZone(): ZoneId = try {
+        ZoneId.of(TokenManager.getUserTimezone())
+    } catch (_: Exception) {
+        ZoneId.systemDefault()
+    }
+
     fun getTimeAgo(isoString: String?): String {
         if (isoString.isNullOrBlank()) return ""
         return try {
@@ -21,7 +29,7 @@ object DateUtils {
                 duration.toDays() < 7 -> "${duration.toDays()}d atrás"
                 else -> {
                     val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-                        .withZone(ZoneId.systemDefault())
+                        .withZone(userZone())
                     formatter.format(past)
                 }
             }
@@ -33,9 +41,10 @@ object DateUtils {
     fun getAuditFormat(isoString: String?): String {
         if (isoString.isNullOrBlank()) return ""
         return try {
+            val zone = userZone()
             val instant = Instant.parse(isoString)
-            val zoned = instant.atZone(ZoneId.systemDefault())
-            val today = LocalDate.now(ZoneId.systemDefault())
+            val zoned = instant.atZone(zone)
+            val today = LocalDate.now(zone)
             val timeStr = zoned.format(DateTimeFormatter.ofPattern("HH:mm"))
             when (zoned.toLocalDate()) {
                 today -> "Hoje, $timeStr"
