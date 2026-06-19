@@ -183,7 +183,6 @@ class ProfessorInicioViewModel : ViewModel() {
         }
     }
 
-    // Em ambiente de desenvolvimento, a URL vinda do servidor usa "localhost" que não resolve no emulador Android — substitui pelo alias padrão do emulador.
     private fun String.fixLocalhostUrl(): String =
-        replace("://localhost", "://10.0.2.2")
+        replace("://localhost", "://34.194.113.240")
 }
