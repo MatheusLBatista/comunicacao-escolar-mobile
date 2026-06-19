@@ -22,8 +22,8 @@ data class RecoverPasswordRequest(
 )
 
 data class ResetPasswordByCodeRequest(
-    @SerializedName("codigo") val codigo: String,
-    @SerializedName("senha") val senha: String
+    @SerializedName("password_recovery_code") val codigo: String,
+    @SerializedName("password") val senha: String
 )
 
 data class RefreshRequest(

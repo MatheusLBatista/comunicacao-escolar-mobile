@@ -23,6 +23,8 @@ sealed class AuthState {
     data class Success(val user: User) : AuthState()
     data class Registered(val message: String = "Conta criada! Faça login para continuar.") : AuthState()
     data class Error(val message: String) : AuthState()
+    data class RecoverEmailSent(val message: String = "Código enviado com sucesso. Verifique seu e-mail.") : AuthState()
+    data class PasswordResetSuccess(val message: String = "Senha atualizada com sucesso! Faça login.") : AuthState()
 }
 
 class AuthViewModel : ViewModel() {
@@ -261,6 +263,46 @@ class AuthViewModel : ViewModel() {
             } catch (e: Exception) {
                 Log.e(TAG, "Erro no Google login", e)
                 _authState.value = AuthState.Error("Erro ao conectar: ${e.localizedMessage ?: "Tente novamente"}")
+            }
+        }
+    }
+
+    fun recoverPassword(email: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            try {
+                val request = RecoverPasswordRequest(email)
+                RetrofitClient.authApi.recoverPassword(request)
+                _authState.value = AuthState.RecoverEmailSent()
+            } catch (e: retrofit2.HttpException) {
+                val errorMessage = when (e.code()) {
+                    404 -> "E-mail não encontrado no sistema."
+                    else -> "Erro ao solicitar recuperação (${e.code()})."
+                }
+                _authState.value = AuthState.Error(errorMessage)
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error("Erro ao conectar: ${e.localizedMessage}")
+            }
+        }
+    }
+
+    fun resetPasswordByCode(codigo: String, novaSenha: String) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            try {
+                val request = ResetPasswordByCodeRequest(codigo, novaSenha)
+                RetrofitClient.authApi.resetPasswordByCode(request)
+                _authState.value = AuthState.PasswordResetSuccess()
+            } catch (e: retrofit2.HttpException) {
+                val errorMessage = when (e.code()) {
+                    400 -> "Senha muito fraca. Deve ter no mínimo 8 caracteres com 1 letra, 1 número e 1 caractere especial."
+                    401 -> "Código inválido ou expirado."
+                    404 -> "Código não encontrado."
+                    else -> "Erro ao redefinir senha (${e.code()})."
+                }
+                _authState.value = AuthState.Error(errorMessage)
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error("Erro ao conectar: ${e.localizedMessage}")
             }
         }
     }
