@@ -82,7 +82,7 @@ fun ProfessorDashboardScreen(
         bottomBar = {
             BottomNavBar(
                 items = professorNavItems,
-                currentRoute = currentRoute,
+                currentRoute = if (currentRoute == ROUTE_DIARIO) ROUTE_INICIO else currentRoute,
                 onItemClick = { currentRoute = it.route }
             )
         }
@@ -108,7 +108,9 @@ fun ProfessorDashboardScreen(
                         currentRoute = ROUTE_CONVERSAS
                     }
                 )
-                ROUTE_DIARIO    -> ProfessorDiarioScreen()
+                ROUTE_DIARIO    -> ProfessorDiarioScreen(
+                    onNavigateToInicio = { currentRoute = ROUTE_INICIO }
+                )
                 ROUTE_CONVERSAS -> ProfessorConversasScreen(
                     user = user,
                     accessToken = accessToken,
@@ -213,7 +215,7 @@ private sealed class ProfessorConversasSubScreen {
 }
 
 @Composable
-private fun ProfessorDiarioScreen() {
+private fun ProfessorDiarioScreen(onNavigateToInicio: () -> Unit) {
     val listViewModel: dev.fslab.comunicacao.escolar.ui.viewmodel.DiarioDeBordoListViewModel = viewModel()
     var subScreen by remember { mutableStateOf<ProfessorDiarioSubScreen>(ProfessorDiarioSubScreen.List) }
 
@@ -225,6 +227,7 @@ private fun ProfessorDiarioScreen() {
     when (val screen = subScreen) {
         is ProfessorDiarioSubScreen.List -> DiarioDeBordoListScreen(
             viewModel = listViewModel,
+            onBack = onNavigateToInicio,
             onOpenDiario = { classId, className ->
                 subScreen = ProfessorDiarioSubScreen.Edit(classId, className)
             }
