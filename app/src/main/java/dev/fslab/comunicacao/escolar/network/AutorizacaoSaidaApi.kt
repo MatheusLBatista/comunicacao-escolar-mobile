@@ -9,13 +9,16 @@ import dev.fslab.comunicacao.escolar.model.CreatePickupLogResponse
 import dev.fslab.comunicacao.escolar.model.PatchAutorizacaoRequest
 import dev.fslab.comunicacao.escolar.model.PatchAutorizacaoUsedRequest
 import dev.fslab.comunicacao.escolar.model.PickupLogsResponse
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -72,5 +75,13 @@ interface AutorizacaoSaidaApi {
         @Header("Authorization") token: String,
         @Path("id") id: String,
         @Body body: PatchAutorizacaoUsedRequest
+    ): Response<Unit>
+
+    @Multipart
+    @POST("pickup-authorizations/{id}/photo")
+    suspend fun uploadFotoAutorizacao(
+        @Header("Authorization") token: String,
+        @Path("id") id: String,
+        @Part photo: MultipartBody.Part
     ): Response<Unit>
 }

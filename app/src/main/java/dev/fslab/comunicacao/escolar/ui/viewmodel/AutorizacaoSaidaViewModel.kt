@@ -1,10 +1,19 @@
 package dev.fslab.comunicacao.escolar.ui.viewmodel
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import dev.fslab.comunicacao.escolar.model.ApiAssociatedStudent
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaida
 import dev.fslab.comunicacao.escolar.model.AutorizacaoSaidaDoc
 import dev.fslab.comunicacao.escolar.model.CreateAuthorizedPerson
@@ -213,7 +222,16 @@ class AutorizacaoSaidaViewModel : ViewModel() {
         _showNovaAutorizacaoSheet.value = false
     }
 
-    fun criarAutorizacao(nome: String, documento: String, relacao: String, validFromMs: Long, validUntilMs: Long, studentId: String) {
+    fun criarAutorizacao(
+        nome: String,
+        documento: String,
+        relacao: String,
+        validFromMs: Long,
+        validUntilMs: Long,
+        studentId: String,
+        photoUri: Uri? = null,
+        context: Context? = null
+    ) {
         viewModelScope.launch {
             _criando.value = true
             _criarErro.value = null
@@ -245,7 +263,7 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                 authorizedBy = savedUser.id,
                 authorizedPerson = CreateAuthorizedPerson(
                     name = nome.trim(),
-                    document = documento.trim(),
+                    document = documento.filter { it.isDigit() },
                     relationship = relacao.trim()
                 ),
                 qrCode = UUID.randomUUID().toString(),
@@ -258,6 +276,12 @@ class AutorizacaoSaidaViewModel : ViewModel() {
                 if (response.error) {
                     _criarErro.value = response.getErrorMessage()
                 } else {
+                    val authId = response.data?.id
+                    if (authId != null && photoUri != null && context != null) {
+                        try {
+                            uploadFotoAutorizacao(authId, photoUri, context, token)
+                        } catch (_: Exception) { /* foto falhou, autorização criada */ }
+                    }
                     _showNovaAutorizacaoSheet.value = false
                     loadAutorizacoes()
                 }
@@ -272,6 +296,42 @@ class AutorizacaoSaidaViewModel : ViewModel() {
             } finally {
                 _criando.value = false
             }
+        }
+    }
+
+    private suspend fun uploadFotoAutorizacao(id: String, uri: Uri, context: Context, token: String) {
+        val bytes = readImageWithRotationFix(context, uri)
+        val requestBody = bytes.toRequestBody("image/jpeg".toMediaTypeOrNull())
+        val part = MultipartBody.Part.createFormData("photo", "photo.jpg", requestBody)
+        RetrofitClient.autorizacaoSaidaApi.uploadFotoAutorizacao("Bearer $token", id, part)
+    }
+
+    private fun readImageWithRotationFix(context: Context, uri: Uri): ByteArray {
+        val bitmap = context.contentResolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it) }
+            ?: throw IllegalStateException("Não foi possível ler imagem: $uri")
+
+        val degrees = context.contentResolver.openInputStream(uri)?.use { stream ->
+            val exif = ExifInterface(stream)
+            when (exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+                ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+                ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+                else -> 0f
+            }
+        } ?: 0f
+
+        val finalBitmap = if (degrees != 0f) {
+            val matrix = Matrix().apply { postRotate(degrees) }
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                .also { bitmap.recycle() }
+        } else {
+            bitmap
+        }
+
+        return java.io.ByteArrayOutputStream().use { out ->
+            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            finalBitmap.recycle()
+            out.toByteArray()
         }
     }
 
@@ -297,7 +357,8 @@ class AutorizacaoSaidaViewModel : ViewModel() {
             autorizadoPor = authorizedPerson?.name.orEmpty(),
             autorizadoDocumento = authorizedPerson?.document.orEmpty(),
             relacao = authorizedPerson?.relationship.orEmpty(),
-            validAte = validAte
+            validAte = validAte,
+            autorizadoPhotoUrl = authorizedPerson?.photoUrl?.takeIf { it.isNotBlank() }
         )
     }
 
