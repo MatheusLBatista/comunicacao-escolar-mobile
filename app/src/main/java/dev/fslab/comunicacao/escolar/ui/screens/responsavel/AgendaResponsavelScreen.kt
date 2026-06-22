@@ -44,6 +44,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -58,6 +60,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
@@ -91,6 +94,7 @@ import dev.fslab.comunicacao.escolar.ui.theme.LocalComunicacaoEscolarColors
 import dev.fslab.comunicacao.escolar.ui.viewmodel.AgendaViewModel
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -177,8 +181,7 @@ fun AgendaResponsavelScreen(
                 criando = criandoEvento,
                 erro = erroCreate,
                 onLimparErro = { agendaViewModel.limparErroCreate() },
-                onConfirmar = { titulo, descricao, inicio, fim, turmasSelecionadas, allDay ->
-                    val dia = diaSelecionado ?: LocalDate.now()
+                onConfirmar = { titulo, descricao, inicio, fim, turmasSelecionadas, allDay, dia ->
                     agendaViewModel.criarEvento(
                         titulo = titulo,
                         descricao = descricao,
@@ -296,15 +299,15 @@ fun AgendaResponsavelScreen(
                 eventoExistente = evento,
                 erro = erroEdit,
                 onLimparErro = { agendaViewModel.limparErroEdit() },
-                onConfirmar = { titulo, descricao, inicio, fim, turmasSelecionadas, allDay ->
+                onConfirmar = { titulo, descricao, inicio, fim, turmasSelecionadas, allDay, dia ->
                     agendaViewModel.editarEvento(
                         id = evento.id,
                         titulo = titulo,
                         descricao = descricao,
-                        inicio = if (allDay) agendaViewModel.formatarDataParaApi(diaEvento, "00:00")
-                                 else agendaViewModel.formatarDataParaApi(diaEvento, inicio),
+                        inicio = if (allDay) agendaViewModel.formatarDataParaApi(dia, "00:00")
+                                 else agendaViewModel.formatarDataParaApi(dia, inicio),
                         fim = if (allDay) null
-                              else fim?.let { agendaViewModel.formatarDataParaApi(diaEvento, it) },
+                              else fim?.let { agendaViewModel.formatarDataParaApi(dia, it) },
                         turmasSelecionadas = turmasSelecionadas,
                         allDay = allDay,
                         onSuccess = {
@@ -700,7 +703,7 @@ fun NovoEventoSheet(
     eventoExistente: Evento? = null,
     erro: String? = null,
     onLimparErro: () -> Unit = {},
-    onConfirmar: (titulo: String, descricao: String?, inicio: String, fim: String?, turmasSelecionadas: List<String>, allDay: Boolean) -> Unit
+    onConfirmar: (titulo: String, descricao: String?, inicio: String, fim: String?, turmasSelecionadas: List<String>, allDay: Boolean, dia: LocalDate) -> Unit
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val isEditing = eventoExistente != null
@@ -711,12 +714,17 @@ fun NovoEventoSheet(
     var fim by rememberSaveable { mutableStateOf(eventoExistente?.dataFim?.let { if (it.length >= 16) it.substring(11, 16) else "" } ?: "") }
     var diaInteiro by rememberSaveable { mutableStateOf(eventoExistente?.allDay ?: false) }
     val turmasSelecionadas = remember { mutableStateListOf<String>().also { list -> eventoExistente?.classIds?.let { list.addAll(it) } } }
+    var diaLocal by remember { mutableStateOf(diaSelecionado) }
+    var mostrarPickerData by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = diaLocal.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+    )
     var mostrarPickerInicio by remember { mutableStateOf(false) }
     var mostrarPickerFim by remember { mutableStateOf(false) }
     val timePickerStateInicio = rememberTimePickerState(initialHour = 8, initialMinute = 0, is24Hour = true)
     val timePickerStateFim = rememberTimePickerState(initialHour = 9, initialMinute = 0, is24Hour = true)
 
-    val labelData = diaSelecionado.format(
+    val labelData = diaLocal.format(
         DateTimeFormatter.ofPattern("d 'de' MMMM 'de' yyyy", Locale("pt", "BR"))
     )
 
@@ -729,6 +737,24 @@ fun NovoEventoSheet(
         focusedContainerColor = colors.surface,
         unfocusedContainerColor = colors.surface
     )
+
+    if (mostrarPickerData) {
+        DatePickerDialog(
+            onDismissRequest = { mostrarPickerData = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        diaLocal = java.time.Instant.ofEpochMilli(millis)
+                            .atZone(ZoneOffset.UTC).toLocalDate()
+                    }
+                    mostrarPickerData = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { mostrarPickerData = false }) { Text("Cancelar") }
+            }
+        ) { DatePicker(state = datePickerState) }
+    }
 
     if (mostrarPickerInicio) {
         TimePickerDialog(
@@ -766,11 +792,26 @@ fun NovoEventoSheet(
                 fontWeight = FontWeight.SemiBold,
                 color = colors.textPrimary
             )
-            Text(
-                text = "Dia $labelData",
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.textSecondary
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { mostrarPickerData = true }
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.DateRange,
+                    contentDescription = null,
+                    tint = colors.buttonContainer,
+                    modifier = Modifier.size(14.dp)
+                )
+                Text(
+                    text = "Dia $labelData",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.buttonContainer
+                )
+            }
         }
 
         // Título
@@ -990,7 +1031,8 @@ fun NovoEventoSheet(
                         inicio,
                         fim.takeIf { it.isNotBlank() },
                         turmasSelecionadas.toList(),
-                        diaInteiro
+                        diaInteiro,
+                        diaLocal
                     )
                 }
             },

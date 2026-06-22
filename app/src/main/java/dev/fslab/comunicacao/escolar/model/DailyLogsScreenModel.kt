@@ -15,7 +15,8 @@ data class DailyLog(
     val entries: List<DailyLogDetailEntry> = emptyList(),
     val conversationId: String = "",
     val studentAvatarUrl: String? = null,
-    val teacherAvatarUrl: String? = null
+    val teacherAvatarUrl: String? = null,
+    val className: String = ""
 )
 
 data class DailyLogDetailEntry(

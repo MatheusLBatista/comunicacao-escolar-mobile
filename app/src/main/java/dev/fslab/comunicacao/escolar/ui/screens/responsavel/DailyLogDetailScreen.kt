@@ -97,7 +97,8 @@ fun DailyLogDetailScreen(
                     teacherName = teacherName,
                     dateTimeLabel = dateTimeLabel,
                     observation = observation,
-                    teacherAvatarUrl = log.teacherAvatarUrl
+                    teacherAvatarUrl = log.teacherAvatarUrl,
+                    className = log.className
                 )
             }
 
@@ -123,7 +124,8 @@ private fun DailyLogMessageCard(
     teacherName: String,
     dateTimeLabel: String,
     observation: String?,
-    teacherAvatarUrl: String? = null
+    teacherAvatarUrl: String? = null,
+    className: String = ""
 ) {
     val colors = LocalComunicacaoEscolarColors.current
     val context = LocalContext.current
@@ -179,9 +181,13 @@ private fun DailyLogMessageCard(
                     fontWeight = FontWeight.SemiBold,
                     color = colors.textPrimary
                 )
-                if (dateTimeLabel.isNotBlank()) {
+                val metaLabel = listOfNotNull(
+                    dateTimeLabel.takeIf { it.isNotBlank() },
+                    className.takeIf { it.isNotBlank() }
+                ).joinToString(" • ")
+                if (metaLabel.isNotBlank()) {
                     Text(
-                        text = dateTimeLabel,
+                        text = metaLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = colors.textSecondary
                     )

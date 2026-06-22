@@ -16,8 +16,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsBottomHeight
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -99,31 +99,28 @@ private fun BottomNavItemView(
             )
             .padding(horizontal = 12.dp, vertical = 4.dp)
     ) {
-        Box {
+        BadgedBox(
+            badge = {
+                if (item.badgeCount > 0) {
+                    Badge(
+                        containerColor = colors.buttonContainer,
+                        contentColor = colors.buttonText
+                    ) {
+                        Text(
+                            text = if (item.badgeCount > 9) "9+" else item.badgeCount.toString(),
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        ) {
             Icon(
                 imageVector = item.icon,
                 contentDescription = item.contentDescription,
                 tint = if (isActive) colors.textPrimary else colors.iconGray,
                 modifier = Modifier.size(22.dp)
             )
-
-            if (item.badgeCount > 0) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(colors.primaryDark),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (item.badgeCount > 9) "9+" else item.badgeCount.toString(),
-                        color = Color.White,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
